@@ -37,6 +37,11 @@ import {
 } from "@/components/ui/sheet";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { fetchSheetKpis } from "@/lib/sheets.functions";
+import { FileSpreadsheet, RefreshCw } from "lucide-react";
+
+const SHEET_ID_KEY = "grax.exec.sheetId";
 
 function load(): ExecState {
   try {
@@ -52,6 +57,93 @@ export function ExecutiveDashboard() {
     null
   );
   const [pdcaOpen, setPdcaOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetId, setSheetId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(SHEET_ID_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [syncing, setSyncing] = useState(false);
+  const callFetchSheet = useServerFn(fetchSheetKpis);
+
+  const syncFromSheet = async () => {
+    const id = sheetId.trim();
+    if (!id) {
+      toast.error("Informe o ID da planilha");
+      return;
+    }
+    try {
+      localStorage.setItem(SHEET_ID_KEY, id);
+    } catch {}
+    setSyncing(true);
+    try {
+      const res = await callFetchSheet({ data: { spreadsheetId: id } });
+      const map = new Map(res.rows.map((r) => [r.kpi_id, r]));
+      let matched = 0;
+      setState((s) => {
+        const apply = (kpi: ExecKpi): ExecKpi => {
+          const r = map.get(kpi.id);
+          if (!r) return kpi;
+          matched++;
+          return {
+            ...kpi,
+            current: r.current ?? kpi.current,
+            previous: r.previous ?? kpi.previous,
+            target: r.target ?? kpi.target,
+            owner: r.owner ?? kpi.owner,
+          };
+        };
+        return {
+          ...s,
+          general: s.general.map(apply),
+          cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(apply) })),
+        };
+      });
+      toast.success(`Sincronizado: ${matched} KPIs atualizados de ${res.count} linhas`);
+      setSheetOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro: ${msg}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const allKpiIds = useMemo(() => {
+    const ids: { id: string; label: string; nucleo: string; unidade: string; responsavel: string }[] =
+      [];
+    state.general.forEach((k) =>
+      ids.push({ id: k.id, label: k.label, nucleo: "geral", unidade: k.unit, responsavel: k.owner || "" })
+    );
+    state.cores.forEach((c) =>
+      c.kpis.forEach((k) =>
+        ids.push({ id: k.id, label: k.label, nucleo: c.id, unidade: k.unit, responsavel: k.owner || "" })
+      )
+    );
+    return ids;
+  }, [state]);
+
+  const downloadTemplateCsv = () => {
+    const header = ["kpi_id", "label", "nucleo", "atual", "anterior", "meta", "unidade", "responsavel"];
+    const rows = [header.join(",")];
+    [...state.general.map((k) => ({ k, nucleo: "geral" })), ...state.cores.flatMap((c) => c.kpis.map((k) => ({ k, nucleo: c.id })))].forEach(
+      ({ k, nucleo }) => {
+        rows.push(
+          [k.id, `"${k.label}"`, nucleo, k.current, k.previous, k.target, k.unit, k.owner || ""].join(",")
+        );
+      }
+    );
+    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "grax-kpis-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   useEffect(() => {
     localStorage.setItem(
@@ -148,9 +240,13 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="default" onClick={() => setSheetOpen(true)} disabled={syncing}>
+            <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Sheets
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setPdcaOpen(true)}>
             <Target className="size-4 mr-1" /> PDCA ({state.pdca.length})
           </Button>
+
           <Button size="sm" variant="ghost" onClick={exportJson}>
             <Download className="size-4 mr-1" /> Exportar
           </Button>
@@ -333,6 +429,78 @@ export function ExecutiveDashboard() {
               </div>
             </>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Sheets sync panel */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="size-5 text-emerald-400" /> Sincronizar com Google Sheets
+            </SheetTitle>
+            <SheetDescription>
+              Mantenha uma planilha simples e o cockpit é preenchido automaticamente.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-5 mt-4 px-4 text-sm">
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="font-semibold">Passo 1 — Crie a planilha</div>
+              <p className="text-xs text-muted-foreground">
+                Crie um Google Sheets com uma aba chamada <code className="px-1 rounded bg-background">KPIs</code> e a primeira linha exatamente assim:
+              </p>
+              <code className="block text-[11px] bg-background p-2 rounded border border-border overflow-x-auto">
+                kpi_id | label | nucleo | atual | anterior | meta | unidade | responsavel
+              </code>
+              <p className="text-xs text-muted-foreground">
+                Compartilhe a planilha com a conta Google que você conectou (permissão de leitura basta).
+              </p>
+              <Button size="sm" variant="secondary" onClick={downloadTemplateCsv}>
+                <Download className="size-4 mr-1" /> Baixar template CSV (todos os {allKpiIds.length} KPIs)
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Abra esse CSV no Google Sheets (Arquivo → Importar) para começar com todos os KPIs já listados.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="font-semibold">Passo 2 — Cole o ID da planilha</div>
+              <p className="text-xs text-muted-foreground">
+                Da URL: <code className="px-1 rounded bg-background">docs.google.com/spreadsheets/d/<b>ID_AQUI</b>/edit</code>
+              </p>
+              <Input
+                placeholder="ex: 1AbC...xyZ"
+                value={sheetId}
+                onChange={(e) => setSheetId(e.target.value)}
+              />
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="font-semibold">Passo 3 — Sincronizar</div>
+              <p className="text-xs text-muted-foreground">
+                Cada linha atualiza o KPI cujo <code>kpi_id</code> bater. Linhas sem correspondência são ignoradas.
+              </p>
+              <Button onClick={syncFromSheet} disabled={syncing || !sheetId.trim()}>
+                <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Sincronizando..." : "Sincronizar agora"}
+              </Button>
+            </div>
+
+            <details className="rounded-lg border border-border p-3 bg-secondary/40">
+              <summary className="cursor-pointer text-xs font-semibold">
+                Ver lista de kpi_id válidos ({allKpiIds.length})
+              </summary>
+              <div className="mt-2 max-h-64 overflow-y-auto text-[11px] font-mono space-y-0.5">
+                {allKpiIds.map((k) => (
+                  <div key={k.id} className="flex justify-between gap-2 border-b border-border/40 py-0.5">
+                    <span className="text-emerald-300">{k.id}</span>
+                    <span className="text-muted-foreground truncate">{k.label} · {k.nucleo}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
         </SheetContent>
       </Sheet>
 
