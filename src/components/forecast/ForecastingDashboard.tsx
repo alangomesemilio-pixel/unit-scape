@@ -32,7 +32,6 @@ import {
   Bar,
   Cell,
 } from "recharts";
-import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
 
 const KEY_LINES = [
@@ -408,8 +407,8 @@ export function ForecastingDashboard() {
                   <Sparkles className="size-5 text-primary" />
                   Análise da IA Executiva
                 </h2>
-                <div className="prose prose-sm dark:prose-invert max-w-none">
-                  <ReactMarkdown>{aiReply}</ReactMarkdown>
+                <div className="text-sm whitespace-pre-wrap leading-relaxed">
+                  {aiReply}
                 </div>
               </Card>
             )}
