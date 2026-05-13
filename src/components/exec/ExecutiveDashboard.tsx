@@ -4,11 +4,13 @@ import {
   EXEC_STORAGE_KEY,
   formatValue,
   isoWeekKey,
+  monthKey,
   statusOf,
   trendOf,
   variation,
   type ExecKpi,
   type ExecState,
+  type MonthSnapshot,
   type PdcaItem,
   type WeekSnapshot,
 } from "@/lib/executive-data";
@@ -27,7 +29,7 @@ import {
   Pencil,
   X,
   Archive,
-
+  CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchSheetKpis } from "@/lib/sheets.functions";
+import {
+  loadSnapshots,
+  saveMonthSnapshot,
+  saveWeekSnapshot,
+} from "@/lib/snapshots.functions";
 import { FileSpreadsheet, RefreshCw } from "lucide-react";
 
 const SHEET_ID_KEY = "grax.exec.sheetId";
@@ -66,16 +73,45 @@ export function ExecutiveDashboard() {
   const [sheetId, setSheetId] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
 
-  // Load from localStorage only on client (avoids SSR hydration mismatch)
+  const callFetchSheet = useServerFn(fetchSheetKpis);
+  const callSaveWeek = useServerFn(saveWeekSnapshot);
+  const callSaveMonth = useServerFn(saveMonthSnapshot);
+  const callLoadSnapshots = useServerFn(loadSnapshots);
+
+  // Load from localStorage + DB on client
   useEffect(() => {
     setState(load());
     try {
       setSheetId(localStorage.getItem(SHEET_ID_KEY) || "");
     } catch {}
     setMounted(true);
+    // Hydrate history from DB (source of truth)
+    callLoadSnapshots()
+      .then((res) => {
+        const weeksByKey = new Map<string, WeekSnapshot>();
+        res.weeks.forEach((r) => {
+          if (!weeksByKey.has(r.period)) {
+            weeksByKey.set(r.period, { week: r.period, closedAt: r.closed_at, values: {} });
+          }
+          weeksByKey.get(r.period)!.values[r.kpi_id] = r.value;
+        });
+        const monthsByKey = new Map<string, MonthSnapshot>();
+        res.months.forEach((r) => {
+          if (!monthsByKey.has(r.period)) {
+            monthsByKey.set(r.period, { month: r.period, closedAt: r.closed_at, values: {} });
+          }
+          monthsByKey.get(r.period)!.values[r.kpi_id] = r.value;
+        });
+        setState((s) => ({
+          ...s,
+          history: Array.from(weeksByKey.values()).sort((a, b) => a.week.localeCompare(b.week)),
+          monthHistory: Array.from(monthsByKey.values()).sort((a, b) =>
+            a.month.localeCompare(b.month)
+          ),
+        }));
+      })
+      .catch((e) => console.warn("[snapshots] load failed", e));
   }, []);
-
-  const callFetchSheet = useServerFn(fetchSheetKpis);
 
   const syncFromSheet = async () => {
     const id = sheetId.trim();
@@ -174,11 +210,15 @@ export function ExecutiveDashboard() {
     return m;
   }, [state.history]);
 
-  const closeWeek = () => {
+  const closeWeek = async () => {
     const week = isoWeekKey();
     if ((state.history || []).some((h) => h.week === week)) {
       if (!confirm(`Semana ${week} já foi fechada. Sobrescrever?`)) return;
-    } else if (!confirm(`Fechar semana ${week}? Os valores 'atual' viram 'anterior' e o snapshot será arquivado.`)) {
+    } else if (
+      !confirm(
+        `Fechar semana ${week}? Os valores 'atual' viram 'anterior' e o snapshot será salvo no banco.`
+      )
+    ) {
       return;
     }
     const values: Record<string, number> = {};
@@ -189,17 +229,55 @@ export function ExecutiveDashboard() {
     state.cores.forEach((c) => c.kpis.forEach(collect));
     const snap: WeekSnapshot = { week, closedAt: new Date().toISOString(), values };
 
+    try {
+      await callSaveWeek({ data: { week, values } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro ao salvar no banco: ${msg}`);
+      return;
+    }
+
     setState((s) => {
       const shift = (k: ExecKpi): ExecKpi => ({ ...k, previous: k.current });
       const filtered = (s.history || []).filter((h) => h.week !== week);
       return {
         ...s,
-        history: [...filtered, snap].slice(-52),
+        history: [...filtered, snap].sort((a, b) => a.week.localeCompare(b.week)).slice(-52),
         general: s.general.map(shift),
         cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(shift) })),
       };
     });
-    toast.success(`Semana ${week} arquivada`);
+    toast.success(`Semana ${week} arquivada no banco`);
+  };
+
+  const closeMonth = async () => {
+    const month = monthKey();
+    if ((state.monthHistory || []).some((h) => h.month === month)) {
+      if (!confirm(`Mês ${month} já foi fechado. Sobrescrever?`)) return;
+    } else if (!confirm(`Fechar mês ${month}? Snapshot mensal será salvo no banco.`)) {
+      return;
+    }
+    const values: Record<string, number> = {};
+    state.general.forEach((k) => (values[k.id] = k.current));
+    state.cores.forEach((c) => c.kpis.forEach((k) => (values[k.id] = k.current)));
+    const snap: MonthSnapshot = { month, closedAt: new Date().toISOString(), values };
+
+    try {
+      await callSaveMonth({ data: { month, values } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro ao salvar no banco: ${msg}`);
+      return;
+    }
+
+    setState((s) => {
+      const filtered = (s.monthHistory || []).filter((h) => h.month !== month);
+      return {
+        ...s,
+        monthHistory: [...filtered, snap].sort((a, b) => a.month.localeCompare(b.month)).slice(-36),
+      };
+    });
+    toast.success(`Mês ${month} arquivado no banco`);
   };
 
 
@@ -296,6 +374,9 @@ export function ExecutiveDashboard() {
           </Button>
           <Button size="sm" variant="secondary" onClick={closeWeek}>
             <Archive className="size-4 mr-1" /> Fechar semana ({(state.history || []).length})
+          </Button>
+          <Button size="sm" variant="secondary" onClick={closeMonth}>
+            <CalendarRange className="size-4 mr-1" /> Fechar mês ({(state.monthHistory || []).length})
           </Button>
           <Button size="sm" variant="secondary" onClick={() => setPdcaOpen(true)}>
             <Target className="size-4 mr-1" /> PDCA ({state.pdca.length})
@@ -405,7 +486,7 @@ export function ExecutiveDashboard() {
         ))}
 
         <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
-          Semana atual: {isoWeekKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Dados salvos localmente neste navegador.
+          Semana {isoWeekKey()} · Mês {monthKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Histórico no banco (Lovable Cloud)
         </div>
       </div>
 
