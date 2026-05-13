@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Sheet,
@@ -413,29 +414,27 @@ export function ExecutiveDashboard() {
         </div>
       </header>
 
-      {/* Tabs por operação */}
-      <div className="border-b border-border bg-card/50 px-6 sticky top-[73px] z-[9] backdrop-blur">
-        <div className="max-w-[1600px] mx-auto flex gap-1 overflow-x-auto">
-          {(Object.keys(TAB_LABELS) as ViewTab[]).map((t) => {
-            const isActive = activeTab === t;
-            return (
-              <button
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => setActiveTab(value as ViewTab)}
+        className="min-h-0"
+      >
+        {/* Tabs por operação */}
+        <div className="border-b border-border bg-card/50 px-6 backdrop-blur">
+          <TabsList className="h-auto w-full max-w-[1600px] mx-auto justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 text-left">
+            {(Object.keys(TAB_LABELS) as ViewTab[]).map((t) => (
+              <TabsTrigger
                 key={t}
-                onClick={() => setActiveTab(t)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                  isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
+                value={t}
+                className="rounded-none border-b-2 border-transparent px-4 py-2.5 text-sm font-medium text-muted-foreground shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
               >
                 {TAB_LABELS[t]}
-              </button>
-            );
-          })}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-      </div>
 
-      <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
+        <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
         {activeTab === "ceo" ? (
           <>
             {/* Visão executiva geral */}
@@ -630,10 +629,11 @@ export function ExecutiveDashboard() {
           })()
         )}
 
-        <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
-          Semana {isoWeekKey()} · Mês {monthKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Histórico no banco (Lovable Cloud)
+          <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
+            Semana {isoWeekKey()} · Mês {monthKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Histórico no banco (Lovable Cloud)
+          </div>
         </div>
-      </div>
+      </Tabs>
 
       {/* KPI editor */}
       <Sheet
