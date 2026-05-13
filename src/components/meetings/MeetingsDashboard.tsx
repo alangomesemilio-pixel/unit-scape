@@ -465,6 +465,19 @@ export function MeetingsDashboard() {
           }}
         />
       </div>
+
+      <AuditPanel
+        open={auditOpen}
+        onOpenChange={setAuditOpen}
+        entries={auditLog}
+        currentActor={actor}
+        onActorChange={(name) => {
+          setActor(name);
+          try {
+            localStorage.setItem(ACTOR_KEY, name);
+          } catch {}
+        }}
+      />
     </div>
   );
 }
