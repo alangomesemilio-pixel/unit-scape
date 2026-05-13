@@ -85,11 +85,22 @@ export function MeetingsDashboard() {
   const [state, setState] = useState<WeekState>(() => loadWeek(getWeekKey()));
   const [exec, setExec] = useState<ExecState>(defaultExecState);
   const [calendarOpen, setCalendarOpen] = useState(false);
+  const [actor, setActor] = useState<string>("");
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [auditOpen, setAuditOpen] = useState(false);
 
   const callSaveWeek = useServerFn(saveWeekSnapshot);
+  const callLogClose = useServerFn(logWeekClose);
+  const callLoadAudit = useServerFn(loadAuditLog);
 
   useEffect(() => {
     setExec(loadExec());
+    try {
+      setActor(localStorage.getItem(ACTOR_KEY) || "");
+    } catch {}
+    callLoadAudit()
+      .then((res) => setAuditLog(res.entries))
+      .catch((e) => console.warn("[audit] load failed", e));
   }, []);
 
   useEffect(() => {
