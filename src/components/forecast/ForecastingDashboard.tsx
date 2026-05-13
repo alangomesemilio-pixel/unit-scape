@@ -688,6 +688,16 @@ export function ForecastingDashboard() {
               </div>
             </Card>
 
+            {/* Detalhamento completo da DRE — todas as linhas da planilha */}
+            <FullDreCard
+              data={data}
+              activeMonth={activeMonth}
+              filter={detailFilter}
+              onFilter={setDetailFilter}
+              mode={detailMode}
+              onModeChange={setDetailMode}
+            />
+
             {/* AI reply */}
             {aiReply && (
               <Card className="p-6 border-primary/40 bg-primary/5">
