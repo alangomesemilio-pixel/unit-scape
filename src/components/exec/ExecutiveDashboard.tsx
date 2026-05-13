@@ -155,11 +155,53 @@ export function ExecutiveDashboard() {
 
 
   useEffect(() => {
+    if (!mounted) return;
     localStorage.setItem(
       EXEC_STORAGE_KEY,
       JSON.stringify({ ...state, lastUpdated: new Date().toISOString() })
     );
-  }, [state]);
+  }, [state, mounted]);
+
+  // History map for sparklines: kpi_id -> last N values
+  const historyMap = useMemo(() => {
+    const m = new Map<string, number[]>();
+    (state.history || []).slice(-12).forEach((snap) => {
+      Object.entries(snap.values).forEach(([id, v]) => {
+        if (!m.has(id)) m.set(id, []);
+        m.get(id)!.push(v);
+      });
+    });
+    return m;
+  }, [state.history]);
+
+  const closeWeek = () => {
+    const week = isoWeekKey();
+    if ((state.history || []).some((h) => h.week === week)) {
+      if (!confirm(`Semana ${week} já foi fechada. Sobrescrever?`)) return;
+    } else if (!confirm(`Fechar semana ${week}? Os valores 'atual' viram 'anterior' e o snapshot será arquivado.`)) {
+      return;
+    }
+    const values: Record<string, number> = {};
+    const collect = (k: ExecKpi) => {
+      values[k.id] = k.current;
+    };
+    state.general.forEach(collect);
+    state.cores.forEach((c) => c.kpis.forEach(collect));
+    const snap: WeekSnapshot = { week, closedAt: new Date().toISOString(), values };
+
+    setState((s) => {
+      const shift = (k: ExecKpi): ExecKpi => ({ ...k, previous: k.current });
+      const filtered = (s.history || []).filter((h) => h.week !== week);
+      return {
+        ...s,
+        history: [...filtered, snap].slice(-52),
+        general: s.general.map(shift),
+        cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(shift) })),
+      };
+    });
+    toast.success(`Semana ${week} arquivada`);
+  };
+
 
   const alerts = useMemo(() => {
     const all: { core: string; kpi: ExecKpi }[] = [];
