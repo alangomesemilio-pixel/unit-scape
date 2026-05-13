@@ -57,9 +57,10 @@ function parseSheet(values: string[][]): DreRow[] {
     if (!label) continue;
     const monthly = monthCols.map((c) => parseBrNumber(row[c]));
     const total = parseBrNumber(row[totalCol]);
-    // Skip rows with no numbers at all
-    if (!monthly.some((v) => v !== null) && total === null) continue;
-    rows.push({ label, kind: classify(label), values: monthly, total });
+    const kind = classify(label);
+    // Keep section/total rows even when empty so the structure is preserved.
+    if (kind === "item" && !monthly.some((v) => v !== null) && total === null) continue;
+    rows.push({ label, kind, values: monthly, total });
   }
   return rows;
 }
