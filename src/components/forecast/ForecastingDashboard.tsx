@@ -125,6 +125,8 @@ export function ForecastingDashboard() {
   const aiFn = useServerFn(analyzeForecastWithAi);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiReply, setAiReply] = useState<string | null>(null);
+  const [detailFilter, setDetailFilter] = useState("");
+  const [detailMode, setDetailMode] = useState<"ytd" | "monthly">("ytd");
 
   const q = useQuery({
     queryKey: ["forecast-dre"],
