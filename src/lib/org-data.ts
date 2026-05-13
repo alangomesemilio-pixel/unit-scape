@@ -24,7 +24,6 @@ const mk = (
   type: "org",
 });
 
-// Layout: columns spaced 280px, rows 220px
 const COL = 280;
 const ROW = 220;
 
@@ -33,66 +32,68 @@ export const initialNodes: Node<OrgNodeData>[] = [
     name: "GRAx Group",
     role: "Holding",
     level: "ceo",
-    responsibilities: ["Visão", "Governança", "Direção estratégica"],
-    kpis: ["Crescimento consolidado", "Valuation", "Margem global"],
+    responsibilities: [
+      "Visão e direção estratégica",
+      "Governança",
+      "Estrutura matricial",
+      "Crescimento sustentável",
+    ],
+    kpis: ["Crescimento consolidado", "Valuation", "Margem global", "LTV consolidado"],
   }),
 
-  // Nível 1 — sócios
+  // Nível 1 — sócios / direção
   mk("alan", 2 * COL, 1 * ROW, {
     name: "Alan",
-    role: "CEO",
-    area: "Estratégia & Growth",
+    role: "CEO — Direção Estratégica & Growth Vision",
+    area: "Estratégia & Growth Vision",
     level: "ceo",
     responsibilities: [
-      "Estratégia",
-      "Growth",
-      "Branding",
-      "Expansão",
-      "Cultura",
-      "Direção da empresa",
-      "Integração executiva",
+      "Direção da holding",
+      "Visão estratégica e expansão",
+      "Branding macro",
+      "Alocação de recursos",
+      "Liderança executiva",
+      "Governança",
     ],
     kpis: [
       "Crescimento de receita",
       "Market share",
-      "NPS de cultura",
       "Valuation",
+      "NPS de cultura",
     ],
   }),
   mk("miller", 4 * COL, 1 * ROW, {
     name: "Miller",
-    role: "COO",
+    role: "COO — Operações & Administrativo",
     area: "Operações",
     level: "coo",
     responsibilities: [
-      "Operações",
-      "Supply chain",
-      "PCP",
-      "Compras",
-      "Logística",
-      "Financeiro",
+      "Operações e supply",
+      "Produção, compras, logística",
+      "Financeiro operacional",
       "Administrativo",
       "Eficiência operacional",
     ],
     kpis: [
-      "OTIF",
-      "Custo unitário",
-      "Giro de estoque",
-      "Margem operacional",
+      "SLA",
       "Lead time",
+      "Ruptura",
+      "Custos",
+      "Margem operacional",
+      "Eficiência logística",
     ],
   }),
   mk("jack", 6 * COL, 1 * ROW, {
     name: "Jack",
-    role: "Diretor Internacional",
-    area: "Expansão Global",
+    role: "Head Internacional",
+    area: "Expansão Global (matricial c/ Growth)",
     level: "intl",
     responsibilities: [
-      "Expansão global",
-      "Pimenta Rosa internacional",
-      "Distribuição global",
-      "Novos países",
+      "Expansão internacional",
+      "Crescimento global da Pimenta Rosa",
+      "Distribuidores internacionais",
       "Operação internacional",
+      "Define prioridades internacionais (executadas pelo Growth)",
     ],
     kpis: [
       "Receita internacional",
@@ -103,110 +104,78 @@ export const initialNodes: Node<OrgNodeData>[] = [
   }),
 
   // Nível 2 — heads sob Alan
-  mk("igor", 1 * COL, 2 * ROW, {
-    name: "Igor",
-    role: "Diretor de Expansão",
-    area: "Comercial",
-    level: "head",
-    reportsTo: "Alan",
-    responsibilities: ["Expansão comercial", "Distribuidores", "Parceiros"],
-    kpis: ["Receita comercial", "Novos contratos", "Sell-in", "Cobertura"],
-  }),
   mk("fernando", 2 * COL, 2 * ROW, {
     name: "Fernando",
-    role: "Head Growth & Branding",
-    area: "Marketing / Branding",
+    role: "Head of Growth — Full Funnel",
+    area: "Growth (Aquisição + Retenção + Internacional)",
     level: "head",
     reportsTo: "Alan",
-    responsibilities: ["Performance", "Branding", "Conteúdo", "Influência"],
-    kpis: ["CAC", "ROAS", "Brand lift", "Engajamento"],
-  }),
-  mk("ian", 3 * COL, 2 * ROW, {
-    name: "Ian",
-    role: "Head CRM & CX",
-    area: "Retenção / Pós-venda",
-    level: "head",
-    reportsTo: "Alan",
-    responsibilities: ["CRM", "Retenção", "Pós-venda", "Fidelização"],
-    kpis: ["LTV", "Recompra", "Churn", "CSAT", "NPS"],
-  }),
-
-  // Nível 3 — Miller
-  mk("carol", 4 * COL, 2 * ROW, {
-    name: "Carol",
-    role: "PCP & Produção",
-    level: "team",
-    reportsTo: "Miller",
     responsibilities: [
-      "Controle de produção",
-      "Cronograma",
-      "Estoque",
-      "Fábrica",
+      "Liderança do Growth Full Funnel da holding",
+      "Aquisição, creators, branding, tráfego",
+      "CRM e retenção (via Ian)",
+      "Monetização da base e LTV",
+      "Growth internacional (matricial c/ Jack)",
     ],
-    kpis: ["Aderência ao plano", "OEE", "Acuracidade de estoque", "Refugo"],
+    kpis: [
+      "CAC",
+      "ROAS",
+      "LTV",
+      "Receita full funnel",
+      "Payback",
+      "Crescimento da base",
+    ],
   }),
-  mk("rafael", 5 * COL, 2 * ROW, {
-    name: "Rafael",
-    role: "Compras",
-    level: "team",
-    reportsTo: "Miller",
-    responsibilities: ["Compras", "Fornecedores", "Negociação"],
-    kpis: ["Saving", "Lead time de compras", "OTD fornecedor"],
-  }),
-  mk("junior", 6 * COL, 2 * ROW, {
-    name: "Júnior",
-    role: "Logística",
-    level: "team",
-    reportsTo: "Miller",
-    responsibilities: ["Logística", "Auxiliares operacionais", "Expedição"],
-    kpis: ["OTIF", "Custo de frete / pedido", "Avarias"],
-  }),
-  mk("icaro", 5 * COL, 3 * ROW, {
-    name: "Ícaro",
-    role: "Financeiro",
-    level: "team",
-    reportsTo: "Miller",
-    responsibilities: ["Financeiro", "Fluxo de caixa", "Contas"],
-    kpis: ["Caixa", "DSO", "DPO", "Margem líquida"],
-  }),
-  mk("fernanda", 6 * COL, 3 * ROW, {
-    name: "Fernanda",
-    role: "Administrativo",
-    level: "team",
-    reportsTo: "Miller",
-    responsibilities: ["Administrativo", "Rotinas internas", "Documentação"],
-    kpis: ["SLA administrativo", "Conformidade documental"],
+  mk("igor", 4 * COL, 2 * ROW, {
+    name: "Igor",
+    role: "Head Comercial & Expansão B2B",
+    area: "Comercial B2B",
+    level: "head",
+    reportsTo: "Alan",
+    responsibilities: [
+      "Expansão comercial e B2B",
+      "Distribuidores e canais",
+      "Sell-in e expansão regional",
+    ],
+    kpis: [
+      "Receita B2B",
+      "Sell-in",
+      "Distribuidores ativos",
+      "Pipeline",
+      "Expansão regional",
+      "Ticket médio B2B",
+    ],
   }),
 
-  // Growth núcleo
-  mk("luis", 0 * COL, 3 * ROW, {
+  // Núcleo Growth — Acquisition (sob Fernando)
+  mk("luis", -1 * COL, 3 * ROW, {
     name: "Luís",
     role: "Performance",
-    area: "Tráfego Pago",
+    area: "Acquisition",
     level: "team",
     reportsTo: "Fernando",
     responsibilities: ["Tráfego pago", "Mídia", "Otimização"],
-    kpis: ["ROAS", "CPA", "CTR", "Conversão"],
+    kpis: ["ROAS", "CPA", "CTR", "CPM", "Conversão"],
   }),
-  mk("anajulia", 1 * COL, 3 * ROW, {
+  mk("anajulia", 0 * COL, 3 * ROW, {
     name: "Ana Júlia",
     role: "Diretora Criativa",
-    area: "Branding & Conteúdo",
+    area: "Acquisition / Branding",
     level: "team",
     reportsTo: "Fernando",
     responsibilities: ["Branding", "Direção criativa", "Conteúdo"],
     kpis: ["Brand lift", "Engajamento", "Output criativo"],
   }),
-  mk("vanessa", 2 * COL, 3 * ROW, {
+  mk("vanessa", 1 * COL, 3 * ROW, {
     name: "Vanessa",
     role: "Head Influencers",
-    area: "Influência & Creators",
+    area: "Acquisition / Creators",
     level: "team",
     reportsTo: "Fernando",
     responsibilities: ["Influência", "Creators", "Parcerias"],
-    kpis: ["Creators ativos", "EMV", "Conversão de influência"],
+    kpis: ["Creators ativos", "Creators revenue", "EMV", "Conversão de influência"],
   }),
-  mk("designers", 0 * COL, 4 * ROW, {
+  mk("designers", -1 * COL, 4 * ROW, {
     name: "Designers & Copy",
     role: "Time Criativo",
     level: "team",
@@ -214,15 +183,15 @@ export const initialNodes: Node<OrgNodeData>[] = [
     responsibilities: ["Design", "Copywriting", "Produção criativa"],
     kpis: ["Output criativo", "SLA de entregas", "Quality score"],
   }),
-  mk("lucia", 1 * COL, 4 * ROW, {
+  mk("lucia", 0 * COL, 4 * ROW, {
     name: "Lúcia",
     role: "Community",
     level: "team",
     reportsTo: "Ana Júlia",
     responsibilities: ["Comunidade", "Redes sociais", "Engajamento"],
-    kpis: ["Engajamento", "Crescimento de seguidores", "Tempo de resposta"],
+    kpis: ["Engajamento", "Crescimento social", "Tempo de resposta"],
   }),
-  mk("lauro", 2 * COL, 4 * ROW, {
+  mk("lauro", 1 * COL, 4 * ROW, {
     name: "Lauro",
     role: "Captação de Creators",
     level: "team",
@@ -230,7 +199,7 @@ export const initialNodes: Node<OrgNodeData>[] = [
     responsibilities: ["Captação de creators", "Onboarding"],
     kpis: ["Novos creators / mês", "Taxa de ativação"],
   }),
-  mk("breno", 3 * COL, 4 * ROW, {
+  mk("breno", 2 * COL, 4 * ROW, {
     name: "Breno",
     role: "UGC",
     level: "team",
@@ -239,34 +208,32 @@ export const initialNodes: Node<OrgNodeData>[] = [
     kpis: ["Volume de UGC", "Performance de UGC", "CPM UGC"],
   }),
 
-  // Comercial — Igor
-  mk("otavio", -1 * COL, 3 * ROW, {
-    name: "Otávio",
-    role: "Comercial",
-    level: "team",
-    reportsTo: "Igor",
-    responsibilities: ["Vendas", "Atendimento B2B"],
-    kpis: ["Receita", "Ticket médio", "Conversão", "Pipeline"],
+  // Núcleo Growth — Retention & CRM (Ian agora reporta a Fernando)
+  mk("ian", 3 * COL, 3 * ROW, {
+    name: "Ian",
+    role: "Head CRM & Retention",
+    area: "Growth — Retenção & Monetização da Base",
+    level: "head",
+    reportsTo: "Fernando",
+    responsibilities: [
+      "Retenção e monetização da base",
+      "CRM e WhatsApp",
+      "Recompra e customer experience",
+      "Suporte e recuperação",
+      "Crescimento de LTV",
+    ],
+    kpis: [
+      "LTV",
+      "Recompra",
+      "Retenção",
+      "Receita CRM",
+      "Recuperação de carrinho",
+      "NPS",
+      "Receita WhatsApp",
+      "Taxa de resolução suporte",
+    ],
   }),
-  mk("distrib", -1 * COL, 4 * ROW, {
-    name: "Distribuidores B2B",
-    role: "Canal",
-    level: "team",
-    reportsTo: "Igor",
-    responsibilities: ["Distribuição B2B", "Cobertura regional"],
-    kpis: ["Sell-in", "Sell-out", "Cobertura de PDV"],
-  }),
-  mk("parceiros", 0 * COL, 5 * ROW, {
-    name: "Parceiros / Canais",
-    role: "Canal",
-    level: "team",
-    reportsTo: "Igor",
-    responsibilities: ["Parcerias estratégicas", "Canais"],
-    kpis: ["Receita de canais", "Novos parceiros"],
-  }),
-
-  // CRM — Ian
-  mk("crm", 3 * COL, 3 * ROW, {
+  mk("crm", 3 * COL, 4 * ROW, {
     name: "CRM / Automação",
     role: "Automação WhatsApp",
     level: "team",
@@ -291,8 +258,68 @@ export const initialNodes: Node<OrgNodeData>[] = [
     kpis: ["CSAT", "Tempo de resposta", "Resolução no 1º contato"],
   }),
 
-  // Internacional — Jack
-  mk("pimenta", 5 * COL, 4 * ROW, {
+  // Comercial B2B — Igor
+  mk("otavio", 4 * COL, 3 * ROW, {
+    name: "Otávio",
+    role: "Comercial",
+    level: "team",
+    reportsTo: "Igor",
+    responsibilities: ["Vendas", "Atendimento B2B"],
+    kpis: ["Receita", "Ticket médio", "Conversão", "Pipeline"],
+  }),
+  mk("distrib", 5 * COL, 3 * ROW, {
+    name: "Distribuidores B2B",
+    role: "Canal",
+    level: "team",
+    reportsTo: "Igor",
+    responsibilities: ["Distribuição B2B", "Cobertura regional"],
+    kpis: ["Sell-in", "Sell-out", "Cobertura de PDV"],
+  }),
+
+  // Operações — Miller
+  mk("carol", 5 * COL, 2 * ROW, {
+    name: "Carol",
+    role: "PCP & Produção",
+    level: "team",
+    reportsTo: "Miller",
+    responsibilities: ["Controle de produção", "Cronograma", "Estoque", "Fábrica"],
+    kpis: ["Aderência ao plano", "OEE", "Acuracidade de estoque", "Refugo"],
+  }),
+  mk("rafael", 6 * COL, 2 * ROW, {
+    name: "Rafael",
+    role: "Compras",
+    level: "team",
+    reportsTo: "Miller",
+    responsibilities: ["Compras", "Fornecedores", "Negociação"],
+    kpis: ["Saving", "Lead time de compras", "OTD fornecedor"],
+  }),
+  mk("junior", 7 * COL, 2 * ROW, {
+    name: "Júnior",
+    role: "Logística",
+    level: "team",
+    reportsTo: "Miller",
+    responsibilities: ["Logística", "Auxiliares operacionais", "Expedição"],
+    kpis: ["OTIF", "Custo de frete / pedido", "Avarias"],
+  }),
+  mk("icaro", 6 * COL, 3 * ROW, {
+    name: "Ícaro",
+    role: "Financeiro",
+    level: "team",
+    reportsTo: "Miller",
+    responsibilities: ["Financeiro", "Fluxo de caixa", "Contas"],
+    kpis: ["Caixa", "DSO", "DPO", "Margem líquida"],
+  }),
+  mk("fernanda", 7 * COL, 3 * ROW, {
+    name: "Fernanda",
+    role: "Administrativo",
+    level: "team",
+    reportsTo: "Miller",
+    responsibilities: ["Administrativo", "Rotinas internas", "Documentação"],
+    kpis: ["SLA administrativo", "Conformidade documental"],
+  }),
+
+  // Internacional — Jack (matricial c/ Growth)
+  mk("pimenta", 6 * COL, 4 * ROW, {
     name: "Pimenta Rosa Internacional",
     role: "Marca Global",
     level: "team",
@@ -300,7 +327,7 @@ export const initialNodes: Node<OrgNodeData>[] = [
     responsibilities: ["Marca global", "GTM internacional"],
     kpis: ["Receita global", "Distribuição global", "Awareness"],
   }),
-  mk("distrglobal", 6 * COL, 4 * ROW, {
+  mk("distrglobal", 7 * COL, 4 * ROW, {
     name: "Distribuição Global",
     role: "Operação Internacional",
     level: "team",
@@ -308,7 +335,7 @@ export const initialNodes: Node<OrgNodeData>[] = [
     responsibilities: ["Distribuição global", "Logística internacional"],
     kpis: ["OTIF internacional", "Custo logístico", "Cobertura por país"],
   }),
-  mk("paises", 7 * COL, 4 * ROW, {
+  mk("paises", 8 * COL, 4 * ROW, {
     name: "Novos Países",
     role: "Expansão",
     level: "team",
@@ -318,12 +345,14 @@ export const initialNodes: Node<OrgNodeData>[] = [
   }),
 ];
 
-const e = (source: string, target: string): Edge => ({
+const e = (source: string, target: string, dashed = false): Edge => ({
   id: `${source}-${target}`,
   source,
   target,
   type: "smoothstep",
-  animated: false,
+  animated: dashed,
+  style: dashed ? { strokeDasharray: "6 4", opacity: 0.7 } : undefined,
+  label: dashed ? "matricial" : undefined,
 });
 
 export const initialEdges: Edge[] = [
@@ -331,33 +360,41 @@ export const initialEdges: Edge[] = [
   e("grax", "miller"),
   e("grax", "jack"),
 
-  e("alan", "igor"),
+  // Sob Alan
   e("alan", "fernando"),
-  e("alan", "ian"),
+  e("alan", "igor"),
 
+  // Growth Full Funnel sob Fernando
+  e("fernando", "luis"),
+  e("fernando", "anajulia"),
+  e("fernando", "vanessa"),
+  e("fernando", "ian"),
+  e("anajulia", "designers"),
+  e("anajulia", "lucia"),
+  e("vanessa", "lauro"),
+  e("vanessa", "breno"),
+
+  // CRM / Retention sob Ian
+  e("ian", "crm"),
+  e("ian", "retencao"),
+  e("ian", "julian"),
+
+  // Comercial B2B sob Igor
+  e("igor", "otavio"),
+  e("igor", "distrib"),
+
+  // Operações sob Miller
   e("miller", "carol"),
   e("miller", "rafael"),
   e("miller", "junior"),
   e("miller", "icaro"),
   e("miller", "fernanda"),
 
-  e("fernando", "luis"),
-  e("fernando", "anajulia"),
-  e("fernando", "vanessa"),
-  e("anajulia", "designers"),
-  e("anajulia", "lucia"),
-  e("vanessa", "lauro"),
-  e("vanessa", "breno"),
-
-  e("igor", "otavio"),
-  e("igor", "distrib"),
-  e("igor", "parceiros"),
-
-  e("ian", "crm"),
-  e("ian", "retencao"),
-  e("ian", "julian"),
-
+  // Internacional sob Jack
   e("jack", "pimenta"),
   e("jack", "distrglobal"),
   e("jack", "paises"),
+
+  // Matricial: Jack <-> Fernando (Growth executa internacional)
+  e("jack", "fernando", true),
 ];
