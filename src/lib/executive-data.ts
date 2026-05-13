@@ -40,6 +40,12 @@ export interface MeetingNote {
   decisions: string[];
 }
 
+export interface WeekSnapshot {
+  week: string; // ISO week key e.g. 2026-W19
+  closedAt: string;
+  values: Record<string, number>; // kpi_id -> current at close
+}
+
 export interface ExecState {
   cores: ExecCore[];
   general: ExecKpi[];
@@ -47,7 +53,17 @@ export interface ExecState {
   channelRevenue: { name: string; current: number; previous: number; target: number }[];
   pdca: PdcaItem[];
   meeting: MeetingNote;
+  history?: WeekSnapshot[];
   lastUpdated?: string;
+}
+
+export function isoWeekKey(d = new Date()): string {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((+date - +yearStart) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
 }
 
 const k = (
