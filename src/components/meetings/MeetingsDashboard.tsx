@@ -649,6 +649,14 @@ function MeetingPanel({
         </Section>
       )}
 
+      {/* Responsabilidades — quem traz qual KPI */}
+      <ResponsibilitiesSection
+        meeting={meeting}
+        groupedKpis={groupedKpis}
+        ms={ms}
+        accent={meeting.accent}
+      />
+
       {/* KPIs derived from Cockpit */}
       <Section title="KPIs do Cockpit · preencha o real desta semana" icon={Target}>
         <div className="space-y-5">
