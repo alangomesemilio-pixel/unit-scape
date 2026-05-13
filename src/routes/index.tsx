@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { OrgChart } from "@/components/org/OrgChart";
 import { MeetingsDashboard } from "@/components/meetings/MeetingsDashboard";
+import { ExecutiveDashboard } from "@/components/exec/ExecutiveDashboard";
 import { Toaster } from "@/components/ui/sonner";
-import { Network, CalendarCheck } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -19,10 +20,10 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "org" | "meetings";
+type View = "exec" | "org" | "meetings";
 
 function Index() {
-  const [view, setView] = useState<View>("org");
+  const [view, setView] = useState<View>("exec");
 
   return (
     <div className="h-screen w-screen flex flex-col bg-background">
@@ -34,6 +35,9 @@ function Index() {
           </div>
           <span className="font-bold text-sm">GRAx Group</span>
         </div>
+        <NavBtn active={view === "exec"} onClick={() => setView("exec")} icon={LayoutDashboard}>
+          Cockpit Executivo
+        </NavBtn>
         <NavBtn active={view === "org"} onClick={() => setView("org")} icon={Network}>
           Organograma
         </NavBtn>
@@ -43,7 +47,13 @@ function Index() {
       </nav>
 
       <div className="flex-1 min-h-0">
-        {view === "org" ? <OrgChart /> : <MeetingsDashboard />}
+        {view === "exec" ? (
+          <ExecutiveDashboard />
+        ) : view === "org" ? (
+          <OrgChart />
+        ) : (
+          <MeetingsDashboard />
+        )}
       </div>
       <Toaster theme="dark" />
     </div>
