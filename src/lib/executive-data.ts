@@ -46,6 +46,12 @@ export interface WeekSnapshot {
   values: Record<string, number>; // kpi_id -> current at close
 }
 
+export interface MonthSnapshot {
+  month: string; // YYYY-MM
+  closedAt: string;
+  values: Record<string, number>;
+}
+
 export interface ExecState {
   cores: ExecCore[];
   general: ExecKpi[];
@@ -54,7 +60,12 @@ export interface ExecState {
   pdca: PdcaItem[];
   meeting: MeetingNote;
   history?: WeekSnapshot[];
+  monthHistory?: MonthSnapshot[];
   lastUpdated?: string;
+}
+
+export function monthKey(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 export function isoWeekKey(d = new Date()): string {
