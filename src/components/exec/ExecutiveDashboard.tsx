@@ -375,6 +375,9 @@ export function ExecutiveDashboard() {
           <Button size="sm" variant="secondary" onClick={closeWeek}>
             <Archive className="size-4 mr-1" /> Fechar semana ({(state.history || []).length})
           </Button>
+          <Button size="sm" variant="secondary" onClick={closeMonth}>
+            <CalendarRange className="size-4 mr-1" /> Fechar mês ({(state.monthHistory || []).length})
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setPdcaOpen(true)}>
             <Target className="size-4 mr-1" /> PDCA ({state.pdca.length})
           </Button>
