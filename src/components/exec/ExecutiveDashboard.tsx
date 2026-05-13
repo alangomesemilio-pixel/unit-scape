@@ -62,9 +62,31 @@ function load(): ExecState {
   return defaultExecState;
 }
 
+type ViewTab = "ceo" | "growth" | "ops" | "comercial";
+
+const TAB_LABELS: Record<ViewTab, string> = {
+  ceo: "Visão CEO",
+  growth: "Growth (Fernando)",
+  ops: "Operações (Miller)",
+  comercial: "Comercial (Igor)",
+};
+
+// Map each operational tab to a core id and to PDCA owners that belong to it
+const TAB_TO_CORE: Record<Exclude<ViewTab, "ceo">, string> = {
+  growth: "growth",
+  ops: "ops",
+  comercial: "comercial",
+};
+const TAB_OWNERS: Record<Exclude<ViewTab, "ceo">, string[]> = {
+  growth: ["Fernando", "Luís", "Ana Júlia", "Lúcia", "Vanessa", "Lauro", "Breno", "Rafael Web"],
+  ops: ["Miller", "Carol", "Rafael", "Júnior", "Ícaro", "Fernanda"],
+  comercial: ["Igor", "Otávio"],
+};
+
 export function ExecutiveDashboard() {
   const [state, setState] = useState<ExecState>(defaultExecState);
   const [mounted, setMounted] = useState(false);
+  const [activeTab, setActiveTab] = useState<ViewTab>("ceo");
   const [editingKpi, setEditingKpi] = useState<{ coreId: string | "general"; id: string } | null>(
     null
   );
