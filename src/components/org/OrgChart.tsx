@@ -132,7 +132,7 @@ function Inner() {
   };
 
   return (
-    <div className={`h-screen w-screen flex flex-col bg-background ${presenting ? "present-mode" : ""}`}>
+    <div className={`h-full w-full flex flex-col bg-background ${presenting ? "present-mode" : ""}`}>
       <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/50 backdrop-blur z-10">
         <div className="flex items-center gap-3">
           <div className="size-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold">
