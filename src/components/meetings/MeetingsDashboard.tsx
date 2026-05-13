@@ -41,10 +41,15 @@ import {
   Calendar as CalendarIcon,
   Download,
   Archive,
+  ShieldCheck,
+  History,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { saveWeekSnapshot } from "@/lib/snapshots.functions";
+import { logWeekClose, loadAuditLog, type AuditEntry, type AuditChange } from "@/lib/audit.functions";
+
+const ACTOR_KEY = "grax.meetings.actor";
 
 const STORAGE_PREFIX = "grax-meetings-";
 
