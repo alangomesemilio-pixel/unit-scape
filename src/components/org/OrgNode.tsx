@@ -7,6 +7,7 @@ const levelStyles: Record<OrgNodeData["level"], string> = {
   ceo: "border-[var(--level-ceo)] shadow-[0_0_0_1px_var(--level-ceo)]",
   coo: "border-[var(--level-coo)] shadow-[0_0_0_1px_var(--level-coo)]",
   intl: "border-[var(--level-intl)] shadow-[0_0_0_1px_var(--level-intl)]",
+  director: "border-[var(--level-director)] shadow-[0_0_0_1px_var(--level-director)]",
   head: "border-[var(--level-head)] shadow-[0_0_0_1px_var(--level-head)]",
   team: "border-[var(--level-team)]",
 };
@@ -15,6 +16,7 @@ const levelDot: Record<OrgNodeData["level"], string> = {
   ceo: "bg-[var(--level-ceo)]",
   coo: "bg-[var(--level-coo)]",
   intl: "bg-[var(--level-intl)]",
+  director: "bg-[var(--level-director)]",
   head: "bg-[var(--level-head)]",
   team: "bg-[var(--level-team)]",
 };

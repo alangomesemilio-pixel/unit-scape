@@ -201,6 +201,7 @@ function Inner() {
                   ceo: "#e9b75c",
                   coo: "#5cc1e0",
                   intl: "#d27be0",
+                  director: "#e8855a",
                   head: "#7bd09e",
                   team: "#6b6f87",
                 };
@@ -224,7 +225,8 @@ function Inner() {
             { l: "CEO / Direção", c: "var(--level-ceo)" },
             { l: "COO / Operações", c: "var(--level-coo)" },
             { l: "Internacional", c: "var(--level-intl)" },
-            { l: "Head / Diretor", c: "var(--level-head)" },
+            { l: "Diretor", c: "var(--level-director)" },
+            { l: "Head", c: "var(--level-head)" },
             { l: "Time", c: "var(--level-team)" },
           ].map((i) => (
             <div key={i.l} className="flex items-center gap-2 text-muted-foreground">
