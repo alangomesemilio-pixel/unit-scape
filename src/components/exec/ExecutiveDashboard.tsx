@@ -493,12 +493,38 @@ export function ExecutiveDashboard() {
 
             {/* Núcleos */}
             {state.cores.map((core) => (
-              <CoreSection
+              <section
                 key={core.id}
-                core={core}
-                historyMap={historyMap}
-                onEdit={(id) => setEditingKpi({ coreId: core.id, id })}
-              />
+                className="rounded-xl border border-border bg-card overflow-hidden"
+              >
+                <div
+                  className="px-5 py-3 border-b border-border flex items-center justify-between"
+                  style={{
+                    background: `linear-gradient(90deg, color-mix(in oklab, ${core.accent} 22%, transparent), transparent)`,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="size-2.5 rounded-full" style={{ background: core.accent }} />
+                    <div>
+                      <h3 className="font-semibold text-sm">{core.title}</h3>
+                      <p className="text-xs text-muted-foreground">
+                        Responsável: <span className="text-foreground">{core.owner}</span> · {core.description}
+                      </p>
+                    </div>
+                  </div>
+                  <CoreSummary kpis={core.kpis} />
+                </div>
+                <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+                  {core.kpis.map((kpi) => (
+                    <KpiTile
+                      key={kpi.id}
+                      kpi={kpi}
+                      history={historyMap.get(kpi.id)}
+                      onEdit={() => setEditingKpi({ coreId: core.id, id: kpi.id })}
+                    />
+                  ))}
+                </div>
+              </section>
             ))}
           </>
         ) : (
