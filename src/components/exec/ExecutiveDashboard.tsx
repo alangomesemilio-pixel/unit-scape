@@ -701,8 +701,16 @@ function KpiTile({ kpi, onEdit, history }: { kpi: ExecKpi; onEdit: () => void; h
         </div>
         <Pencil className="size-3 opacity-0 group-hover:opacity-60" />
       </div>
-      <div className="mt-1.5 text-lg font-bold text-foreground">
-        {formatValue(kpi.current, kpi.unit)}
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <div className="text-lg font-bold text-foreground">
+          {formatValue(kpi.current, kpi.unit)}
+        </div>
+        {history && history.length > 1 && (
+          <Sparkline
+            values={[...history, kpi.current]}
+            color={statusOf(kpi) === "critical" ? "rgb(251 113 133)" : statusOf(kpi) === "warning" ? "rgb(251 191 36)" : "rgb(52 211 153)"}
+          />
+        )}
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px]">
         <span
