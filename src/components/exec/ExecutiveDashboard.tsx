@@ -210,11 +210,15 @@ export function ExecutiveDashboard() {
     return m;
   }, [state.history]);
 
-  const closeWeek = () => {
+  const closeWeek = async () => {
     const week = isoWeekKey();
     if ((state.history || []).some((h) => h.week === week)) {
       if (!confirm(`Semana ${week} já foi fechada. Sobrescrever?`)) return;
-    } else if (!confirm(`Fechar semana ${week}? Os valores 'atual' viram 'anterior' e o snapshot será arquivado.`)) {
+    } else if (
+      !confirm(
+        `Fechar semana ${week}? Os valores 'atual' viram 'anterior' e o snapshot será salvo no banco.`
+      )
+    ) {
       return;
     }
     const values: Record<string, number> = {};
@@ -225,17 +229,55 @@ export function ExecutiveDashboard() {
     state.cores.forEach((c) => c.kpis.forEach(collect));
     const snap: WeekSnapshot = { week, closedAt: new Date().toISOString(), values };
 
+    try {
+      await callSaveWeek({ data: { week, values } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro ao salvar no banco: ${msg}`);
+      return;
+    }
+
     setState((s) => {
       const shift = (k: ExecKpi): ExecKpi => ({ ...k, previous: k.current });
       const filtered = (s.history || []).filter((h) => h.week !== week);
       return {
         ...s,
-        history: [...filtered, snap].slice(-52),
+        history: [...filtered, snap].sort((a, b) => a.week.localeCompare(b.week)).slice(-52),
         general: s.general.map(shift),
         cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(shift) })),
       };
     });
-    toast.success(`Semana ${week} arquivada`);
+    toast.success(`Semana ${week} arquivada no banco`);
+  };
+
+  const closeMonth = async () => {
+    const month = monthKey();
+    if ((state.monthHistory || []).some((h) => h.month === month)) {
+      if (!confirm(`Mês ${month} já foi fechado. Sobrescrever?`)) return;
+    } else if (!confirm(`Fechar mês ${month}? Snapshot mensal será salvo no banco.`)) {
+      return;
+    }
+    const values: Record<string, number> = {};
+    state.general.forEach((k) => (values[k.id] = k.current));
+    state.cores.forEach((c) => c.kpis.forEach((k) => (values[k.id] = k.current)));
+    const snap: MonthSnapshot = { month, closedAt: new Date().toISOString(), values };
+
+    try {
+      await callSaveMonth({ data: { month, values } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro ao salvar no banco: ${msg}`);
+      return;
+    }
+
+    setState((s) => {
+      const filtered = (s.monthHistory || []).filter((h) => h.month !== month);
+      return {
+        ...s,
+        monthHistory: [...filtered, snap].sort((a, b) => a.month.localeCompare(b.month)).slice(-36),
+      };
+    });
+    toast.success(`Mês ${month} arquivado no banco`);
   };
 
 
