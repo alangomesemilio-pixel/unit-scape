@@ -57,6 +57,93 @@ export function ExecutiveDashboard() {
     null
   );
   const [pdcaOpen, setPdcaOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [sheetId, setSheetId] = useState<string>(() => {
+    try {
+      return localStorage.getItem(SHEET_ID_KEY) || "";
+    } catch {
+      return "";
+    }
+  });
+  const [syncing, setSyncing] = useState(false);
+  const callFetchSheet = useServerFn(fetchSheetKpis);
+
+  const syncFromSheet = async () => {
+    const id = sheetId.trim();
+    if (!id) {
+      toast.error("Informe o ID da planilha");
+      return;
+    }
+    try {
+      localStorage.setItem(SHEET_ID_KEY, id);
+    } catch {}
+    setSyncing(true);
+    try {
+      const res = await callFetchSheet({ data: { spreadsheetId: id } });
+      const map = new Map(res.rows.map((r) => [r.kpi_id, r]));
+      let matched = 0;
+      setState((s) => {
+        const apply = (kpi: ExecKpi): ExecKpi => {
+          const r = map.get(kpi.id);
+          if (!r) return kpi;
+          matched++;
+          return {
+            ...kpi,
+            current: r.current ?? kpi.current,
+            previous: r.previous ?? kpi.previous,
+            target: r.target ?? kpi.target,
+            owner: r.owner ?? kpi.owner,
+          };
+        };
+        return {
+          ...s,
+          general: s.general.map(apply),
+          cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(apply) })),
+        };
+      });
+      toast.success(`Sincronizado: ${matched} KPIs atualizados de ${res.count} linhas`);
+      setSheetOpen(false);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro: ${msg}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const allKpiIds = useMemo(() => {
+    const ids: { id: string; label: string; nucleo: string; unidade: string; responsavel: string }[] =
+      [];
+    state.general.forEach((k) =>
+      ids.push({ id: k.id, label: k.label, nucleo: "geral", unidade: k.unit, responsavel: k.owner || "" })
+    );
+    state.cores.forEach((c) =>
+      c.kpis.forEach((k) =>
+        ids.push({ id: k.id, label: k.label, nucleo: c.id, unidade: k.unit, responsavel: k.owner || "" })
+      )
+    );
+    return ids;
+  }, [state]);
+
+  const downloadTemplateCsv = () => {
+    const header = ["kpi_id", "label", "nucleo", "atual", "anterior", "meta", "unidade", "responsavel"];
+    const rows = [header.join(",")];
+    [...state.general.map((k) => ({ k, nucleo: "geral" })), ...state.cores.flatMap((c) => c.kpis.map((k) => ({ k, nucleo: c.id })))].forEach(
+      ({ k, nucleo }) => {
+        rows.push(
+          [k.id, `"${k.label}"`, nucleo, k.current, k.previous, k.target, k.unit, k.owner || ""].join(",")
+        );
+      }
+    );
+    const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "grax-kpis-template.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
 
   useEffect(() => {
     localStorage.setItem(
