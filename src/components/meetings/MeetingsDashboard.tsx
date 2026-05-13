@@ -815,3 +815,153 @@ function Section({
     </div>
   );
 }
+
+function AuditPanel({
+  open,
+  onOpenChange,
+  entries,
+  currentActor,
+  onActorChange,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  entries: AuditEntry[];
+  currentActor: string;
+  onActorChange: (name: string) => void;
+}) {
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
+  const exportLog = () => {
+    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `grax-audit-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle className="flex items-center gap-2">
+            <ShieldCheck className="size-5 text-primary" />
+            Log de auditoria — Fechamentos de semana
+          </SheetTitle>
+          <SheetDescription>
+            Cada fechamento registra responsável, data/hora e KPIs alterados (valor anterior → novo).
+          </SheetDescription>
+        </SheetHeader>
+
+        <div className="mt-5 space-y-2">
+          <Label htmlFor="audit-actor" className="text-xs">
+            Seu nome (padrão para fechamentos)
+          </Label>
+          <Input
+            id="audit-actor"
+            value={currentActor}
+            onChange={(e) => onActorChange(e.target.value.slice(0, 80))}
+            placeholder="Ex.: Alan"
+            className="h-9"
+          />
+        </div>
+
+        <div className="mt-5 flex items-center justify-between">
+          <div className="text-xs text-muted-foreground">
+            {entries.length} {entries.length === 1 ? "fechamento" : "fechamentos"} registrados
+          </div>
+          <Button size="sm" variant="outline" onClick={exportLog} disabled={entries.length === 0}>
+            <Download className="size-3.5 mr-1" /> Exportar JSON
+          </Button>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          {entries.length === 0 && (
+            <div className="text-sm text-muted-foreground text-center py-10 border border-dashed border-border rounded-lg">
+              Nenhum fechamento registrado ainda.
+            </div>
+          )}
+          {entries.map((entry) => (
+            <details
+              key={entry.id}
+              className="group rounded-lg border border-border bg-card/40 overflow-hidden"
+            >
+              <summary className="flex items-center justify-between gap-3 p-3 cursor-pointer hover:bg-secondary/30 list-none">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="size-9 rounded-md bg-primary/15 flex items-center justify-center shrink-0">
+                    <Archive className="size-4 text-primary" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-sm font-semibold">{entry.week}</span>
+                      <Badge variant="outline" className="text-[10px]">
+                        {entry.kpi_count} KPIs
+                      </Badge>
+                    </div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {entry.actor} · {fmtDate(entry.closed_at)}
+                    </div>
+                  </div>
+                </div>
+                <History className="size-4 text-muted-foreground group-open:rotate-180 transition" />
+              </summary>
+              <div className="border-t border-border p-3 bg-background/40">
+                {entry.changes.length === 0 ? (
+                  <div className="text-xs text-muted-foreground">Sem mudanças detalhadas.</div>
+                ) : (
+                  <div className="space-y-1">
+                    {entry.changes.map((c) => {
+                      const delta =
+                        c.previous != null ? c.next - c.previous : null;
+                      const deltaPct =
+                        c.previous != null && c.previous !== 0
+                          ? ((c.next - c.previous) / Math.abs(c.previous)) * 100
+                          : null;
+                      const up = delta != null && delta > 0;
+                      const down = delta != null && delta < 0;
+                      return (
+                        <div
+                          key={c.kpi_id}
+                          className="grid grid-cols-12 gap-2 items-center text-xs py-1 border-b border-border/50 last:border-0"
+                        >
+                          <div className="col-span-5 font-medium truncate" title={c.label}>
+                            {c.label}
+                          </div>
+                          <div className="col-span-3 font-mono text-muted-foreground text-right">
+                            {c.previous != null ? c.previous.toLocaleString("pt-BR") : "—"}
+                          </div>
+                          <div className="col-span-1 text-center text-muted-foreground">→</div>
+                          <div className="col-span-3 font-mono font-semibold text-right">
+                            {c.next.toLocaleString("pt-BR")}
+                            {deltaPct != null && (
+                              <span
+                                className={`ml-1 text-[10px] ${
+                                  up ? "text-emerald-500" : down ? "text-red-500" : "text-muted-foreground"
+                                }`}
+                              >
+                                {up ? "▲" : down ? "▼" : "•"}
+                                {Math.abs(deltaPct).toFixed(1)}%
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </details>
+          ))}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
