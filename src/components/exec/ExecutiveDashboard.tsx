@@ -396,6 +396,7 @@ export function ExecutiveDashboard() {
                 <KpiTile
                   key={kpi.id}
                   kpi={kpi}
+                  history={historyMap.get(kpi.id)}
                   onEdit={() => setEditingKpi({ coreId: core.id, id: kpi.id })}
                 />
               ))}
