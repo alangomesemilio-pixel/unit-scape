@@ -403,7 +403,7 @@ export function ExecutiveDashboard() {
         ))}
 
         <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
-          Atualizado em {state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "-"} · Dados salvos localmente neste navegador.
+          Semana atual: {isoWeekKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Dados salvos localmente neste navegador.
         </div>
       </div>
 
