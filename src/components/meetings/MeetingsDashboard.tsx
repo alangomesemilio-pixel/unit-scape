@@ -4,24 +4,31 @@ import {
   emptyWeekState,
   getWeekKey,
   shiftWeek,
+  getMeetingKpis,
+  groupKpisByCore,
+  formatWeekRange,
+  weekRange,
   type ActionItem,
   type MeetingDef,
   type MeetingState,
   type WeekState,
   type Weekday,
 } from "@/lib/meetings-data";
+import {
+  defaultExecState,
+  EXEC_STORAGE_KEY,
+  formatValue,
+  statusOf,
+  type ExecKpi,
+  type ExecState,
+} from "@/lib/executive-data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   ChevronLeft,
   ChevronRight,
@@ -31,10 +38,13 @@ import {
   Target,
   CheckCircle2,
   Clock,
-  Calendar,
+  Calendar as CalendarIcon,
   Download,
+  Archive,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { saveWeekSnapshot } from "@/lib/snapshots.functions";
 
 const STORAGE_PREFIX = "grax-meetings-";
 
@@ -52,10 +62,30 @@ function saveWeek(weekKey: string, state: WeekState) {
   localStorage.setItem(STORAGE_PREFIX + weekKey, JSON.stringify(state));
 }
 
+function loadExec(): ExecState {
+  try {
+    const raw = localStorage.getItem(EXEC_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return defaultExecState;
+}
+
+function saveExec(s: ExecState) {
+  localStorage.setItem(EXEC_STORAGE_KEY, JSON.stringify(s));
+}
+
 export function MeetingsDashboard() {
   const [weekKey, setWeekKey] = useState<string>(() => getWeekKey());
   const [active, setActive] = useState<Weekday>("mon");
   const [state, setState] = useState<WeekState>(() => loadWeek(getWeekKey()));
+  const [exec, setExec] = useState<ExecState>(defaultExecState);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+
+  const callSaveWeek = useServerFn(saveWeekSnapshot);
+
+  useEffect(() => {
+    setExec(loadExec());
+  }, []);
 
   useEffect(() => {
     setState(loadWeek(weekKey));
@@ -69,14 +99,21 @@ export function MeetingsDashboard() {
   const meeting = useMemo(() => MEETINGS.find((m) => m.id === active)!, [active]);
   const ms = state[active];
 
-  const update = (patch: Partial<MeetingState>) =>
-    setState((s) => ({ ...s, [active]: { ...s[active], ...patch, lastUpdated: new Date().toISOString() } }));
+  // KPIs derived from cockpit (single source of truth)
+  const meetingKpis = useMemo(() => getMeetingKpis(active, exec), [active, exec]);
+  const groupedKpis = useMemo(() => groupKpisByCore(active, exec), [active, exec]);
 
-  const setKpi = (id: string, field: "value" | "target", v: string) => {
+  const update = (patch: Partial<MeetingState>) =>
+    setState((s) => ({
+      ...s,
+      [active]: { ...s[active], ...patch, lastUpdated: new Date().toISOString() },
+    }));
+
+  const setKpiReal = (id: string, v: string) => {
     update({
       kpis: {
         ...ms.kpis,
-        [id]: { value: ms.kpis[id]?.value ?? "", target: ms.kpis[id]?.target ?? "", [field]: v },
+        [id]: { value: v, target: ms.kpis[id]?.target ?? "" },
       },
     });
   };
@@ -105,9 +142,10 @@ export function MeetingsDashboard() {
   };
 
   const completion = useMemo(() => {
-    const filled = meeting.kpis.filter((k) => ms.kpis[k.id]?.value).length;
-    return Math.round((filled / meeting.kpis.length) * 100);
-  }, [meeting, ms]);
+    if (meetingKpis.length === 0) return 0;
+    const filled = meetingKpis.filter((k) => ms.kpis[k.id]?.value).length;
+    return Math.round((filled / meetingKpis.length) * 100);
+  }, [meetingKpis, ms]);
 
   const weekStats = useMemo(() => {
     let totalActions = 0;
@@ -117,14 +155,15 @@ export function MeetingsDashboard() {
     let meetingsDone = 0;
     for (const m of MEETINGS) {
       const s = state[m.id];
+      const ks = getMeetingKpis(m.id, exec);
       totalActions += s.actions.length;
       doneActions += s.actions.filter((a) => a.status === "done").length;
-      kpisTotal += m.kpis.length;
-      kpisFilled += m.kpis.filter((k) => s.kpis[k.id]?.value).length;
+      kpisTotal += ks.length;
+      kpisFilled += ks.filter((k) => s.kpis[k.id]?.value).length;
       if (s.done) meetingsDone++;
     }
     return { totalActions, doneActions, kpisFilled, kpisTotal, meetingsDone };
-  }, [state]);
+  }, [state, exec]);
 
   const exportWeek = () => {
     const blob = new Blob([JSON.stringify({ weekKey, state }, null, 2)], {
@@ -138,11 +177,84 @@ export function MeetingsDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const groupedKpis = useMemo(() => {
-    const g: Record<string, typeof meeting.kpis> = {};
-    for (const k of meeting.kpis) (g[k.group] ||= []).push(k);
-    return g;
-  }, [meeting]);
+  // ===== Fechar semana global =====
+  const closeWeek = async () => {
+    // Collect every "real" entered across all meetings of this week
+    const values: Record<string, number> = {};
+    for (const m of MEETINGS) {
+      const s = state[m.id];
+      for (const [id, entry] of Object.entries(s.kpis)) {
+        const n = parseFloat(String(entry.value).replace(",", "."));
+        if (!Number.isFinite(n)) continue;
+        values[id] = n; // last write wins (e.g. Friday > Monday)
+      }
+    }
+
+    if (Object.keys(values).length === 0) {
+      if (
+        !confirm(
+          `Nenhum KPI preenchido nesta semana. Fechar mesmo assim e arquivar valores atuais do Cockpit?`
+        )
+      ) {
+        return;
+      }
+      // fallback: archive cockpit current
+      exec.general.forEach((k) => (values[k.id] = k.current));
+      exec.cores.forEach((c) => c.kpis.forEach((k) => (values[k.id] = k.current)));
+    } else if (
+      !confirm(
+        `Fechar semana ${weekKey}?\n\n• ${
+          Object.keys(values).length
+        } KPIs serão arquivados no banco\n• Valores 'atual' do Cockpit viram 'anterior'\n• Próxima semana abre com metas herdadas e reais zerados`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      await callSaveWeek({ data: { week: weekKey, values } });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(`Erro ao salvar no banco: ${msg}`);
+      return;
+    }
+
+    // Propagate into Cockpit: current → previous, then current = real (if provided)
+    const next: ExecState = {
+      ...exec,
+      general: exec.general.map((k) => ({
+        ...k,
+        previous: k.current,
+        current: values[k.id] ?? k.current,
+      })),
+      cores: exec.cores.map((c) => ({
+        ...c,
+        kpis: c.kpis.map((k) => ({
+          ...k,
+          previous: k.current,
+          current: values[k.id] ?? k.current,
+        })),
+      })),
+      lastUpdated: new Date().toISOString(),
+    };
+    setExec(next);
+    saveExec(next);
+
+    // Mark all 5 days as done for the closed week
+    const closed: WeekState = { ...state };
+    (Object.keys(closed) as Weekday[]).forEach((k) => {
+      closed[k] = { ...closed[k], done: true };
+    });
+    saveWeek(weekKey, closed);
+
+    // Advance to next week (fresh empty state — metas live in Cockpit, reais zerados)
+    const nextWeek = shiftWeek(weekKey, 1);
+    setWeekKey(nextWeek);
+    toast.success(`Semana ${weekKey} arquivada. Avançando para ${nextWeek}.`);
+  };
+
+  // Selected calendar date (any day in the current week)
+  const selectedDate = useMemo(() => weekRange(weekKey).start, [weekKey]);
 
   return (
     <div className="h-full w-full flex flex-col bg-background overflow-hidden">
@@ -158,15 +270,50 @@ export function MeetingsDashboard() {
             >
               <ChevronLeft className="size-4" />
             </Button>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary">
-              <Calendar className="size-4 text-primary" />
-              <span className="font-mono text-sm font-semibold">{weekKey}</span>
-              {weekKey === getWeekKey() && (
-                <Badge variant="outline" className="text-[10px] ml-1">
-                  ATUAL
-                </Badge>
-              )}
-            </div>
+
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+              <PopoverTrigger asChild>
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-secondary hover:bg-secondary/70 transition">
+                  <CalendarIcon className="size-4 text-primary" />
+                  <span className="font-mono text-sm font-semibold">{weekKey}</span>
+                  <span className="text-xs text-muted-foreground">· {formatWeekRange(weekKey)}</span>
+                  {weekKey === getWeekKey() && (
+                    <Badge variant="outline" className="text-[10px] ml-1">
+                      ATUAL
+                    </Badge>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(d) => {
+                    if (!d) return;
+                    setWeekKey(getWeekKey(d));
+                    setCalendarOpen(false);
+                  }}
+                  weekStartsOn={1}
+                  showOutsideDays
+                />
+                <div className="border-t border-border p-2 flex items-center justify-between gap-2">
+                  <span className="text-[10px] text-muted-foreground px-1">
+                    Clique em qualquer dia para abrir aquela semana ISO
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      setWeekKey(getWeekKey());
+                      setCalendarOpen(false);
+                    }}
+                  >
+                    Hoje
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
             <Button
               size="icon"
               variant="outline"
@@ -174,9 +321,6 @@ export function MeetingsDashboard() {
               aria-label="Próxima semana"
             >
               <ChevronRight className="size-4" />
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setWeekKey(getWeekKey())}>
-              Hoje
             </Button>
           </div>
 
@@ -195,6 +339,9 @@ export function MeetingsDashboard() {
             <Button size="sm" variant="outline" onClick={exportWeek}>
               <Download className="size-3.5 mr-1" /> Exportar
             </Button>
+            <Button size="sm" onClick={closeWeek} className="bg-primary text-primary-foreground">
+              <Archive className="size-3.5 mr-1" /> Fechar semana
+            </Button>
           </div>
         </div>
 
@@ -203,8 +350,9 @@ export function MeetingsDashboard() {
           {MEETINGS.map((m) => {
             const isActive = m.id === active;
             const s = state[m.id];
-            const kpisFilled = m.kpis.filter((k) => s.kpis[k.id]?.value).length;
-            const pct = Math.round((kpisFilled / m.kpis.length) * 100);
+            const ks = getMeetingKpis(m.id, exec);
+            const kpisFilled = ks.filter((k) => s.kpis[k.id]?.value).length;
+            const pct = ks.length ? Math.round((kpisFilled / ks.length) * 100) : 0;
             return (
               <button
                 key={m.id}
@@ -245,7 +393,7 @@ export function MeetingsDashboard() {
           completion={completion}
           groupedKpis={groupedKpis}
           onToggleAttend={toggleAttendance}
-          onSetKpi={setKpi}
+          onSetKpiReal={setKpiReal}
           onUpdate={update}
           onAddAction={addAction}
           onUpdateAction={updateAction}
@@ -274,9 +422,9 @@ interface PanelProps {
   meeting: MeetingDef;
   ms: MeetingState;
   completion: number;
-  groupedKpis: Record<string, MeetingDef["kpis"]>;
+  groupedKpis: Record<string, ExecKpi[]>;
   onToggleAttend: (p: string) => void;
-  onSetKpi: (id: string, field: "value" | "target", v: string) => void;
+  onSetKpiReal: (id: string, v: string) => void;
   onUpdate: (patch: Partial<MeetingState>) => void;
   onAddAction: () => void;
   onUpdateAction: (id: string, patch: Partial<ActionItem>) => void;
@@ -290,7 +438,7 @@ function MeetingPanel({
   completion,
   groupedKpis,
   onToggleAttend,
-  onSetKpi,
+  onSetKpiReal,
   onUpdate,
   onAddAction,
   onUpdateAction,
@@ -340,7 +488,6 @@ function MeetingPanel({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Participants */}
         <Section title="Participantes" icon={Users}>
           <div className="space-y-2">
             {meeting.participants.map((p) => (
@@ -360,7 +507,6 @@ function MeetingPanel({
           </div>
         </Section>
 
-        {/* Expected results */}
         <Section title="Resultado esperado" icon={Target}>
           <ul className="space-y-2">
             {meeting.expectedResult.map((r) => (
@@ -375,7 +521,6 @@ function MeetingPanel({
           </ul>
         </Section>
 
-        {/* Notes */}
         <Section title="Notas da reunião">
           <Textarea
             value={ms.notes}
@@ -422,8 +567,8 @@ function MeetingPanel({
         </Section>
       )}
 
-      {/* KPIs */}
-      <Section title="KPIs analisados" icon={Target}>
+      {/* KPIs derived from Cockpit */}
+      <Section title="KPIs do Cockpit · preencha o real desta semana" icon={Target}>
         <div className="space-y-5">
           {Object.entries(groupedKpis).map(([group, list]) => (
             <div key={group}>
@@ -434,6 +579,13 @@ function MeetingPanel({
                 {list.map((k) => {
                   const entry = ms.kpis[k.id] ?? { value: "", target: "" };
                   const filled = !!entry.value;
+                  const status = statusOf(k);
+                  const statusColor =
+                    status === "healthy"
+                      ? "var(--chart-2, #22c55e)"
+                      : status === "warning"
+                        ? "var(--chart-4, #f59e0b)"
+                        : "var(--destructive)";
                   return (
                     <div
                       key={k.id}
@@ -441,32 +593,45 @@ function MeetingPanel({
                         filled ? "border-primary/40 bg-primary/5" : "border-border bg-card/40"
                       }`}
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="text-xs font-medium truncate">{k.label}</div>
-                        {k.unit && (
-                          <span className="text-[10px] text-muted-foreground font-mono">{k.unit}</span>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-1.5">
-                        <Input
-                          value={entry.value}
-                          onChange={(e) => onSetKpi(k.id, "value", e.target.value)}
-                          placeholder="Real"
-                          className="h-8 text-sm font-mono"
-                        />
-                        <Input
-                          value={entry.target}
-                          onChange={(e) => onSetKpi(k.id, "target", e.target.value)}
-                          placeholder="Meta"
-                          className="h-8 text-sm font-mono text-muted-foreground"
+                      <div className="flex items-center justify-between mb-1.5 gap-2">
+                        <div className="text-xs font-medium truncate" title={k.label}>
+                          {k.label}
+                        </div>
+                        <span
+                          className="size-2 rounded-full shrink-0"
+                          style={{ background: statusColor }}
+                          title={status}
                         />
                       </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1.5 font-mono">
+                        <span>
+                          Meta: <span className="text-foreground">{formatValue(k.target, k.unit)}</span>
+                        </span>
+                        <span>
+                          Atual: <span className="text-foreground">{formatValue(k.current, k.unit)}</span>
+                        </span>
+                      </div>
+                      <Input
+                        value={entry.value}
+                        onChange={(e) => onSetKpiReal(k.id, e.target.value)}
+                        placeholder={`Real semana (${k.unit || "#"})`}
+                        className="h-8 text-sm font-mono"
+                        inputMode="decimal"
+                      />
+                      {k.owner && (
+                        <div className="text-[10px] text-muted-foreground mt-1">↳ {k.owner}</div>
+                      )}
                     </div>
                   );
                 })}
               </div>
             </div>
           ))}
+          {Object.keys(groupedKpis).length === 0 && (
+            <div className="text-sm text-muted-foreground text-center py-6">
+              Nenhum KPI vinculado a esta reunião.
+            </div>
+          )}
         </div>
       </Section>
 
@@ -495,50 +660,43 @@ function MeetingPanel({
                   value={a.text}
                   onChange={(e) => onUpdateAction(a.id, { text: e.target.value })}
                   placeholder="O que fazer..."
-                  className="col-span-12 md:col-span-5 h-9"
+                  className="col-span-5 h-9"
                 />
-                <Select
+                <select
                   value={a.owner}
-                  onValueChange={(v) => onUpdateAction(a.id, { owner: v })}
+                  onChange={(e) => onUpdateAction(a.id, { owner: e.target.value })}
+                  className="col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm"
                 >
-                  <SelectTrigger className="col-span-6 md:col-span-3 h-9">
-                    <SelectValue placeholder="Responsável" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {meeting.participants.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {p}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {meeting.participants.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
                 <Input
-                  type="date"
                   value={a.due}
                   onChange={(e) => onUpdateAction(a.id, { due: e.target.value })}
-                  className="col-span-6 md:col-span-2 h-9"
+                  placeholder="Prazo"
+                  className="col-span-2 h-9"
                 />
-                <Select
+                <select
                   value={a.status}
-                  onValueChange={(v) => onUpdateAction(a.id, { status: v as ActionItem["status"] })}
+                  onChange={(e) =>
+                    onUpdateAction(a.id, { status: e.target.value as ActionItem["status"] })
+                  }
+                  className="col-span-2 h-9 rounded-md border border-input bg-background px-2 text-sm"
                 >
-                  <SelectTrigger className="col-span-10 md:col-span-1 h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="todo">A fazer</SelectItem>
-                    <SelectItem value="doing">Fazendo</SelectItem>
-                    <SelectItem value="done">Concluído</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <option value="todo">A fazer</option>
+                  <option value="doing">Em andamento</option>
+                  <option value="done">Concluída</option>
+                </select>
                 <Button
                   size="icon"
                   variant="ghost"
-                  className="col-span-2 md:col-span-1 h-9"
+                  className="col-span-1 h-9"
                   onClick={() => onRemoveAction(a.id)}
-                  aria-label="Remover ação"
                 >
-                  <Trash2 className="size-4 text-destructive" />
+                  <Trash2 className="size-4 text-muted-foreground" />
                 </Button>
               </div>
             ))}
@@ -552,20 +710,22 @@ function MeetingPanel({
 function Section({
   title,
   icon: Icon,
-  children,
   action,
+  children,
 }: {
   title: string;
-  icon?: typeof Users;
-  children: React.ReactNode;
+  icon?: typeof CheckCircle2;
   action?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-5">
-      <div className="flex items-center justify-between mb-3">
+    <div className="rounded-xl border border-border bg-card/40 p-5">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          {Icon && <Icon className="size-4 text-primary" />}
-          <h3 className="font-semibold text-sm">{title}</h3>
+          {Icon && <Icon className="size-4 text-muted-foreground" />}
+          <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            {title}
+          </h3>
         </div>
         {action}
       </div>

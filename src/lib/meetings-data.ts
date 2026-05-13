@@ -1,4 +1,69 @@
+import type { ExecKpi, ExecState } from "./executive-data";
+
 export type Weekday = "mon" | "tue" | "wed" | "thu" | "fri";
+
+// Each meeting is bound to a Cockpit core (or "general" for company-wide view)
+export const MEETING_TO_CORE: Record<Weekday, "general" | "growth" | "crm" | "comercial" | "ops" | "intl"> = {
+  mon: "general",
+  tue: "growth",
+  wed: "ops",
+  thu: "comercial",
+  fri: "general",
+};
+
+// Source of truth: pull KPIs from the Cockpit Executive state.
+// This guarantees meetings & cockpit share the same indicators.
+export function getMeetingKpis(id: Weekday, exec: ExecState): ExecKpi[] {
+  if (id === "mon") {
+    // Executive: company KPIs + headline of each core
+    return [
+      ...exec.general,
+      ...exec.cores.flatMap((c) => c.kpis.slice(0, 3)),
+    ];
+  }
+  if (id === "fri") {
+    // PDCA: company-level
+    return exec.general;
+  }
+  const coreId = MEETING_TO_CORE[id];
+  return exec.cores.find((c) => c.id === coreId)?.kpis ?? [];
+}
+
+// Group cockpit KPIs for display in the meeting panel
+export function groupKpisByCore(id: Weekday, exec: ExecState): Record<string, ExecKpi[]> {
+  if (id === "mon") {
+    const out: Record<string, ExecKpi[]> = { Companhia: exec.general };
+    exec.cores.forEach((c) => (out[c.title] = c.kpis.slice(0, 3)));
+    return out;
+  }
+  if (id === "fri") return { Companhia: exec.general };
+  const core = exec.cores.find((c) => c.id === MEETING_TO_CORE[id]);
+  return core ? { [core.title]: core.kpis } : {};
+}
+
+// Convert ISO week key (e.g. "2026-W19") to its Mon..Fri date range
+export function weekRange(weekKey: string): { start: Date; end: Date } {
+  const [yStr, wStr] = weekKey.split("-W");
+  const y = Number(yStr);
+  const w = Number(wStr);
+  // ISO week: week 1 contains Jan 4
+  const jan4 = new Date(Date.UTC(y, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const week1Mon = new Date(jan4);
+  week1Mon.setUTCDate(jan4.getUTCDate() - (jan4Day - 1));
+  const start = new Date(week1Mon);
+  start.setUTCDate(week1Mon.getUTCDate() + (w - 1) * 7);
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 4); // Fri
+  return { start, end };
+}
+
+export function formatWeekRange(weekKey: string): string {
+  const { start, end } = weekRange(weekKey);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short", timeZone: "UTC" }).replace(".", "");
+  return `${fmt(start)} – ${fmt(end)}`;
+}
 
 export interface KpiDef {
   id: string;
