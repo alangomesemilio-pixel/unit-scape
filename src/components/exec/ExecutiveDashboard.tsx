@@ -240,9 +240,13 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button size="sm" variant="default" onClick={() => setSheetOpen(true)} disabled={syncing}>
+            <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Sheets
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setPdcaOpen(true)}>
             <Target className="size-4 mr-1" /> PDCA ({state.pdca.length})
           </Button>
+
           <Button size="sm" variant="ghost" onClick={exportJson}>
             <Download className="size-4 mr-1" /> Exportar
           </Button>
