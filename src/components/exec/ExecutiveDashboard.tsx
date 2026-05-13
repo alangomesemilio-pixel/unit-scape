@@ -662,7 +662,25 @@ function statusColor(s: ReturnType<typeof statusOf>) {
   return "text-rose-400 border-rose-500/30 bg-rose-500/10";
 }
 
-function KpiTile({ kpi, onEdit }: { kpi: ExecKpi; onEdit: () => void }) {
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  if (!values || values.length < 2) return null;
+  const w = 64;
+  const h = 18;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const pts = values
+    .map((v, i) => `${(i * step).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`)
+    .join(" ");
+  return (
+    <svg width={w} height={h} className="opacity-70">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function KpiTile({ kpi, onEdit, history }: { kpi: ExecKpi; onEdit: () => void; history?: number[] }) {
   const s = statusOf(kpi);
   const t = trendOf(kpi);
   const v = variation(kpi.current, kpi.previous);
