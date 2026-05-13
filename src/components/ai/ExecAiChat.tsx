@@ -125,16 +125,41 @@ export function ExecAiChat() {
               </div>
             )}
             {convs.map((c) => (
-              <button
+              <div
                 key={c.id}
-                onClick={() => openConv(c.id)}
-                className={`w-full text-left px-2 py-2 rounded-md text-sm flex items-start gap-2 transition-colors ${
+                className={`group w-full px-2 py-2 rounded-md text-sm flex items-start gap-2 transition-colors ${
                   convId === c.id ? "bg-primary/15 text-primary" : "hover:bg-secondary text-foreground"
                 }`}
               >
-                <MessageSquare className="size-4 mt-0.5 shrink-0" />
-                <span className="line-clamp-2 break-words">{c.title}</span>
-              </button>
+                <button
+                  onClick={() => openConv(c.id)}
+                  className="flex-1 min-w-0 text-left flex items-start gap-2"
+                >
+                  <MessageSquare className="size-4 mt-0.5 shrink-0" />
+                  <span className="line-clamp-2 break-words">{c.title}</span>
+                </button>
+                <button
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    if (!confirm("Excluir esta conversa?")) return;
+                    try {
+                      await deleteConv({ data: { conversationId: c.id } });
+                      if (convId === c.id) {
+                        setConvId(null);
+                        setMessages([]);
+                      }
+                      setConvs((cur) => cur.filter((x) => x.id !== c.id));
+                      toast.success("Conversa excluída");
+                    } catch {
+                      toast.error("Não foi possível excluir");
+                    }
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-destructive/15 hover:text-destructive shrink-0"
+                  title="Excluir conversa"
+                >
+                  <Trash2 className="size-3.5" />
+                </button>
+              </div>
             ))}
           </div>
         </ScrollArea>
