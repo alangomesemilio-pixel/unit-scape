@@ -33,6 +33,7 @@
   --color-level-ceo: var(--level-ceo);
   --color-level-coo: var(--level-coo);
   --color-level-intl: var(--level-intl);
+  --color-level-director: var(--level-director);
   --color-level-head: var(--level-head);
   --color-level-team: var(--level-team);
 }
