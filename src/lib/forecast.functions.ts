@@ -87,8 +87,8 @@ async function readRange(range: string): Promise<string[][]> {
 }
 
 export const fetchForecastDre = createServerFn({ method: "GET" }).handler(async () => {
-  const realizadoRange = encodeURIComponent("' Forec. Geral Realizado'!A1:AC120");
-  const projetadoRange = encodeURIComponent("'Forec. Geral Projetado'!A1:AC120");
+  const realizadoRange = encodeURIComponent("' Forec. Geral Realizado'!A1:AC185");
+  const projetadoRange = encodeURIComponent("'Forec. Geral Projetado'!A1:AC185");
   const [realizadoVals, projetadoVals] = await Promise.all([
     readRange(realizadoRange),
     readRange(projetadoRange),
