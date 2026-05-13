@@ -1,6 +1,6 @@
 import type { Node, Edge } from "reactflow";
 
-export type Level = "ceo" | "coo" | "intl" | "head" | "team";
+export type Level = "ceo" | "coo" | "intl" | "director" | "head" | "team";
 
 export interface OrgNodeData {
   name: string;
