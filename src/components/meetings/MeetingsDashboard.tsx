@@ -9,6 +9,7 @@ import {
   formatWeekRange,
   weekRange,
   type ActionItem,
+  type PdcaItem,
   type MeetingDef,
   type MeetingState,
   type WeekState,
@@ -649,6 +650,15 @@ function MeetingPanel({
         </Section>
       )}
 
+      {/* PDCAs pontuais — sexta-feira (um por KPI/tema discutido) */}
+      {meeting.id === "fri" && (
+        <PdcaItemsSection
+          items={ms.pdcaItems ?? []}
+          allKpis={Object.values(groupedKpis).flat()}
+          onChange={(pdcaItems) => onUpdate({ pdcaItems })}
+        />
+      )}
+
       {/* Responsabilidades — quem traz qual KPI */}
       <ResponsibilitiesSection
         meeting={meeting}
@@ -1097,5 +1107,126 @@ function AuditPanel({
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function PdcaItemsSection({
+  items,
+  allKpis,
+  onChange,
+}: {
+  items: PdcaItem[];
+  allKpis: ExecKpi[];
+  onChange: (items: PdcaItem[]) => void;
+}) {
+  const add = () => {
+    const novo: PdcaItem = {
+      id: crypto.randomUUID(),
+      topic: "",
+      kpiId: undefined,
+      owner: "",
+      plan: "",
+      doText: "",
+      check: "",
+      act: "",
+      createdAt: new Date().toISOString(),
+    };
+    onChange([...(items ?? []), novo]);
+  };
+  const update = (id: string, patch: Partial<PdcaItem>) =>
+    onChange(items.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+  const remove = (id: string) => onChange(items.filter((i) => i.id !== id));
+
+  return (
+    <Section
+      title={`PDCAs da reunião · ${items.length}`}
+      icon={Target}
+      action={
+        <Button size="sm" variant="outline" onClick={add}>
+          <Plus className="size-3.5 mr-1" /> Novo PDCA
+        </Button>
+      }
+    >
+      {items.length === 0 ? (
+        <div className="text-sm text-muted-foreground border border-dashed border-border rounded-md p-4 text-center">
+          Nenhum PDCA registrado. Conforme discutir um KPI ou tema, clique em
+          <span className="font-medium text-foreground"> Novo PDCA </span>
+          para registrar Plan · Do · Check · Act.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item, idx) => (
+            <div
+              key={item.id}
+              className="rounded-lg border border-border bg-card/40 p-3 space-y-3"
+            >
+              <div className="flex items-start gap-2">
+                <div className="text-xs font-semibold text-muted-foreground mt-2 w-6">
+                  #{idx + 1}
+                </div>
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <Input
+                    value={item.topic}
+                    onChange={(e) => update(item.id, { topic: e.target.value })}
+                    placeholder="Tema / KPI discutido"
+                    className="h-8 text-sm"
+                  />
+                  <select
+                    value={item.kpiId ?? ""}
+                    onChange={(e) =>
+                      update(item.id, { kpiId: e.target.value || undefined })
+                    }
+                    className="h-8 text-sm rounded-md border border-input bg-background px-2"
+                  >
+                    <option value="">Vincular KPI (opcional)</option>
+                    {allKpis.map((k) => (
+                      <option key={k.id} value={k.id}>
+                        {k.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Input
+                    value={item.owner}
+                    onChange={(e) => update(item.id, { owner: e.target.value })}
+                    placeholder="Responsável"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => remove(item.id)}
+                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="size-3.5" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pl-8">
+                {(
+                  [
+                    ["plan", "P — Plan", "O que vamos planejar/corrigir"],
+                    ["doText", "D — Do", "Como vamos executar"],
+                    ["check", "C — Check", "Como vamos medir"],
+                    ["act", "A — Act", "Ação corretiva / próximo passo"],
+                  ] as const
+                ).map(([k, label, ph]) => (
+                  <div key={k}>
+                    <div className="text-[11px] font-semibold mb-1 text-foreground">
+                      {label}
+                    </div>
+                    <Textarea
+                      value={item[k]}
+                      onChange={(e) => update(item.id, { [k]: e.target.value })}
+                      placeholder={ph}
+                      className="min-h-[60px] resize-none text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Section>
   );
 }
