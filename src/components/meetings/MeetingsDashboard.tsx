@@ -797,6 +797,132 @@ function MeetingPanel({
   );
 }
 
+function ResponsibilitiesSection({
+  meeting,
+  groupedKpis,
+  ms,
+  accent,
+}: {
+  meeting: MeetingDef;
+  groupedKpis: Record<string, ExecKpi[]>;
+  ms: MeetingState;
+  accent: string;
+}) {
+  // Flatten KPIs of this meeting
+  const allKpis = Object.values(groupedKpis).flat();
+
+  // Match by owner (case-insensitive, first-name match against participants)
+  const norm = (s: string) => s.trim().toLowerCase().split(/\s+/)[0];
+  const buckets = new Map<string, ExecKpi[]>();
+  meeting.participants.forEach((p) => buckets.set(p, []));
+  const orphans: ExecKpi[] = [];
+
+  for (const k of allKpis) {
+    if (!k.owner) {
+      orphans.push(k);
+      continue;
+    }
+    const ownerKey = norm(k.owner);
+    const match = meeting.participants.find((p) => norm(p) === ownerKey);
+    if (match) buckets.get(match)!.push(k);
+    else orphans.push(k);
+  }
+
+  if (allKpis.length === 0) return null;
+
+  return (
+    <Section title="Responsabilidades · o que cada participante traz" icon={Users}>
+      <p className="text-xs text-muted-foreground mb-4 -mt-2">
+        Cada KPI tem um responsável. Antes da reunião, cada pessoa precisa trazer o real da semana
+        dos KPIs abaixo para que o Cockpit fique 100% preenchido.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {meeting.participants.map((p) => {
+          const list = buckets.get(p) ?? [];
+          const filled = list.filter((k) => ms.kpis[k.id]?.value).length;
+          const pct = list.length ? Math.round((filled / list.length) * 100) : 0;
+          const allDone = list.length > 0 && filled === list.length;
+          return (
+            <div
+              key={p}
+              className={`rounded-lg border p-3 transition-colors ${
+                allDone ? "border-primary/40 bg-primary/5" : "border-border bg-card/40"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="size-7 rounded-md flex items-center justify-center text-[11px] font-bold shrink-0"
+                    style={{ background: accent, color: "var(--background)" }}
+                  >
+                    {p.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{p}</div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {list.length === 0
+                        ? "Sem KPI atribuído"
+                        : `${filled}/${list.length} KPIs · ${pct}%`}
+                    </div>
+                  </div>
+                </div>
+                {allDone && <CheckCircle2 className="size-4 text-primary shrink-0" />}
+              </div>
+              {list.length > 0 ? (
+                <ul className="space-y-1">
+                  {list.map((k) => {
+                    const done = !!ms.kpis[k.id]?.value;
+                    return (
+                      <li
+                        key={k.id}
+                        className="flex items-center justify-between gap-2 text-xs"
+                      >
+                        <span className="flex items-center gap-1.5 min-w-0">
+                          <span
+                            className={`size-1.5 rounded-full shrink-0 ${
+                              done ? "bg-primary" : "bg-muted-foreground/40"
+                            }`}
+                          />
+                          <span className={`truncate ${done ? "" : "text-muted-foreground"}`}>
+                            {k.label}
+                          </span>
+                        </span>
+                        <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                          {k.unit || "#"}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              ) : (
+                <div className="text-[11px] text-muted-foreground italic">
+                  Participa da reunião sem KPI direto sob sua responsabilidade.
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {orphans.length > 0 && (
+          <div className="rounded-lg border border-dashed border-amber-500/40 bg-amber-500/5 p-3 md:col-span-2 lg:col-span-3">
+            <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 mb-2">
+              ⚠ KPIs sem responsável vinculado a esta reunião ({orphans.length})
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {orphans.map((k) => (
+                <Badge key={k.id} variant="outline" className="text-[10px]">
+                  {k.label}
+                  {k.owner ? ` · ${k.owner}` : ""}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Section>
+  );
+}
+
 function Section({
   title,
   icon: Icon,
