@@ -170,3 +170,19 @@ export const loadAiConversation = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { messages: (rows ?? []) as AiMessage[] };
   });
+
+export const deleteAiConversation = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ conversationId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    const { error: msgErr } = await supabaseAdmin
+      .from("ai_messages")
+      .delete()
+      .eq("conversation_id", data.conversationId);
+    if (msgErr) throw new Error(msgErr.message);
+    const { error } = await supabaseAdmin
+      .from("ai_conversations")
+      .delete()
+      .eq("id", data.conversationId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
