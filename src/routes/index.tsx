@@ -4,8 +4,9 @@ import { OrgChart } from "@/components/org/OrgChart";
 import { MeetingsDashboard } from "@/components/meetings/MeetingsDashboard";
 import { ExecutiveDashboard } from "@/components/exec/ExecutiveDashboard";
 import { ExecAiChat } from "@/components/ai/ExecAiChat";
+import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard";
 import { Toaster } from "@/components/ui/sonner";
-import { Network, CalendarCheck, LayoutDashboard, Sparkles } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
