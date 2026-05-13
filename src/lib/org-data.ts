@@ -423,9 +423,12 @@ export const initialEdges: Edge[] = [
   e("fernando", "luis"),
   e("fernando", "anajulia"),
   e("fernando", "vanessa"),
+  e("fernando", "rafaelweb"),
   e("fernando", "ian"),
   e("anajulia", "designers"),
-  e("anajulia", "lucia"),
+  e("anajulia", "socialmedia"),
+  e("rafaelweb", "webdev"),
+  e("rafaelweb", "cro"),
   e("vanessa", "lauro"),
   e("vanessa", "breno"),
 
