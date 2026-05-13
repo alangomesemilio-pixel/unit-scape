@@ -4,11 +4,13 @@ import {
   EXEC_STORAGE_KEY,
   formatValue,
   isoWeekKey,
+  monthKey,
   statusOf,
   trendOf,
   variation,
   type ExecKpi,
   type ExecState,
+  type MonthSnapshot,
   type PdcaItem,
   type WeekSnapshot,
 } from "@/lib/executive-data";
@@ -27,7 +29,7 @@ import {
   Pencil,
   X,
   Archive,
-
+  CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +45,11 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { fetchSheetKpis } from "@/lib/sheets.functions";
+import {
+  loadSnapshots,
+  saveMonthSnapshot,
+  saveWeekSnapshot,
+} from "@/lib/snapshots.functions";
 import { FileSpreadsheet, RefreshCw } from "lucide-react";
 
 const SHEET_ID_KEY = "grax.exec.sheetId";
