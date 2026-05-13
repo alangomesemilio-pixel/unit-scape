@@ -50,7 +50,22 @@ export function buildAiContext() {
   cockpitLines.push("**Prioridades:** " + state.meeting.priorities.join("; "));
   cockpitLines.push("**Decisões:** " + state.meeting.decisions.join("; "));
 
-  const orgLines = initialNodes.map((n) => {
+  // Load org from localStorage if user customized it, fallback to initial
+  let orgNodes = initialNodes as typeof initialNodes;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem("grax-org-v1");
+      if (raw) {
+        const parsed = JSON.parse(raw) as { nodes?: typeof initialNodes };
+        if (parsed?.nodes && Array.isArray(parsed.nodes) && parsed.nodes.length > 0) {
+          orgNodes = parsed.nodes;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  const orgLines = orgNodes.map((n) => {
     const d = n.data;
     return `- ${d.name} — ${d.role}${d.area ? ` (${d.area})` : ""}${d.reportsTo ? ` | reporta a ${d.reportsTo}` : ""} | KPIs: ${d.kpis.join(", ")}`;
   });
