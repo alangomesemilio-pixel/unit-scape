@@ -192,16 +192,21 @@ export const initialNodes: Node<OrgNodeData>[] = [
     role: "Time Criativo",
     level: "team",
     reportsTo: "Ana Júlia",
-    responsibilities: ["Design", "Copywriting", "Produção criativa"],
+    responsibilities: ["Design", "Copywriting", "Produção criativa de campanhas"],
     kpis: ["Output criativo", "SLA de entregas", "Quality score"],
   }),
-  mk("lucia", 0 * COL, 4 * ROW, {
-    name: "Lúcia",
-    role: "Community",
+  mk("socialmedia", 0 * COL, 4 * ROW, {
+    name: "Social Media & Community",
+    role: "Conteúdo Social + Comunidade",
     level: "team",
     reportsTo: "Ana Júlia",
-    responsibilities: ["Comunidade", "Redes sociais", "Engajamento"],
-    kpis: ["Engajamento", "Crescimento social", "Tempo de resposta"],
+    responsibilities: [
+      "Gestão de redes sociais",
+      "Calendário editorial",
+      "Comunidade e engajamento",
+      "Resposta e moderação",
+    ],
+    kpis: ["Engajamento", "Crescimento social", "Tempo de resposta", "Share of voice"],
   }),
   mk("lauro", 1 * COL, 4 * ROW, {
     name: "Lauro",
