@@ -195,6 +195,22 @@ export function MeetingsDashboard() {
 
   // ===== Fechar semana global =====
   const closeWeek = async () => {
+    // Ask / confirm the actor (responsável pelo fechamento)
+    const suggested = actor || "";
+    const who = window.prompt(
+      "Quem está fechando a semana? (nome ficará registrado no log de auditoria)",
+      suggested
+    );
+    if (!who || !who.trim()) {
+      toast.error("Fechamento cancelado: responsável é obrigatório.");
+      return;
+    }
+    const actorName = who.trim().slice(0, 80);
+    setActor(actorName);
+    try {
+      localStorage.setItem(ACTOR_KEY, actorName);
+    } catch {}
+
     // Collect every "real" entered across all meetings of this week
     const values: Record<string, number> = {};
     for (const m of MEETINGS) {
@@ -219,13 +235,28 @@ export function MeetingsDashboard() {
       exec.cores.forEach((c) => c.kpis.forEach((k) => (values[k.id] = k.current)));
     } else if (
       !confirm(
-        `Fechar semana ${weekKey}?\n\n• ${
+        `Fechar semana ${weekKey} como ${actorName}?\n\n• ${
           Object.keys(values).length
-        } KPIs serão arquivados no banco\n• Valores 'atual' do Cockpit viram 'anterior'\n• Próxima semana abre com metas herdadas e reais zerados`
+        } KPIs serão arquivados no banco\n• Valores 'atual' do Cockpit viram 'anterior'\n• Log de auditoria será gerado\n• Próxima semana abre com metas herdadas e reais zerados`
       )
     ) {
       return;
     }
+
+    // Build full KPI map (id -> ExecKpi) to compute audit diffs with labels
+    const kpiMap = new Map<string, ExecKpi>();
+    exec.general.forEach((k) => kpiMap.set(k.id, k));
+    exec.cores.forEach((c) => c.kpis.forEach((k) => kpiMap.set(k.id, k)));
+
+    const changes: AuditChange[] = Object.entries(values).map(([id, next]) => {
+      const k = kpiMap.get(id);
+      return {
+        kpi_id: id,
+        label: k?.label ?? id,
+        previous: k ? k.current : null,
+        next,
+      };
+    });
 
     try {
       await callSaveWeek({ data: { week: weekKey, values } });
@@ -233,6 +264,17 @@ export function MeetingsDashboard() {
       const msg = e instanceof Error ? e.message : String(e);
       toast.error(`Erro ao salvar no banco: ${msg}`);
       return;
+    }
+
+    // Audit log entry — non-blocking but reported
+    try {
+      await callLogClose({ data: { week: weekKey, actor: actorName, changes } });
+      // Refresh log
+      const res = await callLoadAudit();
+      setAuditLog(res.entries);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.warning(`Snapshot salvo, mas log de auditoria falhou: ${msg}`);
     }
 
     // Propagate into Cockpit: current → previous, then current = real (if provided)
@@ -266,7 +308,7 @@ export function MeetingsDashboard() {
     // Advance to next week (fresh empty state — metas live in Cockpit, reais zerados)
     const nextWeek = shiftWeek(weekKey, 1);
     setWeekKey(nextWeek);
-    toast.success(`Semana ${weekKey} arquivada. Avançando para ${nextWeek}.`);
+    toast.success(`Semana ${weekKey} arquivada por ${actorName}. Avançando para ${nextWeek}.`);
   };
 
   // Selected calendar date (any day in the current week)
