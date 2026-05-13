@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      kpi_month_snapshots: {
+        Row: {
+          closed_at: string
+          kpi_id: string
+          month: string
+          value: number
+        }
+        Insert: {
+          closed_at?: string
+          kpi_id: string
+          month: string
+          value: number
+        }
+        Update: {
+          closed_at?: string
+          kpi_id?: string
+          month?: string
+          value?: number
+        }
+        Relationships: []
+      }
+      kpi_week_snapshots: {
+        Row: {
+          closed_at: string
+          kpi_id: string
+          value: number
+          week: string
+        }
+        Insert: {
+          closed_at?: string
+          kpi_id: string
+          value: number
+          week: string
+        }
+        Update: {
+          closed_at?: string
+          kpi_id?: string
+          value?: number
+          week?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
