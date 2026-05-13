@@ -650,6 +650,15 @@ function MeetingPanel({
         </Section>
       )}
 
+      {/* PDCAs pontuais — sexta-feira (um por KPI/tema discutido) */}
+      {meeting.id === "fri" && (
+        <PdcaItemsSection
+          items={ms.pdcaItems ?? []}
+          allKpis={Object.values(groupedKpis).flat()}
+          onChange={(pdcaItems) => onUpdate({ pdcaItems })}
+        />
+      )}
+
       {/* Responsabilidades — quem traz qual KPI */}
       <ResponsibilitiesSection
         meeting={meeting}
