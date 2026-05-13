@@ -66,9 +66,9 @@ type ViewTab = "ceo" | "growth" | "ops" | "comercial";
 
 const TAB_LABELS: Record<ViewTab, string> = {
   ceo: "Visão CEO",
-  growth: "Growth (Fernando)",
-  ops: "Operações (Miller)",
-  comercial: "Comercial (Igor)",
+  growth: "Growth",
+  ops: "Operações",
+  comercial: "Comercial",
 };
 
 // Map each operational tab to a core id and to PDCA owners that belong to it
