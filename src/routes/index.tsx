@@ -3,8 +3,9 @@ import { useState } from "react";
 import { OrgChart } from "@/components/org/OrgChart";
 import { MeetingsDashboard } from "@/components/meetings/MeetingsDashboard";
 import { ExecutiveDashboard } from "@/components/exec/ExecutiveDashboard";
+import { ExecAiChat } from "@/components/ai/ExecAiChat";
 import { Toaster } from "@/components/ui/sonner";
-import { Network, CalendarCheck, LayoutDashboard } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "exec" | "org" | "meetings";
+type View = "exec" | "org" | "meetings" | "ai";
 
 function Index() {
   const [view, setView] = useState<View>("exec");
@@ -44,6 +45,9 @@ function Index() {
         <NavBtn active={view === "meetings"} onClick={() => setView("meetings")} icon={CalendarCheck}>
           Reuniões & Governança
         </NavBtn>
+        <NavBtn active={view === "ai"} onClick={() => setView("ai")} icon={Sparkles}>
+          IA Executiva
+        </NavBtn>
       </nav>
 
       <div className="flex-1 min-h-0">
@@ -51,8 +55,10 @@ function Index() {
           <ExecutiveDashboard />
         ) : view === "org" ? (
           <OrgChart />
-        ) : (
+        ) : view === "meetings" ? (
           <MeetingsDashboard />
+        ) : (
+          <ExecAiChat />
         )}
       </div>
       <Toaster theme="dark" />

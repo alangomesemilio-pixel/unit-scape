@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../src";
+@plugin "@tailwindcss/typography";
 @import "tw-animate-css";
 @import "reactflow/dist/style.css";
 
