@@ -73,16 +73,45 @@ export function ExecutiveDashboard() {
   const [sheetId, setSheetId] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
 
-  // Load from localStorage only on client (avoids SSR hydration mismatch)
+  const callFetchSheet = useServerFn(fetchSheetKpis);
+  const callSaveWeek = useServerFn(saveWeekSnapshot);
+  const callSaveMonth = useServerFn(saveMonthSnapshot);
+  const callLoadSnapshots = useServerFn(loadSnapshots);
+
+  // Load from localStorage + DB on client
   useEffect(() => {
     setState(load());
     try {
       setSheetId(localStorage.getItem(SHEET_ID_KEY) || "");
     } catch {}
     setMounted(true);
+    // Hydrate history from DB (source of truth)
+    callLoadSnapshots()
+      .then((res) => {
+        const weeksByKey = new Map<string, WeekSnapshot>();
+        res.weeks.forEach((r) => {
+          if (!weeksByKey.has(r.period)) {
+            weeksByKey.set(r.period, { week: r.period, closedAt: r.closed_at, values: {} });
+          }
+          weeksByKey.get(r.period)!.values[r.kpi_id] = r.value;
+        });
+        const monthsByKey = new Map<string, MonthSnapshot>();
+        res.months.forEach((r) => {
+          if (!monthsByKey.has(r.period)) {
+            monthsByKey.set(r.period, { month: r.period, closedAt: r.closed_at, values: {} });
+          }
+          monthsByKey.get(r.period)!.values[r.kpi_id] = r.value;
+        });
+        setState((s) => ({
+          ...s,
+          history: Array.from(weeksByKey.values()).sort((a, b) => a.week.localeCompare(b.week)),
+          monthHistory: Array.from(monthsByKey.values()).sort((a, b) =>
+            a.month.localeCompare(b.month)
+          ),
+        }));
+      })
+      .catch((e) => console.warn("[snapshots] load failed", e));
   }, []);
-
-  const callFetchSheet = useServerFn(fetchSheetKpis);
 
   const syncFromSheet = async () => {
     const id = sheetId.trim();
