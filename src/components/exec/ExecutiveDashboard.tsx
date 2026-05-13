@@ -294,6 +294,9 @@ export function ExecutiveDashboard() {
           <Button size="sm" variant="default" onClick={() => setSheetOpen(true)} disabled={syncing}>
             <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Sheets
           </Button>
+          <Button size="sm" variant="secondary" onClick={closeWeek}>
+            <Archive className="size-4 mr-1" /> Fechar semana ({(state.history || []).length})
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setPdcaOpen(true)}>
             <Target className="size-4 mr-1" /> PDCA ({state.pdca.length})
           </Button>
