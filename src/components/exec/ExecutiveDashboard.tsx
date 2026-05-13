@@ -432,6 +432,78 @@ export function ExecutiveDashboard() {
         </SheetContent>
       </Sheet>
 
+      {/* Sheets sync panel */}
+      <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="size-5 text-emerald-400" /> Sincronizar com Google Sheets
+            </SheetTitle>
+            <SheetDescription>
+              Mantenha uma planilha simples e o cockpit é preenchido automaticamente.
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="space-y-5 mt-4 px-4 text-sm">
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="font-semibold">Passo 1 — Crie a planilha</div>
+              <p className="text-xs text-muted-foreground">
+                Crie um Google Sheets com uma aba chamada <code className="px-1 rounded bg-background">KPIs</code> e a primeira linha exatamente assim:
+              </p>
+              <code className="block text-[11px] bg-background p-2 rounded border border-border overflow-x-auto">
+                kpi_id | label | nucleo | atual | anterior | meta | unidade | responsavel
+              </code>
+              <p className="text-xs text-muted-foreground">
+                Compartilhe a planilha com a conta Google que você conectou (permissão de leitura basta).
+              </p>
+              <Button size="sm" variant="secondary" onClick={downloadTemplateCsv}>
+                <Download className="size-4 mr-1" /> Baixar template CSV (todos os {allKpiIds.length} KPIs)
+              </Button>
+              <p className="text-[11px] text-muted-foreground">
+                Abra esse CSV no Google Sheets (Arquivo → Importar) para começar com todos os KPIs já listados.
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="font-semibold">Passo 2 — Cole o ID da planilha</div>
+              <p className="text-xs text-muted-foreground">
+                Da URL: <code className="px-1 rounded bg-background">docs.google.com/spreadsheets/d/<b>ID_AQUI</b>/edit</code>
+              </p>
+              <Input
+                placeholder="ex: 1AbC...xyZ"
+                value={sheetId}
+                onChange={(e) => setSheetId(e.target.value)}
+              />
+            </div>
+
+            <div className="rounded-lg border border-border p-3 bg-secondary/40 space-y-2">
+              <div className="font-semibold">Passo 3 — Sincronizar</div>
+              <p className="text-xs text-muted-foreground">
+                Cada linha atualiza o KPI cujo <code>kpi_id</code> bater. Linhas sem correspondência são ignoradas.
+              </p>
+              <Button onClick={syncFromSheet} disabled={syncing || !sheetId.trim()}>
+                <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+                {syncing ? "Sincronizando..." : "Sincronizar agora"}
+              </Button>
+            </div>
+
+            <details className="rounded-lg border border-border p-3 bg-secondary/40">
+              <summary className="cursor-pointer text-xs font-semibold">
+                Ver lista de kpi_id válidos ({allKpiIds.length})
+              </summary>
+              <div className="mt-2 max-h-64 overflow-y-auto text-[11px] font-mono space-y-0.5">
+                {allKpiIds.map((k) => (
+                  <div key={k.id} className="flex justify-between gap-2 border-b border-border/40 py-0.5">
+                    <span className="text-emerald-300">{k.id}</span>
+                    <span className="text-muted-foreground truncate">{k.label} · {k.nucleo}</span>
+                  </div>
+                ))}
+              </div>
+            </details>
+          </div>
+        </SheetContent>
+      </Sheet>
+
       {/* PDCA panel */}
       <Sheet open={pdcaOpen} onOpenChange={setPdcaOpen}>
         <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
