@@ -397,6 +397,9 @@ export function MeetingsDashboard() {
             <Button size="sm" variant="outline" onClick={exportWeek}>
               <Download className="size-3.5 mr-1" /> Exportar
             </Button>
+            <Button size="sm" variant="outline" onClick={() => setAuditOpen(true)}>
+              <ShieldCheck className="size-3.5 mr-1" /> Auditoria ({auditLog.length})
+            </Button>
             <Button size="sm" onClick={closeWeek} className="bg-primary text-primary-foreground">
               <Archive className="size-3.5 mr-1" /> Fechar semana
             </Button>
