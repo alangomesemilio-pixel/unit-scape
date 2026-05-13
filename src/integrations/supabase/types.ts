@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      kpi_close_audit: {
+        Row: {
+          actor: string
+          changes: Json
+          closed_at: string
+          id: string
+          kpi_count: number
+          week: string
+        }
+        Insert: {
+          actor: string
+          changes?: Json
+          closed_at?: string
+          id?: string
+          kpi_count?: number
+          week: string
+        }
+        Update: {
+          actor?: string
+          changes?: Json
+          closed_at?: string
+          id?: string
+          kpi_count?: number
+          week?: string
+        }
+        Relationships: []
+      }
       kpi_month_snapshots: {
         Row: {
           closed_at: string
