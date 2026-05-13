@@ -3,12 +3,14 @@ import {
   defaultExecState,
   EXEC_STORAGE_KEY,
   formatValue,
+  isoWeekKey,
   statusOf,
   trendOf,
   variation,
   type ExecKpi,
   type ExecState,
   type PdcaItem,
+  type WeekSnapshot,
 } from "@/lib/executive-data";
 import {
   ArrowDownRight,
