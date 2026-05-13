@@ -413,99 +413,196 @@ export function ExecutiveDashboard() {
         </div>
       </header>
 
+      {/* Tabs por operação */}
+      <div className="border-b border-border bg-card/50 px-6 sticky top-[73px] z-[9] backdrop-blur">
+        <div className="max-w-[1600px] mx-auto flex gap-1 overflow-x-auto">
+          {(Object.keys(TAB_LABELS) as ViewTab[]).map((t) => {
+            const isActive = activeTab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {TAB_LABELS[t]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
-        {/* Visão executiva geral */}
-        <section>
-          <SectionTitle
-            title="Visão Executiva Geral"
-            subtitle="Indicadores macro da companhia"
-            icon={<Trophy className="size-4" />}
-          />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-            {state.general.map((kpi) => (
-              <KpiTile
-                key={kpi.id}
-                kpi={kpi}
-                history={historyMap.get(kpi.id)}
-                onEdit={() => setEditingKpi({ coreId: "general", id: kpi.id })}
+        {activeTab === "ceo" ? (
+          <>
+            {/* Visão executiva geral */}
+            <section>
+              <SectionTitle
+                title="Visão Executiva Geral"
+                subtitle="Indicadores macro da companhia"
+                icon={<Trophy className="size-4" />}
               />
-            ))}
-          </div>
-        </section>
-
-        {/* Receita por marca / canal */}
-        <section className="grid lg:grid-cols-2 gap-4">
-          <RevenueBlock title="Receita por marca" rows={state.brandRevenue} />
-          <RevenueBlock title="Receita por canal" rows={state.channelRevenue} />
-        </section>
-
-        {/* Alertas + Reunião */}
-        <section className="grid lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 rounded-xl border border-border bg-card p-4">
-            <SectionTitle
-              title="Sistema de alertas"
-              subtitle={`${alerts.length} indicadores fora da meta`}
-              icon={<AlertTriangle className="size-4" />}
-              compact
-            />
-            {alerts.length === 0 ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
-                <CheckCircle2 className="size-4 text-emerald-400" />
-                Tudo saudável esta semana.
-              </div>
-            ) : (
-              <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
-                {alerts.map(({ core, kpi }) => (
-                  <AlertRow key={kpi.id} core={core} kpi={kpi} />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {state.general.map((kpi) => (
+                  <KpiTile
+                    key={kpi.id}
+                    kpi={kpi}
+                    history={historyMap.get(kpi.id)}
+                    onEdit={() => setEditingKpi({ coreId: "general", id: kpi.id })}
+                  />
                 ))}
               </div>
-            )}
-          </div>
-          <MeetingPanel
-            meeting={state.meeting}
-            onChange={(m) => setState((s) => ({ ...s, meeting: m }))}
-          />
-        </section>
+            </section>
 
-        {/* Núcleos */}
-        {state.cores.map((core) => (
-          <section
-            key={core.id}
-            className="rounded-xl border border-border bg-card overflow-hidden"
-          >
-            <div
-              className="px-5 py-3 border-b border-border flex items-center justify-between"
-              style={{
-                background: `linear-gradient(90deg, color-mix(in oklab, ${core.accent} 22%, transparent), transparent)`,
-              }}
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className="size-2.5 rounded-full"
-                  style={{ background: core.accent }}
+            {/* Receita por marca / canal */}
+            <section className="grid lg:grid-cols-2 gap-4">
+              <RevenueBlock title="Receita por marca" rows={state.brandRevenue} />
+              <RevenueBlock title="Receita por canal" rows={state.channelRevenue} />
+            </section>
+
+            {/* Alertas + Reunião */}
+            <section className="grid lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 rounded-xl border border-border bg-card p-4">
+                <SectionTitle
+                  title="Sistema de alertas"
+                  subtitle={`${alerts.length} indicadores fora da meta`}
+                  icon={<AlertTriangle className="size-4" />}
+                  compact
                 />
-                <div>
-                  <h3 className="font-semibold text-sm">{core.title}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    Responsável: <span className="text-foreground">{core.owner}</span> ·{" "}
-                    {core.description}
-                  </p>
-                </div>
+                {alerts.length === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                    <CheckCircle2 className="size-4 text-emerald-400" />
+                    Tudo saudável esta semana.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-72 overflow-y-auto pr-1">
+                    {alerts.map(({ core, kpi }) => (
+                      <AlertRow key={kpi.id} core={core} kpi={kpi} />
+                    ))}
+                  </div>
+                )}
               </div>
-              <CoreSummary kpis={core.kpis} />
-            </div>
-            <div className="p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
-              {core.kpis.map((kpi) => (
-                <KpiTile
-                  key={kpi.id}
-                  kpi={kpi}
-                  history={historyMap.get(kpi.id)}
-                  onEdit={() => setEditingKpi({ coreId: core.id, id: kpi.id })}
-                />
-              ))}
-            </div>
-          </section>
-        ))}
+              <MeetingPanel
+                meeting={state.meeting}
+                onChange={(m) => setState((s) => ({ ...s, meeting: m }))}
+              />
+            </section>
+
+            {/* Núcleos */}
+            {state.cores.map((core) => (
+              <CoreSection
+                key={core.id}
+                core={core}
+                historyMap={historyMap}
+                onEdit={(id) => setEditingKpi({ coreId: core.id, id })}
+              />
+            ))}
+          </>
+        ) : (
+          (() => {
+            const coreId = TAB_TO_CORE[activeTab];
+            const core = state.cores.find((c) => c.id === coreId);
+            if (!core) return null;
+            const owners = TAB_OWNERS[activeTab];
+            const tabAlerts = alerts.filter(({ kpi }) => owners.includes(kpi.owner ?? ""));
+            const tabPdca = state.pdca.filter((p) => owners.includes(p.owner));
+            return (
+              <>
+                <section className="rounded-xl border border-border bg-card p-5"
+                  style={{ background: `linear-gradient(135deg, color-mix(in oklab, ${core.accent} 18%, transparent), transparent)` }}>
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <span className="size-3 rounded-full" style={{ background: core.accent }} />
+                      <div>
+                        <h2 className="text-lg font-bold">{core.title}</h2>
+                        <p className="text-xs text-muted-foreground">
+                          Head: <span className="text-foreground font-medium">{core.owner}</span> · {core.description}
+                        </p>
+                      </div>
+                    </div>
+                    <CoreSummary kpis={core.kpis} />
+                  </div>
+                </section>
+
+                <section>
+                  <SectionTitle
+                    title={`KPIs · ${core.title}`}
+                    subtitle={`${core.kpis.length} indicadores sob ${core.owner}`}
+                    icon={<Target className="size-4" />}
+                  />
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                    {core.kpis.map((kpi) => (
+                      <KpiTile
+                        key={kpi.id}
+                        kpi={kpi}
+                        history={historyMap.get(kpi.id)}
+                        onEdit={() => setEditingKpi({ coreId: core.id, id: kpi.id })}
+                      />
+                    ))}
+                  </div>
+                </section>
+
+                <section className="grid lg:grid-cols-2 gap-4">
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <SectionTitle
+                      title="Alertas da operação"
+                      subtitle={`${tabAlerts.length} fora da meta`}
+                      icon={<AlertTriangle className="size-4" />}
+                      compact
+                    />
+                    {tabAlerts.length === 0 ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground py-6">
+                        <CheckCircle2 className="size-4 text-emerald-400" />
+                        Sem alertas nesta operação.
+                      </div>
+                    ) : (
+                      <div className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
+                        {tabAlerts.map(({ core: cTitle, kpi }) => (
+                          <AlertRow key={kpi.id} core={cTitle} kpi={kpi} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-xl border border-border bg-card p-4">
+                    <SectionTitle
+                      title="PDCA da operação"
+                      subtitle={`${tabPdca.length} em aberto`}
+                      icon={<Flame className="size-4" />}
+                      compact
+                    />
+                    {tabPdca.length === 0 ? (
+                      <div className="text-sm text-muted-foreground py-6">
+                        Nenhum PDCA ativo para esta operação.
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                        {tabPdca.map((p) => (
+                          <div key={p.id} className="rounded-lg border border-border p-3 text-sm">
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <span className="font-medium">{p.problem}</span>
+                              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                {p.status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mb-1">{p.plan}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              Owner: <span className="text-foreground">{p.owner}</span> · Due: {p.due}
+                              {p.kpi ? ` · KPI: ${p.kpi}` : ""}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </>
+            );
+          })()
+        )}
 
         <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
           Semana {isoWeekKey()} · Mês {monthKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Histórico no banco (Lovable Cloud)
