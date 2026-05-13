@@ -24,8 +24,8 @@ const mk = (
   type: "org",
 });
 
-const COL = 420;
-const ROW = 320;
+const COL = 600;
+const ROW = 460;
 
 export const initialNodes: Node<OrgNodeData>[] = [
   mk("grax", 4 * COL, 0 * ROW, {
