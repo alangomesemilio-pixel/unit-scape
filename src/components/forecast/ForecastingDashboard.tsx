@@ -22,7 +22,10 @@ import {
   Activity,
   DollarSign,
   Percent,
+  Search,
+  ListTree,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   ComposedChart,
   Line,
@@ -122,6 +125,8 @@ export function ForecastingDashboard() {
   const aiFn = useServerFn(analyzeForecastWithAi);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiReply, setAiReply] = useState<string | null>(null);
+  const [detailFilter, setDetailFilter] = useState("");
+  const [detailMode, setDetailMode] = useState<"ytd" | "monthly">("ytd");
 
   const q = useQuery({
     queryKey: ["forecast-dre"],
@@ -683,6 +688,16 @@ export function ForecastingDashboard() {
               </div>
             </Card>
 
+            {/* Detalhamento completo da DRE — todas as linhas da planilha */}
+            <FullDreCard
+              data={data}
+              activeMonth={activeMonth}
+              filter={detailFilter}
+              onFilter={setDetailFilter}
+              mode={detailMode}
+              onModeChange={setDetailMode}
+            />
+
             {/* AI reply */}
             {aiReply && (
               <Card className="p-6 border-primary/40 bg-primary/5">
@@ -894,5 +909,279 @@ function GapRow({
         </td>
       </tr>
     </>
+  );
+}
+
+function FullDreCard({
+  data,
+  activeMonth,
+  filter,
+  onFilter,
+  mode,
+  onModeChange,
+}: {
+  data: ForecastDre;
+  activeMonth: number;
+  filter: string;
+  onFilter: (v: string) => void;
+  mode: "ytd" | "monthly";
+  onModeChange: (m: "ytd" | "monthly") => void;
+}) {
+  const norm = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+  const projMap = useMemo(() => {
+    const m = new Map<string, DreRow>();
+    for (const r of data.projetado) m.set(norm(r.label), r);
+    return m;
+  }, [data.projetado]);
+
+  const filtered = useMemo(() => {
+    const f = filter.trim().toLowerCase();
+    if (!f) return data.realizado;
+    return data.realizado.filter((r) => r.label.toLowerCase().includes(f));
+  }, [data.realizado, filter]);
+
+  return (
+    <Card className="p-6 border-border/60">
+      <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+        <div>
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <ListTree className="size-5 text-primary" />
+            Detalhamento completo da DRE
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Todas as linhas da planilha · receita, frete, devoluções, marketing,
+            despesas com pessoal por BU, sócios, EBITDA
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="size-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={filter}
+              onChange={(e) => onFilter(e.target.value)}
+              placeholder="Buscar linha..."
+              className="h-9 w-56 pl-8 text-sm"
+            />
+          </div>
+          <div className="flex rounded-md border border-border/60 bg-card p-0.5">
+            <button
+              type="button"
+              onClick={() => onModeChange("ytd")}
+              className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                mode === "ytd"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              YTD
+            </button>
+            <button
+              type="button"
+              onClick={() => onModeChange("monthly")}
+              className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                mode === "monthly"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Mês a mês
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto rounded-lg border border-border/60">
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="bg-secondary/60 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+              <th className="py-2.5 pl-4 pr-3 font-semibold sticky left-0 bg-secondary/95 backdrop-blur z-10 min-w-[260px]">
+                Linha
+              </th>
+              {mode === "monthly" ? (
+                <>
+                  {MONTH_LABELS.map((m, i) => (
+                    <th
+                      key={m}
+                      className={`py-2.5 px-2 font-semibold text-right ${
+                        i === activeMonth ? "text-primary bg-primary/10" : ""
+                      }`}
+                    >
+                      {m}
+                    </th>
+                  ))}
+                </>
+              ) : (
+                <>
+                  <th className="py-2.5 px-3 font-semibold text-right">
+                    {activeMonth >= 0 ? MONTH_LABELS[activeMonth] : "Mês"} · Real
+                  </th>
+                  <th className="py-2.5 px-3 font-semibold text-right">
+                    {activeMonth >= 0 ? MONTH_LABELS[activeMonth] : "Mês"} · Proj
+                  </th>
+                  <th className="py-2.5 px-3 font-semibold text-right">% mês</th>
+                </>
+              )}
+              <th className="py-2.5 px-3 font-semibold text-right border-l border-border/60">
+                YTD Real
+              </th>
+              <th className="py-2.5 px-3 font-semibold text-right">YTD Proj</th>
+              <th className="py-2.5 px-3 font-semibold text-right">% YTD</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td
+                  colSpan={mode === "monthly" ? 16 : 7}
+                  className="py-8 text-center text-muted-foreground text-sm"
+                >
+                  Nenhuma linha encontrada para "{filter}"
+                </td>
+              </tr>
+            ) : (
+              filtered.map((r, idx) => (
+                <FullDreRow
+                  key={`${r.label}-${idx}`}
+                  row={r}
+                  proj={projMap.get(norm(r.label))}
+                  activeMonth={activeMonth}
+                  mode={mode}
+                  zebra={idx % 2 === 1}
+                />
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="text-[11px] text-muted-foreground mt-3">
+        {filtered.length} linhas · valores absolutos como vêm da planilha
+        (despesas aparecem negativas)
+      </div>
+    </Card>
+  );
+}
+
+function FullDreRow({
+  row,
+  proj,
+  activeMonth,
+  mode,
+  zebra,
+}: {
+  row: DreRow;
+  proj?: DreRow;
+  activeMonth: number;
+  mode: "ytd" | "monthly";
+  zebra: boolean;
+}) {
+  const isHeader = row.kind === "header" || row.kind === "section";
+  const isTotal = row.kind === "total";
+
+  const realYtd = row.total ?? sum(row.values);
+  const projYtd = proj ? (proj.total ?? sum(proj.values)) : null;
+  const ytdPct =
+    realYtd != null && projYtd != null && projYtd !== 0 ? realYtd / projYtd : null;
+
+  const realM = activeMonth >= 0 ? row.values[activeMonth] : null;
+  const projM = activeMonth >= 0 ? proj?.values[activeMonth] ?? null : null;
+  const monthPct =
+    realM != null && projM != null && projM !== 0 ? realM / projM : null;
+
+  const pctColor = (pct: number | null, isCost: boolean) => {
+    if (pct == null) return "var(--color-muted-foreground)";
+    // For costs, lower realizado vs projetado is GOOD
+    const good = isCost ? pct <= 1 : pct >= 1;
+    const ok = isCost ? pct <= 1.2 : pct >= 0.8;
+    return good ? COLOR_LUCRO : ok ? "#FBBF24" : COLOR_OPEX;
+  };
+  const isCost = row.label.includes("(-)");
+
+  const rowBg = isHeader
+    ? "bg-secondary/50"
+    : isTotal
+      ? "bg-primary/5"
+      : zebra
+        ? "bg-card/40"
+        : "bg-transparent";
+
+  const labelCls = isHeader
+    ? "font-bold text-sm text-foreground"
+    : isTotal
+      ? "font-bold text-sm text-primary"
+      : "text-xs text-foreground";
+
+  return (
+    <tr className={`border-t border-border/30 ${rowBg}`}>
+      <td
+        className={`py-1.5 pl-4 pr-3 sticky left-0 backdrop-blur z-10 ${labelCls} ${
+          isHeader
+            ? "bg-secondary/95"
+            : isTotal
+              ? "bg-primary/10"
+              : zebra
+                ? "bg-card/95"
+                : "bg-background/95"
+        }`}
+      >
+        {row.label}
+      </td>
+
+      {mode === "monthly" ? (
+        <>
+          {row.values.map((v, i) => (
+            <td
+              key={i}
+              className={`py-1.5 px-2 text-right font-mono text-xs tabular-nums ${
+                i === activeMonth
+                  ? "text-primary font-semibold bg-primary/5"
+                  : isHeader || isTotal
+                    ? "text-foreground font-semibold"
+                    : "text-foreground/90"
+              }`}
+            >
+              {v == null ? "—" : fmtBRL(v)}
+            </td>
+          ))}
+        </>
+      ) : (
+        <>
+          <td
+            className={`py-1.5 px-3 text-right font-mono text-xs tabular-nums ${
+              isHeader || isTotal
+                ? "text-foreground font-semibold"
+                : "text-foreground/90"
+            }`}
+          >
+            {realM == null ? "—" : fmtBRL(realM)}
+          </td>
+          <td className="py-1.5 px-3 text-right font-mono text-xs tabular-nums text-muted-foreground">
+            {projM == null ? "—" : fmtBRL(projM)}
+          </td>
+          <td
+            className="py-1.5 px-3 text-right font-mono text-xs font-semibold tabular-nums"
+            style={{ color: pctColor(monthPct, isCost) }}
+          >
+            {monthPct == null ? "—" : `${(monthPct * 100).toFixed(0)}%`}
+          </td>
+        </>
+      )}
+
+      <td
+        className={`py-1.5 px-3 text-right font-mono text-xs tabular-nums border-l border-border/60 ${
+          isHeader || isTotal ? "font-bold text-foreground" : "font-semibold text-foreground"
+        }`}
+      >
+        {fmtBRL(realYtd)}
+      </td>
+      <td className="py-1.5 px-3 text-right font-mono text-xs tabular-nums text-muted-foreground">
+        {fmtBRL(projYtd)}
+      </td>
+      <td
+        className="py-1.5 px-3 text-right font-mono text-xs font-bold tabular-nums"
+        style={{ color: pctColor(ytdPct, isCost) }}
+      >
+        {ytdPct == null ? "—" : `${(ytdPct * 100).toFixed(0)}%`}
+      </td>
+    </tr>
   );
 }
