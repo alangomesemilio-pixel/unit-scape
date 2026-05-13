@@ -3,12 +3,14 @@ import {
   defaultExecState,
   EXEC_STORAGE_KEY,
   formatValue,
+  isoWeekKey,
   statusOf,
   trendOf,
   variation,
   type ExecKpi,
   type ExecState,
   type PdcaItem,
+  type WeekSnapshot,
 } from "@/lib/executive-data";
 import {
   ArrowDownRight,
@@ -24,6 +26,8 @@ import {
   RotateCcw,
   Pencil,
   X,
+  Archive,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,20 +56,25 @@ function load(): ExecState {
 }
 
 export function ExecutiveDashboard() {
-  const [state, setState] = useState<ExecState>(() => load());
+  const [state, setState] = useState<ExecState>(defaultExecState);
+  const [mounted, setMounted] = useState(false);
   const [editingKpi, setEditingKpi] = useState<{ coreId: string | "general"; id: string } | null>(
     null
   );
   const [pdcaOpen, setPdcaOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetId, setSheetId] = useState<string>(() => {
-    try {
-      return localStorage.getItem(SHEET_ID_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  const [sheetId, setSheetId] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
+
+  // Load from localStorage only on client (avoids SSR hydration mismatch)
+  useEffect(() => {
+    setState(load());
+    try {
+      setSheetId(localStorage.getItem(SHEET_ID_KEY) || "");
+    } catch {}
+    setMounted(true);
+  }, []);
+
   const callFetchSheet = useServerFn(fetchSheetKpis);
 
   const syncFromSheet = async () => {
@@ -146,11 +155,53 @@ export function ExecutiveDashboard() {
 
 
   useEffect(() => {
+    if (!mounted) return;
     localStorage.setItem(
       EXEC_STORAGE_KEY,
       JSON.stringify({ ...state, lastUpdated: new Date().toISOString() })
     );
-  }, [state]);
+  }, [state, mounted]);
+
+  // History map for sparklines: kpi_id -> last N values
+  const historyMap = useMemo(() => {
+    const m = new Map<string, number[]>();
+    (state.history || []).slice(-12).forEach((snap) => {
+      Object.entries(snap.values).forEach(([id, v]) => {
+        if (!m.has(id)) m.set(id, []);
+        m.get(id)!.push(v);
+      });
+    });
+    return m;
+  }, [state.history]);
+
+  const closeWeek = () => {
+    const week = isoWeekKey();
+    if ((state.history || []).some((h) => h.week === week)) {
+      if (!confirm(`Semana ${week} já foi fechada. Sobrescrever?`)) return;
+    } else if (!confirm(`Fechar semana ${week}? Os valores 'atual' viram 'anterior' e o snapshot será arquivado.`)) {
+      return;
+    }
+    const values: Record<string, number> = {};
+    const collect = (k: ExecKpi) => {
+      values[k.id] = k.current;
+    };
+    state.general.forEach(collect);
+    state.cores.forEach((c) => c.kpis.forEach(collect));
+    const snap: WeekSnapshot = { week, closedAt: new Date().toISOString(), values };
+
+    setState((s) => {
+      const shift = (k: ExecKpi): ExecKpi => ({ ...k, previous: k.current });
+      const filtered = (s.history || []).filter((h) => h.week !== week);
+      return {
+        ...s,
+        history: [...filtered, snap].slice(-52),
+        general: s.general.map(shift),
+        cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(shift) })),
+      };
+    });
+    toast.success(`Semana ${week} arquivada`);
+  };
+
 
   const alerts = useMemo(() => {
     const all: { core: string; kpi: ExecKpi }[] = [];
@@ -243,6 +294,9 @@ export function ExecutiveDashboard() {
           <Button size="sm" variant="default" onClick={() => setSheetOpen(true)} disabled={syncing}>
             <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Sheets
           </Button>
+          <Button size="sm" variant="secondary" onClick={closeWeek}>
+            <Archive className="size-4 mr-1" /> Fechar semana ({(state.history || []).length})
+          </Button>
           <Button size="sm" variant="secondary" onClick={() => setPdcaOpen(true)}>
             <Target className="size-4 mr-1" /> PDCA ({state.pdca.length})
           </Button>
@@ -269,6 +323,7 @@ export function ExecutiveDashboard() {
               <KpiTile
                 key={kpi.id}
                 kpi={kpi}
+                history={historyMap.get(kpi.id)}
                 onEdit={() => setEditingKpi({ coreId: "general", id: kpi.id })}
               />
             ))}
@@ -341,6 +396,7 @@ export function ExecutiveDashboard() {
                 <KpiTile
                   key={kpi.id}
                   kpi={kpi}
+                  history={historyMap.get(kpi.id)}
                   onEdit={() => setEditingKpi({ coreId: core.id, id: kpi.id })}
                 />
               ))}
@@ -349,7 +405,7 @@ export function ExecutiveDashboard() {
         ))}
 
         <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
-          Atualizado em {state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "-"} · Dados salvos localmente neste navegador.
+          Semana atual: {isoWeekKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Dados salvos localmente neste navegador.
         </div>
       </div>
 
@@ -606,7 +662,25 @@ function statusColor(s: ReturnType<typeof statusOf>) {
   return "text-rose-400 border-rose-500/30 bg-rose-500/10";
 }
 
-function KpiTile({ kpi, onEdit }: { kpi: ExecKpi; onEdit: () => void }) {
+function Sparkline({ values, color }: { values: number[]; color: string }) {
+  if (!values || values.length < 2) return null;
+  const w = 64;
+  const h = 18;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const step = w / (values.length - 1);
+  const pts = values
+    .map((v, i) => `${(i * step).toFixed(1)},${(h - ((v - min) / range) * h).toFixed(1)}`)
+    .join(" ");
+  return (
+    <svg width={w} height={h} className="opacity-70">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function KpiTile({ kpi, onEdit, history }: { kpi: ExecKpi; onEdit: () => void; history?: number[] }) {
   const s = statusOf(kpi);
   const t = trendOf(kpi);
   const v = variation(kpi.current, kpi.previous);
@@ -627,8 +701,16 @@ function KpiTile({ kpi, onEdit }: { kpi: ExecKpi; onEdit: () => void }) {
         </div>
         <Pencil className="size-3 opacity-0 group-hover:opacity-60" />
       </div>
-      <div className="mt-1.5 text-lg font-bold text-foreground">
-        {formatValue(kpi.current, kpi.unit)}
+      <div className="mt-1.5 flex items-end justify-between gap-2">
+        <div className="text-lg font-bold text-foreground">
+          {formatValue(kpi.current, kpi.unit)}
+        </div>
+        {history && history.length > 1 && (
+          <Sparkline
+            values={[...history, kpi.current]}
+            color={statusOf(kpi) === "critical" ? "rgb(251 113 133)" : statusOf(kpi) === "warning" ? "rgb(251 191 36)" : "rgb(52 211 153)"}
+          />
+        )}
       </div>
       <div className="mt-1 flex items-center justify-between text-[11px]">
         <span
