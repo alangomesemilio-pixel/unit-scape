@@ -308,6 +308,7 @@ export function emptyMeetingState(): MeetingState {
     notes: "",
     actions: [],
     pdca: { plan: "", doText: "", check: "", act: "" },
+    pdcaItems: [],
     done: false,
   };
 }
