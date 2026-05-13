@@ -63,6 +63,7 @@
   --level-ceo: oklch(0.78 0.16 75);
   --level-coo: oklch(0.7 0.15 200);
   --level-intl: oklch(0.7 0.18 320);
+  --level-director: oklch(0.7 0.18 30);
   --level-head: oklch(0.72 0.14 150);
   --level-team: oklch(0.6 0.05 260);
 }
