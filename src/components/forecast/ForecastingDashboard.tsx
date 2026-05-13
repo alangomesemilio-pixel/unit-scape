@@ -22,7 +22,10 @@ import {
   Activity,
   DollarSign,
   Percent,
+  Search,
+  ListTree,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   ComposedChart,
   Line,
