@@ -56,20 +56,25 @@ function load(): ExecState {
 }
 
 export function ExecutiveDashboard() {
-  const [state, setState] = useState<ExecState>(() => load());
+  const [state, setState] = useState<ExecState>(defaultExecState);
+  const [mounted, setMounted] = useState(false);
   const [editingKpi, setEditingKpi] = useState<{ coreId: string | "general"; id: string } | null>(
     null
   );
   const [pdcaOpen, setPdcaOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [sheetId, setSheetId] = useState<string>(() => {
-    try {
-      return localStorage.getItem(SHEET_ID_KEY) || "";
-    } catch {
-      return "";
-    }
-  });
+  const [sheetId, setSheetId] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
+
+  // Load from localStorage only on client (avoids SSR hydration mismatch)
+  useEffect(() => {
+    setState(load());
+    try {
+      setSheetId(localStorage.getItem(SHEET_ID_KEY) || "");
+    } catch {}
+    setMounted(true);
+  }, []);
+
   const callFetchSheet = useServerFn(fetchSheetKpis);
 
   const syncFromSheet = async () => {
