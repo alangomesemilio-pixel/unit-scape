@@ -108,7 +108,7 @@ export const initialNodes: Node<OrgNodeData>[] = [
     name: "Fernando",
     role: "Head of Growth — Full Funnel",
     area: "Growth (Aquisição + Retenção + Internacional)",
-    level: "head",
+    level: "director",
     reportsTo: "Alan",
     responsibilities: [
       "Liderança do Growth Full Funnel da holding",
@@ -130,7 +130,7 @@ export const initialNodes: Node<OrgNodeData>[] = [
     name: "Igor",
     role: "Head Comercial & Expansão B2B",
     area: "Comercial B2B",
-    level: "head",
+    level: "director",
     reportsTo: "Alan",
     responsibilities: [
       "Expansão comercial e B2B",

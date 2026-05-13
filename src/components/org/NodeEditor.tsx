@@ -60,7 +60,8 @@ export function NodeEditor({ node, onClose, onSave, onDelete }: Props) {
                 <SelectItem value="ceo">CEO / Direção</SelectItem>
                 <SelectItem value="coo">COO / Operações</SelectItem>
                 <SelectItem value="intl">Internacional</SelectItem>
-                <SelectItem value="head">Head / Diretor</SelectItem>
+                <SelectItem value="director">Diretor</SelectItem>
+                <SelectItem value="head">Head</SelectItem>
                 <SelectItem value="team">Time</SelectItem>
               </SelectContent>
             </Select>
