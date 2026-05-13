@@ -276,12 +276,25 @@ export interface ActionItem {
   status: "todo" | "doing" | "done";
 }
 
+export interface PdcaItem {
+  id: string;
+  topic: string; // KPI ou tema discutido
+  kpiId?: string; // opcional, vínculo a um KPI
+  owner: string;
+  plan: string;
+  doText: string;
+  check: string;
+  act: string;
+  createdAt: string;
+}
+
 export interface MeetingState {
   attendance: Record<string, boolean>;
   kpis: Record<string, KpiEntry>;
   notes: string;
   actions: ActionItem[];
   pdca?: { plan: string; doText: string; check: string; act: string };
+  pdcaItems?: PdcaItem[];
   done?: boolean;
   lastUpdated?: string;
 }
