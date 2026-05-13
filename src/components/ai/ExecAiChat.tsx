@@ -27,6 +27,7 @@ export function ExecAiChat() {
   const ask = useServerFn(askExecAi);
   const listConvs = useServerFn(listAiConversations);
   const loadConv = useServerFn(loadAiConversation);
+  const deleteConv = useServerFn(deleteAiConversation);
 
   const [convs, setConvs] = useState<AiConversationListItem[]>([]);
   const [convId, setConvId] = useState<string | null>(null);
