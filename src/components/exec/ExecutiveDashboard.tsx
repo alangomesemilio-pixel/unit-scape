@@ -412,6 +412,11 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {lastSync && (
+            <span className="text-[11px] text-muted-foreground hidden md:inline" title={lastSync.toLocaleString("pt-BR")}>
+              Auto-sync 15min · última {lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
           <Button size="sm" variant="default" onClick={() => syncFromSheet()} disabled={syncing}>
             <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Atualizando..." : "Atualizar dados"}
           </Button>
