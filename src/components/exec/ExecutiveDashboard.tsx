@@ -469,6 +469,33 @@ export function ExecutiveDashboard() {
         <div className="p-6 space-y-6 max-w-[1600px] mx-auto">
         {activeTab === "ceo" ? (
           <>
+            {/* Painel Estratégico CEO — 16 KPIs do modelo holding */}
+            <section>
+              <SectionTitle
+                title="Painel Estratégico CEO"
+                subtitle="16 indicadores que respondem pela saúde da holding"
+                icon={<Target className="size-4" />}
+              />
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                {STRATEGIC_KPI_IDS.map((id) => {
+                  const all = [
+                    ...state.general.map((k) => ({ k, coreId: "general" as const })),
+                    ...state.cores.flatMap((c) => c.kpis.map((k) => ({ k, coreId: c.id }))),
+                  ];
+                  const found = all.find((x) => x.k.id === id);
+                  if (!found) return null;
+                  return (
+                    <KpiTile
+                      key={id}
+                      kpi={found.k}
+                      history={historyMap.get(id)}
+                      onEdit={() => setEditingKpi({ coreId: found.coreId, id })}
+                    />
+                  );
+                })}
+              </div>
+            </section>
+
             {/* Visão executiva geral */}
             <section>
               <SectionTitle
