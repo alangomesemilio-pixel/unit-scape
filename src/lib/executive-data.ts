@@ -3,6 +3,8 @@
 export type Trend = "up" | "down" | "flat";
 export type Status = "healthy" | "warning" | "critical";
 
+export type Frequency = "Semanal" | "Mensal";
+
 export interface ExecKpi {
   id: string;
   label: string;
@@ -12,6 +14,8 @@ export interface ExecKpi {
   previous: number;
   owner?: string;
   higherIsBetter?: boolean; // default true
+  frequency?: Frequency; // cadência de leitura
+  objective?: string; // objetivo estratégico
 }
 
 export interface ExecCore {
@@ -85,17 +89,40 @@ const k = (
   current: number,
   previous: number,
   owner?: string,
-  higherIsBetter = true
-): ExecKpi => ({ id, label, unit, target, current, previous, owner, higherIsBetter });
+  higherIsBetter = true,
+  frequency: Frequency = "Semanal",
+  objective?: string
+): ExecKpi => ({ id, label, unit, target, current, previous, owner, higherIsBetter, frequency, objective });
+
+// IDs dos 16 KPIs estratégicos do CEO Dashboard (modelo holding)
+export const STRATEGIC_KPI_IDS = [
+  "rev_total",
+  "lucro",
+  "caixa",
+  "margem_contrib",
+  "g_mer",
+  "g_cac",
+  "c_ltv",
+  "c_ltv_cac",
+  "c_recompra",
+  "c_recurring",
+  "co_rev",
+  "co_dist_ativos",
+  "o_rup",
+  "o_lt",
+  "i_rev",
+  "margem",
+] as const;
 
 export const defaultExecState: ExecState = {
   general: [
-    k("rev_total", "Receita total", "R$", 1200000, 1085000, 980000, "Alan"),
-    k("lucro", "Lucro líquido", "R$", 280000, 251000, 220000, "Alan"),
-    k("margem", "Margem", "%", 25, 23.1, 22.4, "Alan"),
-    k("caixa", "Caixa", "R$", 2000000, 1850000, 1720000, "Ícaro"),
-    k("cresc_sem", "Crescimento semanal", "%", 8, 10.7, 6.2, "Alan"),
-    k("cresc_mes", "Crescimento mensal", "%", 15, 18.4, 12.1, "Alan"),
+    k("rev_total", "Receita consolidada", "R$", 1200000, 1085000, 980000, "Alan", true, "Semanal", "Crescimento da holding"),
+    k("lucro", "Lucro líquido", "R$", 280000, 251000, 220000, "Alan", true, "Semanal", "Eficiência operacional"),
+    k("margem", "Margem", "%", 25, 23.1, 22.4, "Alan", true, "Semanal", "Sustentabilidade da operação"),
+    k("margem_contrib", "Margem de contribuição", "%", 45, 42.3, 40.8, "Alan", true, "Mensal", "Saúde unitária"),
+    k("caixa", "Caixa", "R$", 2000000, 1850000, 1720000, "Ícaro", true, "Semanal", "Capacidade de expansão"),
+    k("cresc_sem", "Crescimento semanal", "%", 8, 10.7, 6.2, "Alan", true, "Semanal", "Velocidade de crescimento"),
+    k("cresc_mes", "Crescimento mensal", "%", 15, 18.4, 12.1, "Alan", true, "Mensal", "Tendência de crescimento"),
   ],
   brandRevenue: [
     { name: "Pimenta Rosa", current: 540000, previous: 480000, target: 600000 },
@@ -116,18 +143,19 @@ export const defaultExecState: ExecState = {
       accent: "var(--level-head)",
       description: "Aquisição, performance, branding, conteúdo e influência.",
       kpis: [
-        k("g_roas", "ROAS", "x", 3.5, 3.8, 3.2, "Luís"),
-        k("g_cac", "CAC", "R$", 65, 58, 72, "Luís", false),
-        k("g_cpa", "CPA", "R$", 45, 41, 49, "Luís", false),
-        k("g_rev_camp", "Receita por campanha", "R$", 80000, 92000, 71000, "Luís"),
-        k("g_rev_canal", "Receita por canal", "R$", 220000, 210000, 195000, "Fernando"),
-        k("g_conv", "Conversão site", "%", 2.5, 2.3, 2.1, "Luís"),
-        k("g_ctr", "CTR", "%", 1.8, 2.1, 1.6, "Luís"),
-        k("g_cpm", "CPM", "R$", 28, 25, 31, "Luís", false),
-        k("g_tk", "Ticket médio", "R$", 220, 235, 210, "Fernando"),
-        k("g_creators", "Receita creators", "R$", 90000, 78000, 65000, "Vanessa"),
-        k("g_org", "Receita orgânica", "R$", 60000, 67000, 54000, "Ana Júlia"),
-        k("g_social", "Crescimento social", "%", 6, 7.4, 4.8, "Lúcia"),
+        k("g_mer", "MER (Marketing Efficiency Ratio)", "x", 4.0, 4.2, 3.6, "Fernando", true, "Semanal", "Eficiência global de marketing"),
+        k("g_roas", "ROAS", "x", 3.5, 3.8, 3.2, "Luís", true, "Semanal", "Eficiência de mídia"),
+        k("g_cac", "CAC consolidado", "R$", 65, 58, 72, "Luís", false, "Semanal", "Eficiência de aquisição"),
+        k("g_cpa", "CPA", "R$", 45, 41, 49, "Luís", false, "Semanal", "Eficiência de conversão"),
+        k("g_rev_camp", "Receita por campanha", "R$", 80000, 92000, 71000, "Luís", true, "Semanal"),
+        k("g_rev_canal", "Receita por canal", "R$", 220000, 210000, 195000, "Fernando", true, "Semanal"),
+        k("g_conv", "Conversão site", "%", 2.5, 2.3, 2.1, "Luís", true, "Semanal"),
+        k("g_ctr", "CTR", "%", 1.8, 2.1, 1.6, "Luís", true, "Semanal", "Qualidade de criativos"),
+        k("g_cpm", "CPM", "R$", 28, 25, 31, "Luís", false, "Semanal"),
+        k("g_tk", "Ticket médio", "R$", 220, 235, 210, "Fernando", true, "Semanal"),
+        k("g_creators", "Receita creators", "R$", 90000, 78000, 65000, "Vanessa", true, "Semanal"),
+        k("g_org", "Receita orgânica", "R$", 60000, 67000, 54000, "Ana Júlia", true, "Semanal"),
+        k("g_social", "Crescimento social", "%", 6, 7.4, 4.8, "Lúcia", true, "Semanal"),
       ],
     },
     {
@@ -137,15 +165,17 @@ export const defaultExecState: ExecState = {
       accent: "var(--level-team)",
       description: "Retenção, recompra, jornadas e suporte.",
       kpis: [
-        k("c_ltv", "LTV", "R$", 850, 910, 820, "Ian"),
-        k("c_recompra", "Recompra", "%", 28, 31, 26, "Ian"),
-        k("c_ret", "Taxa de retenção", "%", 70, 72, 68, "Ian"),
-        k("c_rev_crm", "Receita CRM", "R$", 180000, 195000, 160000, "Ian"),
-        k("c_wpp", "Receita WhatsApp", "R$", 90000, 84000, 76000, "Ian"),
-        k("c_carr", "Recuperação de carrinho", "%", 18, 16, 15, "Ian"),
-        k("c_nps", "NPS", "#", 70, 74, 68, "Julian"),
-        k("c_resp", "Tempo resposta suporte", "min", 10, 12, 14, "Julian", false),
-        k("c_resol", "Taxa resolução suporte", "%", 90, 88, 85, "Julian"),
+        k("c_ltv", "LTV", "R$", 850, 910, 820, "Ian", true, "Mensal", "Rentabilidade do cliente"),
+        k("c_ltv_cac", "LTV / CAC", "x", 6.0, 6.7, 5.4, "Fernando", true, "Mensal", "Escalabilidade saudável"),
+        k("c_recompra", "Taxa de recompra", "%", 28, 31, 26, "Ian", true, "Semanal", "Retenção da base"),
+        k("c_recurring", "% Receita recorrente", "%", 35, 32, 28, "Ian", true, "Mensal", "Força da base recorrente"),
+        k("c_ret", "Taxa de retenção", "%", 70, 72, 68, "Ian", true, "Mensal"),
+        k("c_rev_crm", "Receita CRM", "R$", 180000, 195000, 160000, "Ian", true, "Semanal", "Monetização da base"),
+        k("c_wpp", "Receita WhatsApp", "R$", 90000, 84000, 76000, "Ian", true, "Semanal"),
+        k("c_carr", "Recuperação de carrinho", "%", 18, 16, 15, "Ian", true, "Semanal"),
+        k("c_nps", "NPS", "#", 70, 74, 68, "Julian", true, "Mensal", "Experiência do cliente"),
+        k("c_resp", "Tempo resposta suporte", "min", 10, 12, 14, "Julian", false, "Semanal"),
+        k("c_resol", "Taxa resolução suporte", "%", 90, 88, 85, "Julian", true, "Semanal"),
       ],
     },
     {
@@ -155,14 +185,15 @@ export const defaultExecState: ExecState = {
       accent: "var(--level-intl)",
       description: "Crescimento B2B, distribuidores e expansão regional.",
       kpis: [
-        k("co_rev", "Receita B2B", "R$", 360000, 340000, 305000, "Igor"),
-        k("co_sellin", "Sell-in", "R$", 250000, 235000, 215000, "Igor"),
-        k("co_dist", "Novos distribuidores", "#", 8, 6, 4, "Igor"),
-        k("co_tk", "Ticket médio B2B", "R$", 12000, 11500, 10800, "Otávio"),
-        k("co_pipe", "Pipeline comercial", "R$", 800000, 920000, 740000, "Otávio"),
-        k("co_fech", "Taxa de fechamento", "%", 25, 22, 20, "Otávio"),
-        k("co_reg", "Expansão regional", "#", 5, 4, 3, "Igor"),
-        k("co_per_dist", "Receita por distribuidor", "R$", 28000, 26500, 24000, "Igor"),
+        k("co_rev", "Receita B2B", "R$", 360000, 340000, 305000, "Igor", true, "Semanal", "Expansão comercial"),
+        k("co_dist_ativos", "Distribuidores ativos", "#", 30, 26, 24, "Igor", true, "Mensal", "Escala comercial"),
+        k("co_sellin", "Sell-in", "R$", 250000, 235000, 215000, "Igor", true, "Semanal", "Volume de canal"),
+        k("co_dist", "Novos distribuidores", "#", 8, 6, 4, "Igor", true, "Mensal"),
+        k("co_tk", "Ticket médio B2B", "R$", 12000, 11500, 10800, "Otávio", true, "Semanal"),
+        k("co_pipe", "Pipeline comercial", "R$", 800000, 920000, 740000, "Otávio", true, "Semanal", "Previsibilidade comercial"),
+        k("co_fech", "Taxa de fechamento", "%", 25, 22, 20, "Otávio", true, "Semanal"),
+        k("co_reg", "Expansão regional", "#", 5, 4, 3, "Igor", true, "Mensal"),
+        k("co_per_dist", "Receita por distribuidor", "R$", 28000, 26500, 24000, "Igor", true, "Mensal", "Eficiência de canal"),
       ],
     },
     {
@@ -172,15 +203,16 @@ export const defaultExecState: ExecState = {
       accent: "var(--level-coo)",
       description: "Produção, supply, logística e financeiro operacional.",
       kpis: [
-        k("o_prod", "Produções em andamento", "#", 12, 10, 9, "Carol"),
-        k("o_lt", "Lead time", "dias", 14, 16, 18, "Carol", false),
-        k("o_rup", "Ruptura de estoque", "%", 2, 3.5, 4.2, "Rafael", false),
-        k("o_sla", "SLA logística", "%", 95, 92, 90, "Júnior"),
-        k("o_atr", "Atrasos", "#", 3, 5, 7, "Júnior", false),
-        k("o_err", "Erro operacional", "%", 1, 1.8, 2.4, "Júnior", false),
-        k("o_forn", "Status fornecedores", "%", 95, 93, 90, "Rafael"),
-        k("o_comp", "Compras pendentes", "#", 5, 8, 10, "Rafael", false),
-        k("o_caixa", "Fluxo caixa operacional", "R$", 450000, 420000, 390000, "Ícaro"),
+        k("o_rup", "Ruptura de estoque", "%", 2, 3.5, 4.2, "Rafael", false, "Semanal", "Evitar perda de vendas"),
+        k("o_lt", "Lead time", "dias", 14, 16, 18, "Carol", false, "Semanal", "Velocidade operacional"),
+        k("o_sla", "SLA logística", "%", 95, 92, 90, "Júnior", true, "Semanal", "Qualidade de entrega"),
+        k("o_giro", "Giro de estoque", "x", 6, 5.2, 4.8, "Rafael", true, "Mensal", "Eficiência de estoque"),
+        k("o_prod", "Produções em andamento", "#", 12, 10, 9, "Carol", true, "Semanal"),
+        k("o_atr", "Atrasos", "#", 3, 5, 7, "Júnior", false, "Semanal"),
+        k("o_err", "Erro operacional", "%", 1, 1.8, 2.4, "Júnior", false, "Semanal"),
+        k("o_forn", "Status fornecedores", "%", 95, 93, 90, "Rafael", true, "Semanal"),
+        k("o_comp", "Compras pendentes", "#", 5, 8, 10, "Rafael", false, "Semanal"),
+        k("o_caixa", "Fluxo caixa operacional", "R$", 450000, 420000, 390000, "Ícaro", true, "Semanal"),
       ],
     },
     {
