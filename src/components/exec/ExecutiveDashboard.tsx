@@ -13,6 +13,7 @@ import {
   type MonthSnapshot,
   type PdcaItem,
   type WeekSnapshot,
+  STRATEGIC_KPI_IDS,
 } from "@/lib/executive-data";
 import {
   ArrowDownRight,
