@@ -395,8 +395,11 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="default" onClick={() => setSheetOpen(true)} disabled={syncing}>
-            <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Sheets
+          <Button size="sm" variant="default" onClick={syncFromSheet} disabled={syncing}>
+            <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Atualizando..." : "Atualizar dados"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSheetOpen(true)} disabled={syncing} title="Configurar planilha">
+            <FileSpreadsheet className="size-4" />
           </Button>
           <Button size="sm" variant="secondary" onClick={closeWeek}>
             <Archive className="size-4 mr-1" /> Fechar semana ({(state.history || []).length})
