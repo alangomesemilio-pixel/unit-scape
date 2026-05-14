@@ -96,6 +96,7 @@ export function ExecutiveDashboard() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetId, setSheetId] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
 
   const callFetchSheet = useServerFn(fetchSheetKpis);
   const callSaveWeek = useServerFn(saveWeekSnapshot);
