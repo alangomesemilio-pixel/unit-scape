@@ -89,17 +89,40 @@ const k = (
   current: number,
   previous: number,
   owner?: string,
-  higherIsBetter = true
-): ExecKpi => ({ id, label, unit, target, current, previous, owner, higherIsBetter });
+  higherIsBetter = true,
+  frequency: Frequency = "Semanal",
+  objective?: string
+): ExecKpi => ({ id, label, unit, target, current, previous, owner, higherIsBetter, frequency, objective });
+
+// IDs dos 16 KPIs estratégicos do CEO Dashboard (modelo holding)
+export const STRATEGIC_KPI_IDS = [
+  "rev_total",
+  "lucro",
+  "caixa",
+  "margem_contrib",
+  "g_mer",
+  "g_cac",
+  "c_ltv",
+  "c_ltv_cac",
+  "c_recompra",
+  "c_recurring",
+  "co_rev",
+  "co_dist_ativos",
+  "o_rup",
+  "o_lt",
+  "i_rev",
+  "margem",
+] as const;
 
 export const defaultExecState: ExecState = {
   general: [
-    k("rev_total", "Receita total", "R$", 1200000, 1085000, 980000, "Alan"),
-    k("lucro", "Lucro líquido", "R$", 280000, 251000, 220000, "Alan"),
-    k("margem", "Margem", "%", 25, 23.1, 22.4, "Alan"),
-    k("caixa", "Caixa", "R$", 2000000, 1850000, 1720000, "Ícaro"),
-    k("cresc_sem", "Crescimento semanal", "%", 8, 10.7, 6.2, "Alan"),
-    k("cresc_mes", "Crescimento mensal", "%", 15, 18.4, 12.1, "Alan"),
+    k("rev_total", "Receita consolidada", "R$", 1200000, 1085000, 980000, "Alan", true, "Semanal", "Crescimento da holding"),
+    k("lucro", "Lucro líquido", "R$", 280000, 251000, 220000, "Alan", true, "Semanal", "Eficiência operacional"),
+    k("margem", "Margem", "%", 25, 23.1, 22.4, "Alan", true, "Semanal", "Sustentabilidade da operação"),
+    k("margem_contrib", "Margem de contribuição", "%", 45, 42.3, 40.8, "Alan", true, "Mensal", "Saúde unitária"),
+    k("caixa", "Caixa", "R$", 2000000, 1850000, 1720000, "Ícaro", true, "Semanal", "Capacidade de expansão"),
+    k("cresc_sem", "Crescimento semanal", "%", 8, 10.7, 6.2, "Alan", true, "Semanal", "Velocidade de crescimento"),
+    k("cresc_mes", "Crescimento mensal", "%", 15, 18.4, 12.1, "Alan", true, "Mensal", "Tendência de crescimento"),
   ],
   brandRevenue: [
     { name: "Pimenta Rosa", current: 540000, previous: 480000, target: 600000 },
