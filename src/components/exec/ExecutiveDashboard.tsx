@@ -54,6 +54,7 @@ import {
 import { FileSpreadsheet, RefreshCw } from "lucide-react";
 
 const SHEET_ID_KEY = "grax.exec.sheetId";
+const DEFAULT_SHEET_ID = "13cJZBwKgEVaQ4r-Nou52pFlrb7IOtnh48r3Iu2XZUVQ";
 
 function load(): ExecState {
   try {
@@ -105,7 +106,9 @@ export function ExecutiveDashboard() {
   useEffect(() => {
     setState(load());
     try {
-      setSheetId(localStorage.getItem(SHEET_ID_KEY) || "");
+      const stored = localStorage.getItem(SHEET_ID_KEY);
+      setSheetId(stored || DEFAULT_SHEET_ID);
+      if (!stored) localStorage.setItem(SHEET_ID_KEY, DEFAULT_SHEET_ID);
     } catch {}
     setMounted(true);
     // Hydrate history from DB (source of truth)
@@ -392,8 +395,11 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="default" onClick={() => setSheetOpen(true)} disabled={syncing}>
-            <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> Sincronizar Sheets
+          <Button size="sm" variant="default" onClick={syncFromSheet} disabled={syncing}>
+            <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Atualizando..." : "Atualizar dados"}
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setSheetOpen(true)} disabled={syncing} title="Configurar planilha">
+            <FileSpreadsheet className="size-4" />
           </Button>
           <Button size="sm" variant="secondary" onClick={closeWeek}>
             <Archive className="size-4 mr-1" /> Fechar semana ({(state.history || []).length})
