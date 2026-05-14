@@ -105,7 +105,9 @@ export function ExecutiveDashboard() {
   useEffect(() => {
     setState(load());
     try {
-      setSheetId(localStorage.getItem(SHEET_ID_KEY) || "");
+      const stored = localStorage.getItem(SHEET_ID_KEY);
+      setSheetId(stored || DEFAULT_SHEET_ID);
+      if (!stored) localStorage.setItem(SHEET_ID_KEY, DEFAULT_SHEET_ID);
     } catch {}
     setMounted(true);
     // Hydrate history from DB (source of truth)
