@@ -3,6 +3,8 @@
 export type Trend = "up" | "down" | "flat";
 export type Status = "healthy" | "warning" | "critical";
 
+export type Frequency = "Semanal" | "Mensal";
+
 export interface ExecKpi {
   id: string;
   label: string;
@@ -12,6 +14,8 @@ export interface ExecKpi {
   previous: number;
   owner?: string;
   higherIsBetter?: boolean; // default true
+  frequency?: Frequency; // cadência de leitura
+  objective?: string; // objetivo estratégico
 }
 
 export interface ExecCore {
