@@ -412,7 +412,7 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="default" onClick={syncFromSheet} disabled={syncing}>
+          <Button size="sm" variant="default" onClick={() => syncFromSheet()} disabled={syncing}>
             <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Atualizando..." : "Atualizar dados"}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSheetOpen(true)} disabled={syncing} title="Configurar planilha">
@@ -786,7 +786,7 @@ export function ExecutiveDashboard() {
               <p className="text-xs text-muted-foreground">
                 Cada linha atualiza o KPI cujo <code>kpi_id</code> bater. Linhas sem correspondência são ignoradas.
               </p>
-              <Button onClick={syncFromSheet} disabled={syncing || !sheetId.trim()}>
+              <Button onClick={() => syncFromSheet()} disabled={syncing || !sheetId.trim()}>
                 <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
                 {syncing ? "Sincronizando..." : "Sincronizar agora"}
               </Button>
