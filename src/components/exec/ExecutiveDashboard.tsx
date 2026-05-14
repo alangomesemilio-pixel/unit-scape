@@ -96,6 +96,7 @@ export function ExecutiveDashboard() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [sheetId, setSheetId] = useState<string>("");
   const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<Date | null>(null);
 
   const callFetchSheet = useServerFn(fetchSheetKpis);
   const callSaveWeek = useServerFn(saveWeekSnapshot);
@@ -139,10 +140,10 @@ export function ExecutiveDashboard() {
       .catch((e) => console.warn("[snapshots] load failed", e));
   }, []);
 
-  const syncFromSheet = async () => {
+  const syncFromSheet = async (opts: { silent?: boolean } = {}) => {
     const id = sheetId.trim();
     if (!id) {
-      toast.error("Informe o ID da planilha");
+      if (!opts.silent) toast.error("Informe o ID da planilha");
       return;
     }
     try {
@@ -172,15 +173,31 @@ export function ExecutiveDashboard() {
           cores: s.cores.map((c) => ({ ...c, kpis: c.kpis.map(apply) })),
         };
       });
-      toast.success(`Sincronizado: ${matched} KPIs atualizados de ${res.count} linhas`);
-      setSheetOpen(false);
+      setLastSync(new Date());
+      if (!opts.silent) {
+        toast.success(`Sincronizado: ${matched} KPIs atualizados de ${res.count} linhas`);
+        setSheetOpen(false);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      toast.error(`Erro: ${msg}`);
+      if (!opts.silent) toast.error(`Erro: ${msg}`);
+      else console.warn("[auto-sync] failed:", msg);
     } finally {
       setSyncing(false);
     }
   };
+
+  // Auto-sync a cada 15 min (e ao montar). Pula quando aba está oculta.
+  useEffect(() => {
+    if (!mounted || !sheetId) return;
+    syncFromSheet({ silent: true });
+    const interval = setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "hidden") return;
+      syncFromSheet({ silent: true });
+    }, 15 * 60 * 1000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted, sheetId]);
 
   const allKpiIds = useMemo(() => {
     const ids: { id: string; label: string; nucleo: string; unidade: string; responsavel: string }[] =
@@ -395,7 +412,12 @@ export function ExecutiveDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button size="sm" variant="default" onClick={syncFromSheet} disabled={syncing}>
+          {lastSync && (
+            <span className="text-[11px] text-muted-foreground hidden md:inline" title={lastSync.toLocaleString("pt-BR")}>
+              Auto-sync 15min · última {lastSync.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          <Button size="sm" variant="default" onClick={() => syncFromSheet()} disabled={syncing}>
             <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} /> {syncing ? "Atualizando..." : "Atualizar dados"}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setSheetOpen(true)} disabled={syncing} title="Configurar planilha">
@@ -769,7 +791,7 @@ export function ExecutiveDashboard() {
               <p className="text-xs text-muted-foreground">
                 Cada linha atualiza o KPI cujo <code>kpi_id</code> bater. Linhas sem correspondência são ignoradas.
               </p>
-              <Button onClick={syncFromSheet} disabled={syncing || !sheetId.trim()}>
+              <Button onClick={() => syncFromSheet()} disabled={syncing || !sheetId.trim()}>
                 <RefreshCw className={`size-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
                 {syncing ? "Sincronizando..." : "Sincronizar agora"}
               </Button>
