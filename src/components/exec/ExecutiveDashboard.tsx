@@ -108,8 +108,11 @@ export function ExecutiveDashboard() {
     setState(load());
     try {
       const stored = localStorage.getItem(SHEET_ID_KEY);
-      setSheetId(stored || DEFAULT_SHEET_ID);
-      if (!stored) localStorage.setItem(SHEET_ID_KEY, DEFAULT_SHEET_ID);
+      // Migra IDs antigos para o atual default
+      const OLD_IDS = ["13cJZBwKgEVaQ4r-Nou52pFlrb7IOtnh48r3Iu2XZUVQ"];
+      const effective = !stored || OLD_IDS.includes(stored) ? DEFAULT_SHEET_ID : stored;
+      setSheetId(effective);
+      if (effective !== stored) localStorage.setItem(SHEET_ID_KEY, effective);
     } catch {}
     setMounted(true);
     // Hydrate history from DB (source of truth)
