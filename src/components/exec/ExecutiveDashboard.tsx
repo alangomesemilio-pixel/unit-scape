@@ -54,6 +54,7 @@ import {
 import { FileSpreadsheet, RefreshCw } from "lucide-react";
 
 const SHEET_ID_KEY = "grax.exec.sheetId";
+const DEFAULT_SHEET_ID = "13cJZBwKgEVaQ4r-Nou52pFlrb7IOtnh48r3Iu2XZUVQ";
 
 function load(): ExecState {
   try {
