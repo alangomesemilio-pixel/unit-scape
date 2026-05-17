@@ -97,10 +97,24 @@ interface ChannelRealized {
   roas?: number;
 }
 
+// Premissas detalhadas de funil por canal (mês base = Jun)
+interface ChannelPremise {
+  visitas: number;       // sessões/leads no mês base
+  ctc: number;           // % visita → carrinho
+  cco: number;           // % carrinho → checkout
+  cop: number;           // % checkout → pedido
+  ticket: number;
+  cac: number;
+  invest: number;
+  growthVisitas: number; // % m/m
+  growthConv: number;    // pp uplift cumulativo na conv final por mês
+}
+
 interface SomaState {
   premises: BasePremises;
   realized: Record<string, RealizedMonth>; // month label -> realized
   channelReal: Record<string, ChannelRealized>; // channel name -> realized
+  channelPremises: Record<string, ChannelPremise>; // funil + forecast por canal
   scenario: ScenarioKey;
 }
 
@@ -146,6 +160,16 @@ const DEFAULT_PREMISES: BasePremises = {
   crescEquipe: 8,
 };
 
+const DEFAULT_CHANNEL_PREMISES: Record<string, ChannelPremise> = {
+  DTC:            { visitas: 25000, ctc: 8,  cco: 45, cop: 55, ticket: 250,  cac: 65,  invest: 28000, growthVisitas: 14, growthConv: 0.10 },
+  WhatsApp:       { visitas: 4500,  ctc: 18, cco: 60, cop: 65, ticket: 195,  cac: 38,  invest: 4000,  growthVisitas: 22, growthConv: 0.20 },
+  Influenciadora: { visitas: 12000, ctc: 10, cco: 50, cop: 50, ticket: 230,  cac: 55,  invest: 8000,  growthVisitas: 28, growthConv: 0.15 },
+  "TikTok Shop":  { visitas: 8000,  ctc: 9,  cco: 40, cop: 45, ticket: 180,  cac: 48,  invest: 4500,  growthVisitas: 25, growthConv: 0.12 },
+  B2B:            { visitas: 1200,  ctc: 30, cco: 70, cop: 80, ticket: 2200, cac: 380, invest: 3500,  growthVisitas: 18, growthConv: 0.10 },
+  Assinatura:     { visitas: 2200,  ctc: 12, cco: 55, cop: 70, ticket: 165,  cac: 42,  invest: 1500,  growthVisitas: 16, growthConv: 0.15 },
+  Marketplace:    { visitas: 9000,  ctc: 7,  cco: 40, cop: 50, ticket: 210,  cac: 55,  invest: 0,     growthVisitas: 12, growthConv: 0.08 },
+};
+
 const DEFAULT_STATE: SomaState = {
   premises: DEFAULT_PREMISES,
   realized: {
@@ -156,6 +180,7 @@ const DEFAULT_STATE: SomaState = {
     DTC: { receita: 96000, pedidos: 380, cac: 70, margem: 56, roas: 3.5 },
     WhatsApp: { receita: 24000, pedidos: 82, cac: 38, margem: 64, roas: 5.0 },
   },
+  channelPremises: DEFAULT_CHANNEL_PREMISES,
   scenario: "base",
 };
 
@@ -201,6 +226,7 @@ function loadState(): SomaState {
         premises: { ...DEFAULT_PREMISES, ...(parsed.premises || {}) },
         realized: parsed.realized || {},
         channelReal: parsed.channelReal || {},
+        channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
       };
     }
   } catch {}
@@ -321,7 +347,42 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
   });
 }
 
-// ============ ATOMIC EDITABLE ============
+// ============ CHANNEL FUNNEL PROJECTION ============
+export interface ChannelMonth {
+  month: string;
+  idx: number;
+  visitas: number;
+  carrinhos: number;
+  checkouts: number;
+  pedidos: number;
+  receita: number;
+  ticket: number;
+  cac: number;
+  invest: number;
+  roas: number;
+  convFinal: number; // %
+}
+
+function projectChannel(cp: ChannelPremise, mult: { rev: number; cac: number }): ChannelMonth[] {
+  const gVis = cp.growthVisitas / 100;
+  return MONTHS.map((m, i) => {
+    const visitas = cp.visitas * Math.pow(1 + gVis, i);
+    const carrinhos = visitas * (cp.ctc / 100);
+    const checkouts = carrinhos * (cp.cco / 100);
+    // pequeno uplift de conv final (cop) ao longo do tempo via growthConv (pp)
+    const cop = Math.min(95, cp.cop + cp.growthConv * i);
+    const pedidos = checkouts * (cop / 100);
+    const ticket = cp.ticket * (1 + i * 0.004);
+    const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
+    const cac = cp.cac * (i === 0 ? 1 : mult.cac);
+    const invest = cp.invest * Math.pow(1 + gVis * 0.7, i);
+    const roas = invest > 0 ? receita / invest : 0;
+    const convFinal = visitas > 0 ? (pedidos / visitas) * 100 : 0;
+    return { month: m, idx: i, visitas, carrinhos, checkouts, pedidos, receita, ticket, cac, invest, roas, convFinal };
+  });
+}
+
+
 function EditNum({
   value,
   onChange,
@@ -359,6 +420,8 @@ function EditNum({
 export function SomaForecasting() {
   const [state, setState] = useState<SomaState>(() => DEFAULT_STATE);
   const [premisesOpen, setPremisesOpen] = useState(true);
+  const [channelMonthIdx, setChannelMonthIdx] = useState(0);
+  const [channelExpanded, setChannelExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
@@ -404,6 +467,15 @@ export function SomaForecasting() {
 
   const setChannelReal = (name: string, patch: ChannelRealized) =>
     setState((s) => ({ ...s, channelReal: { ...s.channelReal, [name]: { ...s.channelReal[name], ...patch } } }));
+
+  const setChannelPremise = (name: string, patch: Partial<ChannelPremise>) =>
+    setState((s) => ({
+      ...s,
+      channelPremises: {
+        ...s.channelPremises,
+        [name]: { ...(s.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name]), ...patch },
+      },
+    }));
 
   // Recalibrar forecast: usa última performance real para reescrever premissas
   const recalibrate = () => {
@@ -479,6 +551,29 @@ export function SomaForecasting() {
     value: projection.reduce((a, m) => a + (m.canais[name] || 0), 0),
   }));
   const canalTotal = canalShare.reduce((a, c) => a + c.value, 0);
+
+  // Forecast detalhado por canal (funil + pedidos + receita por mês)
+  const channelProjections = useMemo(() => {
+    const out: Record<string, ChannelMonth[]> = {};
+    CHANNEL_KEYS.forEach(({ name }) => {
+      const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
+      out[name] = projectChannel(cp, mult);
+    });
+    return out;
+  }, [state.channelPremises, mult]);
+
+  // Macro mensal: soma de canais vs macro principal (para reconciliar)
+  const macroVsChannels = projection.map((m, i) => {
+    const sumRec = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[i]?.receita || 0), 0);
+    const sumPed = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[i]?.pedidos || 0), 0);
+    return {
+      month: m.month,
+      MacroReceita: Math.round(m.receita),
+      SomaCanais: Math.round(sumRec),
+      MacroPedidos: Math.round(m.pedidos),
+      PedidosCanais: Math.round(sumPed),
+    };
+  });
 
   return (
     <div
@@ -901,6 +996,236 @@ export function SomaForecasting() {
           </div>
         </Section>
 
+        {/* DESDOBRAMENTO POR CANAL — MACRO + FUNIL POR FONTE */}
+        <Section
+          title="Desdobramento por Canal — Funil & Pedidos"
+          subtitle="Macro do mês × soma dos canais · funil completo por fonte (visitas → pedidos)"
+          icon={Activity}
+        >
+          <Panel>
+            <div className="flex flex-wrap items-end justify-between gap-4 mb-4">
+              <div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Mês de análise</div>
+                <Select value={String(channelMonthIdx)} onValueChange={(v) => setChannelMonthIdx(Number(v))}>
+                  <SelectTrigger className="w-40 bg-transparent border-[#d4a5a0]/30">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m, i) => (
+                      <SelectItem key={m} value={String(i)}>
+                        {m} {i === 0 ? "(base)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {(() => {
+                const macro = projection[channelMonthIdx];
+                const sumRec = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[channelMonthIdx]?.receita || 0), 0);
+                const sumPed = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[channelMonthIdx]?.pedidos || 0), 0);
+                const sumInv = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[channelMonthIdx]?.invest || 0), 0);
+                const gap = macro.receita ? ((sumRec - macro.receita) / macro.receita) * 100 : 0;
+                return (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 flex-1">
+                    <MacroPill label="Macro Receita" value={brl(macro.receita)} accent={SOMA_PALETTE.rose} />
+                    <MacroPill label="Σ Canais Receita" value={brl(sumRec)} accent={SOMA_PALETTE.gold} hint={`${gap >= 0 ? "+" : ""}${gap.toFixed(1)}% vs macro`} />
+                    <MacroPill label="Macro Pedidos" value={Math.round(macro.pedidos).toLocaleString("pt-BR")} accent={SOMA_PALETTE.sage} />
+                    <MacroPill label="Σ Canais Pedidos" value={Math.round(sumPed).toLocaleString("pt-BR")} accent={SOMA_PALETTE.blush} />
+                    <MacroPill label="Investimento" value={brl(sumInv)} accent={SOMA_PALETTE.roseDeep} />
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                    <th className="py-2 px-2">Canal</th>
+                    <th className="py-2 px-2 text-right">Visitas</th>
+                    <th className="py-2 px-2 text-right">→ Carrinho</th>
+                    <th className="py-2 px-2 text-right">→ Checkout</th>
+                    <th className="py-2 px-2 text-right">→ Pedidos</th>
+                    <th className="py-2 px-2 text-right">Conv. Final</th>
+                    <th className="py-2 px-2 text-right">Ticket</th>
+                    <th className="py-2 px-2 text-right">Receita</th>
+                    <th className="py-2 px-2 text-right">CAC</th>
+                    <th className="py-2 px-2 text-right">Invest.</th>
+                    <th className="py-2 px-2 text-right">ROAS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {CHANNEL_KEYS.map(({ name }, idx) => {
+                    const cm = channelProjections[name]?.[channelMonthIdx];
+                    if (!cm) return null;
+                    const color = PIE_COLORS[idx % PIE_COLORS.length];
+                    return (
+                      <tr key={name} className="border-b border-[#d4a5a0]/10 hover:bg-[#d4a5a0]/5">
+                        <td className="py-2 px-2 font-medium" style={{ color }}>{name}</td>
+                        <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{Math.round(cm.visitas).toLocaleString("pt-BR")}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{Math.round(cm.carrinhos).toLocaleString("pt-BR")}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{Math.round(cm.checkouts).toLocaleString("pt-BR")}</td>
+                        <td className="py-2 px-2 text-right tabular-nums font-semibold" style={{ color: SOMA_PALETTE.sage }}>{Math.round(cm.pedidos).toLocaleString("pt-BR")}</td>
+                        <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.gold }}>{cm.convFinal.toFixed(2)}%</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{brl(cm.ticket)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums font-semibold" style={{ color: SOMA_PALETTE.cream }}>{brl(cm.receita)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{brl(cm.cac)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{brl(cm.invest)}</td>
+                        <td className="py-2 px-2 text-right tabular-nums" style={{ color: cm.roas >= 3 ? SOMA_PALETTE.sage : SOMA_PALETTE.warn }}>{cm.roas.toFixed(2)}x</td>
+                      </tr>
+                    );
+                  })}
+                  <tr className="bg-[#d4a5a0]/10 font-semibold">
+                    <td className="py-2 px-2 text-[11px] uppercase tracking-wider" style={{ color: SOMA_PALETTE.rose }}>Total Canais</td>
+                    {(() => {
+                      const sums = CHANNEL_KEYS.reduce((acc, { name }) => {
+                        const cm = channelProjections[name]?.[channelMonthIdx];
+                        if (cm) { acc.v += cm.visitas; acc.car += cm.carrinhos; acc.ch += cm.checkouts; acc.p += cm.pedidos; acc.r += cm.receita; acc.i += cm.invest; }
+                        return acc;
+                      }, { v: 0, car: 0, ch: 0, p: 0, r: 0, i: 0 });
+                      const convT = sums.v ? (sums.p / sums.v) * 100 : 0;
+                      const roasT = sums.i ? sums.r / sums.i : 0;
+                      return (
+                        <>
+                          <td className="py-2 px-2 text-right tabular-nums">{Math.round(sums.v).toLocaleString("pt-BR")}</td>
+                          <td className="py-2 px-2 text-right tabular-nums">{Math.round(sums.car).toLocaleString("pt-BR")}</td>
+                          <td className="py-2 px-2 text-right tabular-nums">{Math.round(sums.ch).toLocaleString("pt-BR")}</td>
+                          <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.sage }}>{Math.round(sums.p).toLocaleString("pt-BR")}</td>
+                          <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.gold }}>{convT.toFixed(2)}%</td>
+                          <td className="py-2 px-2 text-right tabular-nums">—</td>
+                          <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{brl(sums.r)}</td>
+                          <td className="py-2 px-2 text-right tabular-nums">—</td>
+                          <td className="py-2 px-2 text-right tabular-nums">{brl(sums.i)}</td>
+                          <td className="py-2 px-2 text-right tabular-nums" style={{ color: roasT >= 3 ? SOMA_PALETTE.sage : SOMA_PALETTE.warn }}>{roasT.toFixed(2)}x</td>
+                        </>
+                      );
+                    })()}
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <Panel title="Macro Receita vs Σ Canais (6 meses)">
+              <div className="h-64">
+                <ResponsiveContainer>
+                  <BarChart data={macroVsChannels}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a020" />
+                    <XAxis dataKey="month" stroke={SOMA_PALETTE.cream} fontSize={11} />
+                    <YAxis stroke={SOMA_PALETTE.cream} fontSize={11} tickFormatter={(v) => brl(v)} />
+                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="MacroReceita" fill={SOMA_PALETTE.rose} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="SomaCanais" fill={SOMA_PALETTE.gold} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Panel>
+            <Panel title="Pedidos por Canal · evolução 6 meses">
+              <div className="h-64">
+                <ResponsiveContainer>
+                  <LineChart data={MONTHS.map((m, i) => { const row: Record<string, number | string> = { month: m }; CHANNEL_KEYS.forEach(({ name }) => { row[name] = Math.round(channelProjections[name]?.[i]?.pedidos || 0); }); return row; })}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a020" />
+                    <XAxis dataKey="month" stroke={SOMA_PALETTE.cream} fontSize={11} />
+                    <YAxis stroke={SOMA_PALETTE.cream} fontSize={11} />
+                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 10 }} />
+                    {CHANNEL_KEYS.map(({ name }, i) => (
+                      <Line key={name} type="monotone" dataKey={name} stroke={PIE_COLORS[i % PIE_COLORS.length]} strokeWidth={2} dot={false} />
+                    ))}
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Panel>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            {CHANNEL_KEYS.map(({ name }, idx) => {
+              const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
+              const series = channelProjections[name] || [];
+              const expanded = channelExpanded === name;
+              const color = PIE_COLORS[idx % PIE_COLORS.length];
+              return (
+                <Panel key={name}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2.5 rounded-full" style={{ background: color }} />
+                      <h4 className="font-semibold" style={{ color: SOMA_PALETTE.cream }}>{name}</h4>
+                    </div>
+                    <button onClick={() => setChannelExpanded(expanded ? null : name)} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                      {expanded ? <ChevronUp className="size-3" /> : <ChevronDown className="size-3" />}
+                      {expanded ? "Recolher" : "Editar premissas"}
+                    </button>
+                  </div>
+
+                  {expanded && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15">
+                      <PremiseInline label="Visitas (Jun)" value={cp.visitas} onChange={(v) => setChannelPremise(name, { visitas: v })} />
+                      <PremiseInline label="Ticket" value={cp.ticket} onChange={(v) => setChannelPremise(name, { ticket: v })} prefix="R$" />
+                      <PremiseInline label="CAC" value={cp.cac} onChange={(v) => setChannelPremise(name, { cac: v })} prefix="R$" />
+                      <PremiseInline label="Investimento" value={cp.invest} onChange={(v) => setChannelPremise(name, { invest: v })} prefix="R$" />
+                      <PremiseInline label="Visita → Carrinho" value={cp.ctc} onChange={(v) => setChannelPremise(name, { ctc: v })} suffix="%" step={0.5} />
+                      <PremiseInline label="Carrinho → Checkout" value={cp.cco} onChange={(v) => setChannelPremise(name, { cco: v })} suffix="%" step={0.5} />
+                      <PremiseInline label="Checkout → Pedido" value={cp.cop} onChange={(v) => setChannelPremise(name, { cop: v })} suffix="%" step={0.5} />
+                      <PremiseInline label="Cresc. Visitas m/m" value={cp.growthVisitas} onChange={(v) => setChannelPremise(name, { growthVisitas: v })} suffix="%" step={0.5} />
+                      <PremiseInline label="Uplift Conv. (pp/mês)" value={cp.growthConv} onChange={(v) => setChannelPremise(name, { growthConv: v })} suffix="pp" step={0.05} />
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-4 gap-1.5 mb-3">
+                    {(() => {
+                      const m0 = series[0];
+                      if (!m0) return null;
+                      const stages = [
+                        { label: "Visitas", v: m0.visitas, w: 100 },
+                        { label: "Carrinho", v: m0.carrinhos, w: (m0.carrinhos / m0.visitas) * 100 },
+                        { label: "Checkout", v: m0.checkouts, w: (m0.checkouts / m0.visitas) * 100 },
+                        { label: "Pedidos", v: m0.pedidos, w: (m0.pedidos / m0.visitas) * 100 },
+                      ];
+                      return stages.map((s) => (
+                        <div key={s.label} className="rounded-md p-2 border border-[#d4a5a0]/15" style={{ background: `${color}10` }}>
+                          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
+                          <div className="text-sm font-semibold tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{Math.round(s.v).toLocaleString("pt-BR")}</div>
+                          <div className="mt-1 h-1 rounded-full bg-[#d4a5a0]/10 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${s.w}%`, background: color }} />
+                          </div>
+                          <div className="text-[10px] text-muted-foreground mt-0.5">{s.w.toFixed(1)}%</div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                          <th className="py-1.5 px-1">Mês</th>
+                          <th className="py-1.5 px-1 text-right">Visitas</th>
+                          <th className="py-1.5 px-1 text-right">Pedidos</th>
+                          <th className="py-1.5 px-1 text-right">Receita</th>
+                          <th className="py-1.5 px-1 text-right">ROAS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {series.map((cm) => (
+                          <tr key={cm.month} className="border-b border-[#d4a5a0]/5">
+                            <td className="py-1.5 px-1 font-medium" style={{ color: cm.idx === 0 ? color : SOMA_PALETTE.cream }}>{cm.month}{cm.idx === 0 ? " ·base" : ""}</td>
+                            <td className="py-1.5 px-1 text-right tabular-nums text-muted-foreground">{Math.round(cm.visitas).toLocaleString("pt-BR")}</td>
+                            <td className="py-1.5 px-1 text-right tabular-nums" style={{ color: SOMA_PALETTE.sage }}>{Math.round(cm.pedidos).toLocaleString("pt-BR")}</td>
+                            <td className="py-1.5 px-1 text-right tabular-nums font-semibold" style={{ color: SOMA_PALETTE.cream }}>{brl(cm.receita)}</td>
+                            <td className="py-1.5 px-1 text-right tabular-nums" style={{ color: cm.roas >= 3 ? SOMA_PALETTE.sage : SOMA_PALETTE.warn }}>{cm.roas > 0 ? `${cm.roas.toFixed(2)}x` : "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
+        </Section>
+
         {/* UNIT ECONOMICS RESUMO */}
         <Section title="Saúde Unitária" subtitle="LTV/CAC, margem, recompra · derivado das premissas">
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -1311,6 +1636,50 @@ function GrowthDial({
             background: `linear-gradient(90deg, ${accent}, ${accent}80)`,
           }}
         />
+      </div>
+    </div>
+  );
+}
+
+function MacroPill({ label, value, accent, hint }: { label: string; value: string; accent: string; hint?: string }) {
+  return (
+    <div className="rounded-md px-3 py-2 border" style={{ borderColor: `${accent}40`, background: `${accent}10` }}>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold tabular-nums" style={{ color: accent }}>{value}</div>
+      {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
+    </div>
+  );
+}
+
+function PremiseInline({
+  label,
+  value,
+  onChange,
+  prefix,
+  suffix,
+  step = 1,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  prefix?: string;
+  suffix?: string;
+  step?: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1 px-2 py-1 rounded border border-[#d4a5a0]/20 bg-[#2a2420]/40">
+        {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
+        <input
+          type="number"
+          value={value === 0 ? "" : value}
+          step={step}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="bg-transparent focus:outline-none w-full text-right tabular-nums text-xs"
+          style={{ color: "#f5ede2" }}
+        />
+        {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
       </div>
     </div>
   );
