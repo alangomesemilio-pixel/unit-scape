@@ -66,12 +66,18 @@ interface BasePremises {
   cmv: number; // %
   recompra: number; // %
   ltv: number;
-  // Crescimentos mensais (%)
-  crescMensal: number;
+  // Crescimentos mensais (%) — MOTOR DO FORECAST
+  crescMensal: number; // fallback / crescimento geral
+  crescReceita: number;
+  crescPedidos: number;
   crescCac: number;
+  crescInvest: number;
+  crescB2B: number;
+  crescInfluenciadora: number;
+  crescWhatsApp: number;
+  crescAssinatura: number;
   crescOperacional: number;
   crescEquipe: number;
-  crescB2B: number;
 }
 
 interface RealizedMonth {
@@ -128,10 +134,16 @@ const DEFAULT_PREMISES: BasePremises = {
   recompra: 32,
   ltv: 720,
   crescMensal: 18,
+  crescReceita: 20,
+  crescPedidos: 15,
   crescCac: 3,
+  crescInvest: 12,
+  crescB2B: 22,
+  crescInfluenciadora: 25,
+  crescWhatsApp: 18,
+  crescAssinatura: 15,
   crescOperacional: 12,
   crescEquipe: 8,
-  crescB2B: 22,
 };
 
 const DEFAULT_STATE: SomaState = {
@@ -239,32 +251,51 @@ interface ProjMonth {
 }
 
 function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth[] {
-  const g = p.crescMensal / 100;
+  const gPed = p.crescPedidos / 100;
   const gCac = p.crescCac / 100;
-  const gOp = p.crescOperacional / 100;
+  const gInv = p.crescInvest / 100;
+  const gRev = p.crescReceita / 100;
   const gB2B = p.crescB2B / 100;
+  const gInf = p.crescInfluenciadora / 100;
+  const gWpp = p.crescWhatsApp / 100;
+  const gAss = p.crescAssinatura / 100;
 
   return MONTHS.map((m, i) => {
-    const fRev = Math.pow(1 + g, i) * mult.rev;
-    const fCac = Math.pow(1 + gCac, i) * mult.cac;
-    const fOp = Math.pow(1 + gOp, i);
+    // i=0 → Junho (mês base, sem crescimento aplicado)
+    const fPed = Math.pow(1 + gPed, i);
+    const fCac = Math.pow(1 + gCac, i) * (i === 0 ? 1 : mult.cac);
+    const fInv = Math.pow(1 + gInv, i);
+    const fRev = Math.pow(1 + gRev, i) * (i === 0 ? 1 : mult.rev);
     const fB2B = Math.pow(1 + gB2B, i);
+    const fInf = Math.pow(1 + gInf, i);
+    const fWpp = Math.pow(1 + gWpp, i);
+    const fAss = Math.pow(1 + gAss, i);
 
-    const invest = p.invest * fOp;
+    const invest = p.invest * fInv;
     const cac = p.cac * fCac;
-    const ticket = p.ticket * (1 + i * 0.005); // ticket sobe levemente
-    const pedidos = cac > 0 ? invest / cac : 0;
-    const receita = pedidos * ticket;
+    const ticket = p.ticket * (1 + i * 0.005);
+    // Pedidos: aplica crescimento direto sobre base de Junho
+    const pedidos = p.pedidos * fPed;
+    // Receita = pedidos × ticket (fórmula central)
+    const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
     const roas = invest > 0 ? receita / invest : 0;
     const margem = p.margemBruta;
-    const lucro = receita * (margem / 100 - 0.18); // após opex aprox
+    const lucro = receita * (margem / 100 - 0.18);
     const ebitda = receita * (margem / 100 - 0.22);
 
+    const canalGrowth: Record<string, number> = {
+      DTC: fRev,
+      WhatsApp: fWpp,
+      Influenciadora: fInf,
+      "TikTok Shop": fRev,
+      B2B: fB2B,
+      Assinatura: fAss,
+      Marketplace: fRev,
+    };
     const canais: Record<string, number> = {};
     CHANNEL_KEYS.forEach(({ key, name }) => {
       const base = p[key] as number;
-      const fator = name === "B2B" ? fB2B : fRev;
-      canais[name] = base * fator;
+      canais[name] = base * (canalGrowth[name] ?? fRev);
     });
 
     return {
@@ -282,10 +313,10 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
       margem,
       canais,
       receitaB2B: p.receitaB2B * fB2B,
-      receitaInfluenciadora: p.receitaInfluenciadora * fRev,
-      receitaWhatsApp: p.receitaWhatsApp * fRev,
+      receitaInfluenciadora: p.receitaInfluenciadora * fInf,
+      receitaWhatsApp: p.receitaWhatsApp * fWpp,
       receitaTikTokShop: p.receitaTikTokShop * fRev,
-      receitaAssinatura: p.receitaAssinatura * fRev,
+      receitaAssinatura: p.receitaAssinatura * fAss,
     };
   });
 }
@@ -568,19 +599,35 @@ export function SomaForecasting() {
                   <PremiseField label="LTV" prefix="R$" value={state.premises.ltv} onChange={(v) => setPremise("ltv", v)} />
                 </PremisesGroup>
 
-                <PremisesGroup title="Crescimentos mensais esperados">
-                  <PremiseField label="Crescimento mensal" suffix="%" step={0.5} value={state.premises.crescMensal} onChange={(v) => setPremise("crescMensal", v)} />
-                  <PremiseField label="Crescimento CAC" suffix="%" step={0.5} value={state.premises.crescCac} onChange={(v) => setPremise("crescCac", v)} />
-                  <PremiseField label="Crescimento operacional" suffix="%" step={0.5} value={state.premises.crescOperacional} onChange={(v) => setPremise("crescOperacional", v)} />
-                  <PremiseField label="Crescimento equipe" suffix="%" step={0.5} value={state.premises.crescEquipe} onChange={(v) => setPremise("crescEquipe", v)} />
-                  <PremiseField label="Crescimento B2B" suffix="%" step={0.5} value={state.premises.crescB2B} onChange={(v) => setPremise("crescB2B", v)} />
-                </PremisesGroup>
-
                 <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3">
-                  Fórmulas: Faturamento = Pedidos × Ticket · Pedidos = Investimento ÷ CAC · ROAS = Faturamento ÷ Investimento · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
+                  Junho é a <span style={{ color: SOMA_PALETTE.rose }}>base-mãe</span> · Faturamento = Pedidos × Ticket · ROAS = Receita ÷ Investimento · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
                 </div>
               </div>
             )}
+          </Panel>
+        </Section>
+
+        {/* MOTOR DO FORECAST */}
+        <Section
+          title="Motor do Forecast"
+          subtitle="% de crescimento mensal aplicado em cada variável · alimenta automaticamente Jul → Dez"
+        >
+          <Panel>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <GrowthDial label="Receita geral" value={state.premises.crescReceita} onChange={(v) => setPremise("crescReceita", v)} accent={SOMA_PALETTE.gold} />
+              <GrowthDial label="Pedidos" value={state.premises.crescPedidos} onChange={(v) => setPremise("crescPedidos", v)} accent={SOMA_PALETTE.rose} />
+              <GrowthDial label="CAC" value={state.premises.crescCac} onChange={(v) => setPremise("crescCac", v)} accent={SOMA_PALETTE.alert} invertedGood />
+              <GrowthDial label="Investimento" value={state.premises.crescInvest} onChange={(v) => setPremise("crescInvest", v)} accent={SOMA_PALETTE.warn} />
+              <GrowthDial label="B2B" value={state.premises.crescB2B} onChange={(v) => setPremise("crescB2B", v)} accent={SOMA_PALETTE.sage} />
+              <GrowthDial label="Influenciadora" value={state.premises.crescInfluenciadora} onChange={(v) => setPremise("crescInfluenciadora", v)} accent={SOMA_PALETTE.roseDeep} />
+              <GrowthDial label="WhatsApp" value={state.premises.crescWhatsApp} onChange={(v) => setPremise("crescWhatsApp", v)} accent={SOMA_PALETTE.blush} />
+              <GrowthDial label="Assinatura" value={state.premises.crescAssinatura} onChange={(v) => setPremise("crescAssinatura", v)} accent={SOMA_PALETTE.gold} />
+              <GrowthDial label="Operacional" value={state.premises.crescOperacional} onChange={(v) => setPremise("crescOperacional", v)} accent={SOMA_PALETTE.sand} />
+              <GrowthDial label="Equipe" value={state.premises.crescEquipe} onChange={(v) => setPremise("crescEquipe", v)} accent={SOMA_PALETTE.cream} />
+            </div>
+            <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3 mt-4">
+              Cada % é aplicado de forma composta sobre a base de Junho: <code className="text-[#d4a5a0]">Var<sub>mês</sub> = Var<sub>jun</sub> × (1 + g)<sup>n</sup></code>. Altere qualquer valor → todo o forecast recalcula em tempo real.
+            </div>
           </Panel>
         </Section>
 
@@ -1204,6 +1251,67 @@ function HealthCard({ label, value, healthy, meta, inverted }: { label: string; 
       </div>
       <div className="text-xl font-light tabular-nums" style={{ color: healthy ? SOMA_PALETTE.sage : SOMA_PALETTE.alert }}>{value}</div>
       <div className="text-[10px] text-muted-foreground mt-1">{meta}{inverted ? "" : ""}</div>
+    </div>
+  );
+}
+
+function GrowthDial({
+  label,
+  value,
+  onChange,
+  accent,
+  invertedGood = false,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  accent: string;
+  invertedGood?: boolean;
+}) {
+  // Para CAC: crescimento baixo é bom (invertedGood)
+  const tone = invertedGood
+    ? value <= 5
+      ? SOMA_PALETTE.sage
+      : value <= 12
+        ? SOMA_PALETTE.warn
+        : SOMA_PALETTE.alert
+    : value >= 15
+      ? SOMA_PALETTE.sage
+      : value >= 5
+        ? SOMA_PALETTE.warn
+        : SOMA_PALETTE.alert;
+  return (
+    <div
+      className="rounded-lg p-3 border transition-colors"
+      style={{
+        background: "linear-gradient(135deg, rgba(212,165,160,0.04), rgba(212,165,160,0.01))",
+        borderColor: `${accent}30`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="size-1.5 rounded-full" style={{ background: accent }} />
+      </div>
+      <div className="flex items-baseline gap-1">
+        <input
+          type="number"
+          step={0.5}
+          value={value === 0 ? "" : value}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="bg-transparent border-b border-[#d4a5a0]/20 focus:border-[#d4a5a0] focus:outline-none w-full text-2xl font-light tabular-nums text-right"
+          style={{ color: tone }}
+        />
+        <span className="text-sm" style={{ color: tone }}>%</span>
+      </div>
+      <div className="mt-2 h-1 w-full rounded-full bg-[#d4a5a0]/10 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${Math.min(Math.abs(value) * 3, 100)}%`,
+            background: `linear-gradient(90deg, ${accent}, ${accent}80)`,
+          }}
+        />
+      </div>
     </div>
   );
 }
