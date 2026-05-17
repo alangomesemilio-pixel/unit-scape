@@ -599,19 +599,35 @@ export function SomaForecasting() {
                   <PremiseField label="LTV" prefix="R$" value={state.premises.ltv} onChange={(v) => setPremise("ltv", v)} />
                 </PremisesGroup>
 
-                <PremisesGroup title="Crescimentos mensais esperados">
-                  <PremiseField label="Crescimento mensal" suffix="%" step={0.5} value={state.premises.crescMensal} onChange={(v) => setPremise("crescMensal", v)} />
-                  <PremiseField label="Crescimento CAC" suffix="%" step={0.5} value={state.premises.crescCac} onChange={(v) => setPremise("crescCac", v)} />
-                  <PremiseField label="Crescimento operacional" suffix="%" step={0.5} value={state.premises.crescOperacional} onChange={(v) => setPremise("crescOperacional", v)} />
-                  <PremiseField label="Crescimento equipe" suffix="%" step={0.5} value={state.premises.crescEquipe} onChange={(v) => setPremise("crescEquipe", v)} />
-                  <PremiseField label="Crescimento B2B" suffix="%" step={0.5} value={state.premises.crescB2B} onChange={(v) => setPremise("crescB2B", v)} />
-                </PremisesGroup>
-
                 <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3">
-                  Fórmulas: Faturamento = Pedidos × Ticket · Pedidos = Investimento ÷ CAC · ROAS = Faturamento ÷ Investimento · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
+                  Junho é a <span style={{ color: SOMA_PALETTE.rose }}>base-mãe</span> · Faturamento = Pedidos × Ticket · ROAS = Receita ÷ Investimento · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
                 </div>
               </div>
             )}
+          </Panel>
+        </Section>
+
+        {/* MOTOR DO FORECAST */}
+        <Section
+          title="Motor do Forecast"
+          subtitle="% de crescimento mensal aplicado em cada variável · alimenta automaticamente Jul → Dez"
+        >
+          <Panel>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              <GrowthDial label="Receita geral" value={state.premises.crescReceita} onChange={(v) => setPremise("crescReceita", v)} accent={SOMA_PALETTE.gold} />
+              <GrowthDial label="Pedidos" value={state.premises.crescPedidos} onChange={(v) => setPremise("crescPedidos", v)} accent={SOMA_PALETTE.rose} />
+              <GrowthDial label="CAC" value={state.premises.crescCac} onChange={(v) => setPremise("crescCac", v)} accent={SOMA_PALETTE.alert} invertedGood />
+              <GrowthDial label="Investimento" value={state.premises.crescInvest} onChange={(v) => setPremise("crescInvest", v)} accent={SOMA_PALETTE.warn} />
+              <GrowthDial label="B2B" value={state.premises.crescB2B} onChange={(v) => setPremise("crescB2B", v)} accent={SOMA_PALETTE.sage} />
+              <GrowthDial label="Influenciadora" value={state.premises.crescInfluenciadora} onChange={(v) => setPremise("crescInfluenciadora", v)} accent={SOMA_PALETTE.roseDeep} />
+              <GrowthDial label="WhatsApp" value={state.premises.crescWhatsApp} onChange={(v) => setPremise("crescWhatsApp", v)} accent={SOMA_PALETTE.blush} />
+              <GrowthDial label="Assinatura" value={state.premises.crescAssinatura} onChange={(v) => setPremise("crescAssinatura", v)} accent={SOMA_PALETTE.gold} />
+              <GrowthDial label="Operacional" value={state.premises.crescOperacional} onChange={(v) => setPremise("crescOperacional", v)} accent={SOMA_PALETTE.sand} />
+              <GrowthDial label="Equipe" value={state.premises.crescEquipe} onChange={(v) => setPremise("crescEquipe", v)} accent={SOMA_PALETTE.cream} />
+            </div>
+            <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3 mt-4">
+              Cada % é aplicado de forma composta sobre a base de Junho: <code className="text-[#d4a5a0]">Var<sub>mês</sub> = Var<sub>jun</sub> × (1 + g)<sup>n</sup></code>. Altere qualquer valor → todo o forecast recalcula em tempo real.
+            </div>
           </Panel>
         </Section>
 
