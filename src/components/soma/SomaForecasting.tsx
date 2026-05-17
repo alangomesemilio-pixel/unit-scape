@@ -420,6 +420,8 @@ function EditNum({
 export function SomaForecasting() {
   const [state, setState] = useState<SomaState>(() => DEFAULT_STATE);
   const [premisesOpen, setPremisesOpen] = useState(true);
+  const [channelMonthIdx, setChannelMonthIdx] = useState(0);
+  const [channelExpanded, setChannelExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
