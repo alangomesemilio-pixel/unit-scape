@@ -23,7 +23,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "exec" | "forecast" | "org" | "meetings" | "ai";
+type View = "exec" | "forecast" | "soma" | "org" | "meetings" | "ai";
 
 function Index() {
   const [view, setView] = useState<View>("exec");
@@ -44,6 +44,9 @@ function Index() {
         <NavBtn active={view === "forecast"} onClick={() => setView("forecast")} icon={LineChart}>
           Forecasting
         </NavBtn>
+        <NavBtn active={view === "soma"} onClick={() => setView("soma")} icon={Heart}>
+          Forecasting Estratégico – Soma
+        </NavBtn>
         <NavBtn active={view === "org"} onClick={() => setView("org")} icon={Network}>
           Organograma
         </NavBtn>
@@ -60,6 +63,8 @@ function Index() {
           <ExecutiveDashboard />
         ) : view === "forecast" ? (
           <ForecastingDashboard />
+        ) : view === "soma" ? (
+          <SomaForecasting />
         ) : view === "org" ? (
           <OrgChart />
         ) : view === "meetings" ? (
