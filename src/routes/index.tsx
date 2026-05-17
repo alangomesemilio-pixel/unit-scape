@@ -5,8 +5,9 @@ import { MeetingsDashboard } from "@/components/meetings/MeetingsDashboard";
 import { ExecutiveDashboard } from "@/components/exec/ExecutiveDashboard";
 import { ExecAiChat } from "@/components/ai/ExecAiChat";
 import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard";
+import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { Toaster } from "@/components/ui/sonner";
-import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "exec" | "forecast" | "org" | "meetings" | "ai";
+type View = "exec" | "forecast" | "soma" | "org" | "meetings" | "ai";
 
 function Index() {
   const [view, setView] = useState<View>("exec");
@@ -43,6 +44,9 @@ function Index() {
         <NavBtn active={view === "forecast"} onClick={() => setView("forecast")} icon={LineChart}>
           Forecasting
         </NavBtn>
+        <NavBtn active={view === "soma"} onClick={() => setView("soma")} icon={Heart}>
+          Forecasting Estratégico – Soma
+        </NavBtn>
         <NavBtn active={view === "org"} onClick={() => setView("org")} icon={Network}>
           Organograma
         </NavBtn>
@@ -59,6 +63,8 @@ function Index() {
           <ExecutiveDashboard />
         ) : view === "forecast" ? (
           <ForecastingDashboard />
+        ) : view === "soma" ? (
+          <SomaForecasting />
         ) : view === "org" ? (
           <OrgChart />
         ) : view === "meetings" ? (
