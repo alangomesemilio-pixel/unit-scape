@@ -160,6 +160,16 @@ const DEFAULT_PREMISES: BasePremises = {
   crescEquipe: 8,
 };
 
+const DEFAULT_CHANNEL_PREMISES: Record<string, ChannelPremise> = {
+  DTC:            { visitas: 25000, ctc: 8,  cco: 45, cop: 55, ticket: 250,  cac: 65,  invest: 28000, growthVisitas: 14, growthConv: 0.10 },
+  WhatsApp:       { visitas: 4500,  ctc: 18, cco: 60, cop: 65, ticket: 195,  cac: 38,  invest: 4000,  growthVisitas: 22, growthConv: 0.20 },
+  Influenciadora: { visitas: 12000, ctc: 10, cco: 50, cop: 50, ticket: 230,  cac: 55,  invest: 8000,  growthVisitas: 28, growthConv: 0.15 },
+  "TikTok Shop":  { visitas: 8000,  ctc: 9,  cco: 40, cop: 45, ticket: 180,  cac: 48,  invest: 4500,  growthVisitas: 25, growthConv: 0.12 },
+  B2B:            { visitas: 1200,  ctc: 30, cco: 70, cop: 80, ticket: 2200, cac: 380, invest: 3500,  growthVisitas: 18, growthConv: 0.10 },
+  Assinatura:     { visitas: 2200,  ctc: 12, cco: 55, cop: 70, ticket: 165,  cac: 42,  invest: 1500,  growthVisitas: 16, growthConv: 0.15 },
+  Marketplace:    { visitas: 9000,  ctc: 7,  cco: 40, cop: 50, ticket: 210,  cac: 55,  invest: 0,     growthVisitas: 12, growthConv: 0.08 },
+};
+
 const DEFAULT_STATE: SomaState = {
   premises: DEFAULT_PREMISES,
   realized: {
@@ -170,6 +180,7 @@ const DEFAULT_STATE: SomaState = {
     DTC: { receita: 96000, pedidos: 380, cac: 70, margem: 56, roas: 3.5 },
     WhatsApp: { receita: 24000, pedidos: 82, cac: 38, margem: 64, roas: 5.0 },
   },
+  channelPremises: DEFAULT_CHANNEL_PREMISES,
   scenario: "base",
 };
 
