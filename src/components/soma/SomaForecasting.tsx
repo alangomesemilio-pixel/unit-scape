@@ -550,6 +550,29 @@ export function SomaForecasting() {
   }));
   const canalTotal = canalShare.reduce((a, c) => a + c.value, 0);
 
+  // Forecast detalhado por canal (funil + pedidos + receita por mês)
+  const channelProjections = useMemo(() => {
+    const out: Record<string, ChannelMonth[]> = {};
+    CHANNEL_KEYS.forEach(({ name }) => {
+      const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
+      out[name] = projectChannel(cp, mult);
+    });
+    return out;
+  }, [state.channelPremises, mult]);
+
+  // Macro mensal: soma de canais vs macro principal (para reconciliar)
+  const macroVsChannels = projection.map((m, i) => {
+    const sumRec = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[i]?.receita || 0), 0);
+    const sumPed = CHANNEL_KEYS.reduce((a, { name }) => a + (channelProjections[name]?.[i]?.pedidos || 0), 0);
+    return {
+      month: m.month,
+      MacroReceita: Math.round(m.receita),
+      SomaCanais: Math.round(sumRec),
+      MacroPedidos: Math.round(m.pedidos),
+      PedidosCanais: Math.round(sumPed),
+    };
+  });
+
   return (
     <div
       className="h-full overflow-y-auto"
