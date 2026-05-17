@@ -97,10 +97,24 @@ interface ChannelRealized {
   roas?: number;
 }
 
+// Premissas detalhadas de funil por canal (mês base = Jun)
+interface ChannelPremise {
+  visitas: number;       // sessões/leads no mês base
+  ctc: number;           // % visita → carrinho
+  cco: number;           // % carrinho → checkout
+  cop: number;           // % checkout → pedido
+  ticket: number;
+  cac: number;
+  invest: number;
+  growthVisitas: number; // % m/m
+  growthConv: number;    // pp uplift cumulativo na conv final por mês
+}
+
 interface SomaState {
   premises: BasePremises;
   realized: Record<string, RealizedMonth>; // month label -> realized
   channelReal: Record<string, ChannelRealized>; // channel name -> realized
+  channelPremises: Record<string, ChannelPremise>; // funil + forecast por canal
   scenario: ScenarioKey;
 }
 
