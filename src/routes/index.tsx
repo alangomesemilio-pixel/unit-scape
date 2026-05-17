@@ -5,8 +5,9 @@ import { MeetingsDashboard } from "@/components/meetings/MeetingsDashboard";
 import { ExecutiveDashboard } from "@/components/exec/ExecutiveDashboard";
 import { ExecAiChat } from "@/components/ai/ExecAiChat";
 import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard";
+import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { Toaster } from "@/components/ui/sonner";
-import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
