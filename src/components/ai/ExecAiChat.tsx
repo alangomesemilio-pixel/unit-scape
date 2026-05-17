@@ -270,7 +270,7 @@ function MessageBubble({ msg }: { msg: AiMessage }) {
         {isUser ? (
           <p className="whitespace-pre-wrap">{msg.content}</p>
         ) : (
-          <div className="prose prose-sm dark:prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-strong:text-foreground">
+          <div className="prose prose-sm prose-invert max-w-none prose-headings:mt-3 prose-headings:mb-1 prose-p:my-1.5 prose-ul:my-1.5 prose-li:my-0.5 prose-strong:text-foreground prose-p:text-foreground prose-li:text-foreground prose-headings:text-foreground prose-a:text-primary prose-code:text-primary">
             <ReactMarkdown>{msg.content}</ReactMarkdown>
           </div>
         )}
