@@ -134,10 +134,16 @@ const DEFAULT_PREMISES: BasePremises = {
   recompra: 32,
   ltv: 720,
   crescMensal: 18,
+  crescReceita: 20,
+  crescPedidos: 15,
   crescCac: 3,
+  crescInvest: 12,
+  crescB2B: 22,
+  crescInfluenciadora: 25,
+  crescWhatsApp: 18,
+  crescAssinatura: 15,
   crescOperacional: 12,
   crescEquipe: 8,
-  crescB2B: 22,
 };
 
 const DEFAULT_STATE: SomaState = {
