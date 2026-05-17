@@ -434,7 +434,57 @@ export function SomaForecasting() {
   }, [state]);
 
   const mult = SCENARIO_MULT[state.scenario];
-  const projection = useMemo(() => project(state.premises, mult), [state.premises, mult]);
+
+  // Projeção por canal (funil) — fonte da verdade do macro
+  const channelProjections = useMemo(() => {
+    const out: Record<string, ChannelMonth[]> = {};
+    CHANNEL_KEYS.forEach(({ name }) => {
+      const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
+      out[name] = projectChannel(cp, mult);
+    });
+    return out;
+  }, [state.channelPremises, mult]);
+
+  // Macro = soma dos canais (reflete edições nos canais como no forecast do mês)
+  const projection = useMemo(() => {
+    const base = project(state.premises, mult);
+    return base.map((m, i) => {
+      let sumRec = 0, sumPed = 0, sumInv = 0, sumCacWeighted = 0;
+      const canais: Record<string, number> = {};
+      CHANNEL_KEYS.forEach(({ name }) => {
+        const cm = channelProjections[name]?.[i];
+        if (!cm) return;
+        sumRec += cm.receita;
+        sumPed += cm.pedidos;
+        sumInv += cm.invest;
+        sumCacWeighted += cm.cac * cm.pedidos;
+        canais[name] = cm.receita;
+      });
+      if (sumRec === 0 && sumPed === 0) return m; // fallback se canais vazios
+      const ticket = sumPed > 0 ? sumRec / sumPed : m.ticket;
+      const cac = sumPed > 0 ? sumCacWeighted / sumPed : m.cac;
+      const roas = sumInv > 0 ? sumRec / sumInv : 0;
+      const lucro = sumRec * (m.margem / 100 - 0.18);
+      const ebitda = sumRec * (m.margem / 100 - 0.22);
+      return {
+        ...m,
+        receita: sumRec,
+        pedidos: sumPed,
+        invest: sumInv,
+        ticket,
+        cac,
+        roas,
+        lucro,
+        ebitda,
+        canais,
+        receitaB2B: channelProjections["B2B"]?.[i]?.receita ?? m.receitaB2B,
+        receitaInfluenciadora: channelProjections["Influenciadora"]?.[i]?.receita ?? m.receitaInfluenciadora,
+        receitaWhatsApp: channelProjections["WhatsApp"]?.[i]?.receita ?? m.receitaWhatsApp,
+        receitaTikTokShop: channelProjections["TikTok Shop"]?.[i]?.receita ?? m.receitaTikTokShop,
+        receitaAssinatura: channelProjections["Assinatura"]?.[i]?.receita ?? m.receitaAssinatura,
+      };
+    });
+  }, [state.premises, mult, channelProjections]);
 
   // Totais
   const totals = useMemo(() => {
@@ -552,15 +602,8 @@ export function SomaForecasting() {
   }));
   const canalTotal = canalShare.reduce((a, c) => a + c.value, 0);
 
-  // Forecast detalhado por canal (funil + pedidos + receita por mês)
-  const channelProjections = useMemo(() => {
-    const out: Record<string, ChannelMonth[]> = {};
-    CHANNEL_KEYS.forEach(({ name }) => {
-      const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
-      out[name] = projectChannel(cp, mult);
-    });
-    return out;
-  }, [state.channelPremises, mult]);
+  // (channelProjections já calculado acima — fonte de verdade do macro)
+
 
   // Macro mensal: soma de canais vs macro principal (para reconciliar)
   const macroVsChannels = projection.map((m, i) => {
