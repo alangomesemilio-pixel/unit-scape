@@ -1254,3 +1254,64 @@ function HealthCard({ label, value, healthy, meta, inverted }: { label: string; 
     </div>
   );
 }
+
+function GrowthDial({
+  label,
+  value,
+  onChange,
+  accent,
+  invertedGood = false,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  accent: string;
+  invertedGood?: boolean;
+}) {
+  // Para CAC: crescimento baixo é bom (invertedGood)
+  const tone = invertedGood
+    ? value <= 5
+      ? SOMA_PALETTE.sage
+      : value <= 12
+        ? SOMA_PALETTE.warn
+        : SOMA_PALETTE.alert
+    : value >= 15
+      ? SOMA_PALETTE.sage
+      : value >= 5
+        ? SOMA_PALETTE.warn
+        : SOMA_PALETTE.alert;
+  return (
+    <div
+      className="rounded-lg p-3 border transition-colors"
+      style={{
+        background: "linear-gradient(135deg, rgba(212,165,160,0.04), rgba(212,165,160,0.01))",
+        borderColor: `${accent}30`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="size-1.5 rounded-full" style={{ background: accent }} />
+      </div>
+      <div className="flex items-baseline gap-1">
+        <input
+          type="number"
+          step={0.5}
+          value={value === 0 ? "" : value}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="bg-transparent border-b border-[#d4a5a0]/20 focus:border-[#d4a5a0] focus:outline-none w-full text-2xl font-light tabular-nums text-right"
+          style={{ color: tone }}
+        />
+        <span className="text-sm" style={{ color: tone }}>%</span>
+      </div>
+      <div className="mt-2 h-1 w-full rounded-full bg-[#d4a5a0]/10 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{
+            width: `${Math.min(Math.abs(value) * 3, 100)}%`,
+            background: `linear-gradient(90deg, ${accent}, ${accent}80)`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
