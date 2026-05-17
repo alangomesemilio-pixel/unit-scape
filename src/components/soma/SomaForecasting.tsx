@@ -347,7 +347,42 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
   });
 }
 
-// ============ ATOMIC EDITABLE ============
+// ============ CHANNEL FUNNEL PROJECTION ============
+export interface ChannelMonth {
+  month: string;
+  idx: number;
+  visitas: number;
+  carrinhos: number;
+  checkouts: number;
+  pedidos: number;
+  receita: number;
+  ticket: number;
+  cac: number;
+  invest: number;
+  roas: number;
+  convFinal: number; // %
+}
+
+function projectChannel(cp: ChannelPremise, mult: { rev: number; cac: number }): ChannelMonth[] {
+  const gVis = cp.growthVisitas / 100;
+  return MONTHS.map((m, i) => {
+    const visitas = cp.visitas * Math.pow(1 + gVis, i);
+    const carrinhos = visitas * (cp.ctc / 100);
+    const checkouts = carrinhos * (cp.cco / 100);
+    // pequeno uplift de conv final (cop) ao longo do tempo via growthConv (pp)
+    const cop = Math.min(95, cp.cop + cp.growthConv * i);
+    const pedidos = checkouts * (cop / 100);
+    const ticket = cp.ticket * (1 + i * 0.004);
+    const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
+    const cac = cp.cac * (i === 0 ? 1 : mult.cac);
+    const invest = cp.invest * Math.pow(1 + gVis * 0.7, i);
+    const roas = invest > 0 ? receita / invest : 0;
+    const convFinal = visitas > 0 ? (pedidos / visitas) * 100 : 0;
+    return { month: m, idx: i, visitas, carrinhos, checkouts, pedidos, receita, ticket, cac, invest, roas, convFinal };
+  });
+}
+
+
 function EditNum({
   value,
   onChange,
