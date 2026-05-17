@@ -1640,3 +1640,47 @@ function GrowthDial({
     </div>
   );
 }
+
+function MacroPill({ label, value, accent, hint }: { label: string; value: string; accent: string; hint?: string }) {
+  return (
+    <div className="rounded-md px-3 py-2 border" style={{ borderColor: `${accent}40`, background: `${accent}10` }}>
+      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-sm font-semibold tabular-nums" style={{ color: accent }}>{value}</div>
+      {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
+    </div>
+  );
+}
+
+function PremiseInline({
+  label,
+  value,
+  onChange,
+  prefix,
+  suffix,
+  step = 1,
+}: {
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  prefix?: string;
+  suffix?: string;
+  step?: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="flex items-center gap-1 px-2 py-1 rounded border border-[#d4a5a0]/20 bg-[#2a2420]/40">
+        {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
+        <input
+          type="number"
+          value={value === 0 ? "" : value}
+          step={step}
+          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
+          className="bg-transparent focus:outline-none w-full text-right tabular-nums text-xs"
+          style={{ color: "#f5ede2" }}
+        />
+        {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
+      </div>
+    </div>
+  );
+}
