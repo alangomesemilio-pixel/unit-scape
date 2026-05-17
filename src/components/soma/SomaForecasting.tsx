@@ -66,12 +66,18 @@ interface BasePremises {
   cmv: number; // %
   recompra: number; // %
   ltv: number;
-  // Crescimentos mensais (%)
-  crescMensal: number;
+  // Crescimentos mensais (%) — MOTOR DO FORECAST
+  crescMensal: number; // fallback / crescimento geral
+  crescReceita: number;
+  crescPedidos: number;
   crescCac: number;
+  crescInvest: number;
+  crescB2B: number;
+  crescInfluenciadora: number;
+  crescWhatsApp: number;
+  crescAssinatura: number;
   crescOperacional: number;
   crescEquipe: number;
-  crescB2B: number;
 }
 
 interface RealizedMonth {
