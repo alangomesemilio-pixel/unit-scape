@@ -466,6 +466,15 @@ export function SomaForecasting() {
   const setChannelReal = (name: string, patch: ChannelRealized) =>
     setState((s) => ({ ...s, channelReal: { ...s.channelReal, [name]: { ...s.channelReal[name], ...patch } } }));
 
+  const setChannelPremise = (name: string, patch: Partial<ChannelPremise>) =>
+    setState((s) => ({
+      ...s,
+      channelPremises: {
+        ...s.channelPremises,
+        [name]: { ...(s.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name]), ...patch },
+      },
+    }));
+
   // Recalibrar forecast: usa última performance real para reescrever premissas
   const recalibrate = () => {
     const filled = MONTHS.map((m) => ({ m, r: state.realized[m] })).filter((x) => x.r?.receita);
