@@ -602,15 +602,8 @@ export function SomaForecasting() {
   }));
   const canalTotal = canalShare.reduce((a, c) => a + c.value, 0);
 
-  // Forecast detalhado por canal (funil + pedidos + receita por mês)
-  const channelProjections = useMemo(() => {
-    const out: Record<string, ChannelMonth[]> = {};
-    CHANNEL_KEYS.forEach(({ name }) => {
-      const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
-      out[name] = projectChannel(cp, mult);
-    });
-    return out;
-  }, [state.channelPremises, mult]);
+  // (channelProjections já calculado acima — fonte de verdade do macro)
+
 
   // Macro mensal: soma de canais vs macro principal (para reconciliar)
   const macroVsChannels = projection.map((m, i) => {
