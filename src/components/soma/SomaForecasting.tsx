@@ -226,6 +226,7 @@ function loadState(): SomaState {
         premises: { ...DEFAULT_PREMISES, ...(parsed.premises || {}) },
         realized: parsed.realized || {},
         channelReal: parsed.channelReal || {},
+        channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
       };
     }
   } catch {}
