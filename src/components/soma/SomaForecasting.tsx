@@ -251,32 +251,51 @@ interface ProjMonth {
 }
 
 function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth[] {
-  const g = p.crescMensal / 100;
+  const gPed = p.crescPedidos / 100;
   const gCac = p.crescCac / 100;
-  const gOp = p.crescOperacional / 100;
+  const gInv = p.crescInvest / 100;
+  const gRev = p.crescReceita / 100;
   const gB2B = p.crescB2B / 100;
+  const gInf = p.crescInfluenciadora / 100;
+  const gWpp = p.crescWhatsApp / 100;
+  const gAss = p.crescAssinatura / 100;
 
   return MONTHS.map((m, i) => {
-    const fRev = Math.pow(1 + g, i) * mult.rev;
-    const fCac = Math.pow(1 + gCac, i) * mult.cac;
-    const fOp = Math.pow(1 + gOp, i);
+    // i=0 → Junho (mês base, sem crescimento aplicado)
+    const fPed = Math.pow(1 + gPed, i);
+    const fCac = Math.pow(1 + gCac, i) * (i === 0 ? 1 : mult.cac);
+    const fInv = Math.pow(1 + gInv, i);
+    const fRev = Math.pow(1 + gRev, i) * (i === 0 ? 1 : mult.rev);
     const fB2B = Math.pow(1 + gB2B, i);
+    const fInf = Math.pow(1 + gInf, i);
+    const fWpp = Math.pow(1 + gWpp, i);
+    const fAss = Math.pow(1 + gAss, i);
 
-    const invest = p.invest * fOp;
+    const invest = p.invest * fInv;
     const cac = p.cac * fCac;
-    const ticket = p.ticket * (1 + i * 0.005); // ticket sobe levemente
-    const pedidos = cac > 0 ? invest / cac : 0;
-    const receita = pedidos * ticket;
+    const ticket = p.ticket * (1 + i * 0.005);
+    // Pedidos: aplica crescimento direto sobre base de Junho
+    const pedidos = p.pedidos * fPed;
+    // Receita = pedidos × ticket (fórmula central)
+    const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
     const roas = invest > 0 ? receita / invest : 0;
     const margem = p.margemBruta;
-    const lucro = receita * (margem / 100 - 0.18); // após opex aprox
+    const lucro = receita * (margem / 100 - 0.18);
     const ebitda = receita * (margem / 100 - 0.22);
 
+    const canalGrowth: Record<string, number> = {
+      DTC: fRev,
+      WhatsApp: fWpp,
+      Influenciadora: fInf,
+      "TikTok Shop": fRev,
+      B2B: fB2B,
+      Assinatura: fAss,
+      Marketplace: fRev,
+    };
     const canais: Record<string, number> = {};
     CHANNEL_KEYS.forEach(({ key, name }) => {
       const base = p[key] as number;
-      const fator = name === "B2B" ? fB2B : fRev;
-      canais[name] = base * fator;
+      canais[name] = base * (canalGrowth[name] ?? fRev);
     });
 
     return {
@@ -294,10 +313,10 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
       margem,
       canais,
       receitaB2B: p.receitaB2B * fB2B,
-      receitaInfluenciadora: p.receitaInfluenciadora * fRev,
-      receitaWhatsApp: p.receitaWhatsApp * fRev,
+      receitaInfluenciadora: p.receitaInfluenciadora * fInf,
+      receitaWhatsApp: p.receitaWhatsApp * fWpp,
       receitaTikTokShop: p.receitaTikTokShop * fRev,
-      receitaAssinatura: p.receitaAssinatura * fRev,
+      receitaAssinatura: p.receitaAssinatura * fAss,
     };
   });
 }
