@@ -990,7 +990,271 @@ export function SomaForecasting() {
           </div>
         </Section>
 
-        {/* PREMISSAS BASE (MÊS 1) */}
+        {/* OKRs ESTRATÉGICOS */}
+        <Section
+          title="OKRs Estratégicos · Soma"
+          subtitle="Objetivos do semestre → Key Results vivos → meta mensal e semanal pro time bater"
+          icon={Trophy}
+        >
+          <Panel>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-xs text-muted-foreground">
+                Progresso geral do plano · {okrProgress(state.okrs).toFixed(0)}% atingido
+                <span className="ml-3 text-[10px] uppercase tracking-wider" style={{ color: SOMA_PALETTE.rose }}>
+                  Semestre Jun → Dez · 30 semanas
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={addObjective}
+                className="h-7 text-xs"
+                style={{ color: SOMA_PALETTE.rose }}
+              >
+                <Plus className="size-3 mr-1" /> Novo objetivo
+              </Button>
+            </div>
+
+            {/* Barra de progresso global */}
+            <div className="h-2 rounded-full overflow-hidden mb-6" style={{ background: `${SOMA_PALETTE.rose}15` }}>
+              <div
+                className="h-full transition-all"
+                style={{
+                  width: `${Math.min(100, okrProgress(state.okrs))}%`,
+                  background: `linear-gradient(90deg, ${SOMA_PALETTE.rose}, ${SOMA_PALETTE.gold})`,
+                }}
+              />
+            </div>
+
+            <div className="space-y-5">
+              {state.okrs.map((obj) => {
+                const objProg = okrProgress([obj]);
+                return (
+                  <div
+                    key={obj.id}
+                    className="rounded-xl border p-4"
+                    style={{
+                      borderColor: `${obj.accent}40`,
+                      background: `linear-gradient(135deg, ${obj.accent}08, transparent)`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div
+                          className="size-10 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${obj.accent}25`, color: obj.accent }}
+                        >
+                          <Flag className="size-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <input
+                            value={obj.title}
+                            onChange={(e) => setObjective(obj.id, { title: e.target.value })}
+                            className="bg-transparent font-medium text-sm w-full focus:outline-none border-b border-transparent focus:border-[color:var(--soma-rose)]/30"
+                            style={{ color: SOMA_PALETTE.cream }}
+                          />
+                          <input
+                            value={obj.why}
+                            onChange={(e) => setObjective(obj.id, { why: e.target.value })}
+                            className="bg-transparent text-xs text-muted-foreground italic w-full mt-0.5 focus:outline-none"
+                          />
+                          <div className="text-[10px] uppercase tracking-wider mt-1" style={{ color: obj.accent }}>
+                            {obj.owner}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-2xl font-light tabular-nums" style={{ color: obj.accent }}>
+                            {objProg.toFixed(0)}%
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">{obj.krs.length} KRs</div>
+                        </div>
+                        <button
+                          onClick={() => removeObjective(obj.id)}
+                          className="text-muted-foreground hover:text-[color:var(--destructive)] p-1"
+                          title="Remover objetivo"
+                          style={{ color: SOMA_PALETTE.alert }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* KR table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                            <th className="py-1.5 px-2 text-left min-w-[200px]">Key Result</th>
+                            <th className="py-1.5 px-2 text-left">Dono</th>
+                            <th className="py-1.5 px-2 text-right">Baseline</th>
+                            <th className="py-1.5 px-2 text-right">Meta semestre</th>
+                            <th className="py-1.5 px-2 text-right">Atual</th>
+                            <th className="py-1.5 px-2 text-right">Pace forecast</th>
+                            <th className="py-1.5 px-2 text-right">Meta mensal</th>
+                            <th className="py-1.5 px-2 text-right">Meta semanal</th>
+                            <th className="py-1.5 px-2 text-right w-[140px]">Atingimento</th>
+                            <th className="py-1.5 px-1"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {obj.krs.map((kr) => {
+                            const { current, pace } = krValues(kr);
+                            const denom = kr.target - kr.baseline;
+                            const prog = denom > 0 ? Math.max(0, Math.min(100, ((current - kr.baseline) / denom) * 100)) : 0;
+                            const pacePct = denom > 0 ? Math.max(0, Math.min(150, ((pace - kr.baseline) / denom) * 100)) : 0;
+                            const isMoney = kr.unit === "R$";
+                            const isPctOrX = kr.unit === "%" || kr.unit === "x" || kr.unit === "#";
+                            const fmt = (n: number) =>
+                              isMoney
+                                ? brl(n)
+                                : kr.unit === "%"
+                                ? `${n.toFixed(1)}%`
+                                : kr.unit === "x"
+                                ? `${n.toFixed(2)}x`
+                                : Math.round(n).toLocaleString("pt-BR");
+                            // metas mensais e semanais derivadas do delta (target - baseline) / 7 meses
+                            const monthlyDelta = denom / MONTHS.length;
+                            const monthlyTarget = isPctOrX ? kr.target : monthlyDelta;
+                            const weeklyTarget = isPctOrX ? kr.target : monthlyDelta / 4.33;
+                            const paceColor = pacePct >= 100 ? SOMA_PALETTE.sage : pacePct >= 80 ? SOMA_PALETTE.warn : SOMA_PALETTE.alert;
+                            const progColor = prog >= 90 ? SOMA_PALETTE.sage : prog >= 60 ? SOMA_PALETTE.warn : SOMA_PALETTE.alert;
+                            return (
+                              <tr key={kr.id} className="border-b border-[#d4a5a0]/10 hover:bg-[#d4a5a0]/5">
+                                <td className="py-2 px-2">
+                                  <input
+                                    value={kr.title}
+                                    onChange={(e) => setKr(obj.id, kr.id, { title: e.target.value })}
+                                    className="bg-transparent w-full focus:outline-none"
+                                    style={{ color: SOMA_PALETTE.cream }}
+                                  />
+                                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                                    <select
+                                      value={kr.source}
+                                      onChange={(e) => setKr(obj.id, kr.id, { source: e.target.value as KrSource })}
+                                      className="bg-transparent border-b border-[#d4a5a0]/20 focus:outline-none text-[10px]"
+                                      style={{ color: SOMA_PALETTE.sand }}
+                                    >
+                                      <option value="manual">manual</option>
+                                      <option value="receitaSemestre">receita (real)</option>
+                                      <option value="ebitdaSemestre">ebitda (real)</option>
+                                      <option value="pedidosSemestre">pedidos (real)</option>
+                                      <option value="ticketMedio">ticket médio</option>
+                                      <option value="roas">ROAS</option>
+                                      <option value="ltvCac">LTV/CAC</option>
+                                      <option value="recompra">recompra</option>
+                                      <option value="b2bRev">receita B2B</option>
+                                      <option value="investSemestre">investimento</option>
+                                    </select>
+                                    <select
+                                      value={kr.unit}
+                                      onChange={(e) => setKr(obj.id, kr.id, { unit: e.target.value as KeyResult["unit"] })}
+                                      className="bg-transparent border-b border-[#d4a5a0]/20 focus:outline-none text-[10px]"
+                                      style={{ color: SOMA_PALETTE.sand }}
+                                    >
+                                      <option value="R$">R$</option>
+                                      <option value="%">%</option>
+                                      <option value="x">x</option>
+                                      <option value="#">#</option>
+                                    </select>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-2">
+                                  <input
+                                    value={kr.owner}
+                                    onChange={(e) => setKr(obj.id, kr.id, { owner: e.target.value })}
+                                    className="bg-transparent w-20 focus:outline-none text-[11px]"
+                                    style={{ color: SOMA_PALETTE.sand }}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 text-right">
+                                  <input
+                                    type="number"
+                                    value={kr.baseline}
+                                    onChange={(e) => setKr(obj.id, kr.id, { baseline: parseFloat(e.target.value) || 0 })}
+                                    className="bg-transparent w-20 text-right focus:outline-none tabular-nums"
+                                    style={{ color: SOMA_PALETTE.cream }}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 text-right">
+                                  <input
+                                    type="number"
+                                    value={kr.target}
+                                    onChange={(e) => setKr(obj.id, kr.id, { target: parseFloat(e.target.value) || 0 })}
+                                    className="bg-transparent w-24 text-right focus:outline-none tabular-nums font-medium"
+                                    style={{ color: obj.accent }}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums">
+                                  {kr.source === "manual" ? (
+                                    <input
+                                      type="number"
+                                      value={kr.current ?? 0}
+                                      onChange={(e) => setKr(obj.id, kr.id, { current: parseFloat(e.target.value) || 0 })}
+                                      className="bg-transparent w-20 text-right focus:outline-none tabular-nums"
+                                      style={{ color: SOMA_PALETTE.cream }}
+                                    />
+                                  ) : (
+                                    <span style={{ color: SOMA_PALETTE.cream }}>{fmt(current)}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums" style={{ color: paceColor }}>
+                                  {fmt(pace)}
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                                  {fmt(monthlyTarget)}
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.gold }}>
+                                  {fmt(weeklyTarget)}
+                                </td>
+                                <td className="py-2 px-2">
+                                  <div className="flex items-center gap-2 justify-end">
+                                    <div className="h-1.5 w-16 rounded-full overflow-hidden" style={{ background: `${SOMA_PALETTE.rose}15` }}>
+                                      <div className="h-full" style={{ width: `${prog}%`, background: progColor }} />
+                                    </div>
+                                    <span className="tabular-nums w-10 text-right" style={{ color: progColor }}>
+                                      {prog.toFixed(0)}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-1 text-right">
+                                  <button
+                                    onClick={() => removeKr(obj.id, kr.id)}
+                                    className="text-muted-foreground hover:opacity-100 opacity-50"
+                                    title="Remover KR"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr>
+                            <td colSpan={10} className="pt-2">
+                              <button
+                                onClick={() => addKr(obj.id)}
+                                className="text-[11px] text-muted-foreground hover:text-[color:var(--foreground)] flex items-center gap-1"
+                                style={{ color: obj.accent }}
+                              >
+                                <Plus className="size-3" /> adicionar Key Result
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3 mt-4">
+              <strong style={{ color: SOMA_PALETTE.rose }}>Como funciona:</strong> KRs com fonte automática (receita, ebitda, pedidos, ROAS, B2B…) leem dados vivos do forecast — atual = realizado acumulado, pace = projetado total. KRs manuais (NPS, sub-canais, assinatura) você atualiza direto. <strong style={{ color: SOMA_PALETTE.gold }}>Meta mensal</strong> = (target − baseline) ÷ 7 meses · <strong style={{ color: SOMA_PALETTE.gold }}>Meta semanal</strong> = mensal ÷ 4.33 — distribua para o time bater no weekly.
+            </div>
+          </Panel>
+        </Section>
+
         <Section
           title="Premissas Iniciais — Mês Base (Junho)"
           subtitle="Alimente o Mês 1 · o sistema projeta automaticamente Jun → Dez"
