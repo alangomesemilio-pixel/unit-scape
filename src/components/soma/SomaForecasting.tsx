@@ -701,12 +701,6 @@ export function SomaForecasting() {
     } catch {}
   }, [roadmapPlans]);
 
-      if (snap) {
-        const parsed = JSON.parse(snap);
-        if (parsed?.savedAt) setSavedAt(parsed.savedAt);
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     try {
