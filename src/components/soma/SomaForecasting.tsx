@@ -304,6 +304,11 @@ const DEFAULT_STATE: SomaState = {
   b2bSubChannels: DEFAULT_B2B_SUBS,
   okrs: DEFAULT_OKRS,
   scenario: "base",
+  scenarioMults: {
+    conservador: { rev: 0.85, cac: 1.15 },
+    base: { rev: 1, cac: 1 },
+    agressivo: { rev: 1.22, cac: 0.85 },
+  },
 };
 
 const SCENARIO_MULT: Record<ScenarioKey, { rev: number; cac: number }> = {
