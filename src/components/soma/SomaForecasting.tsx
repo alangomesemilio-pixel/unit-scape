@@ -739,35 +739,23 @@ export function SomaForecasting() {
 
             {premisesOpen && (
               <div className="space-y-5">
-                <PremisesGroup title="Operação & Marketing">
-                  <PremiseField label="Ticket Médio" prefix="R$" value={state.premises.ticket} onChange={(v) => setPremise("ticket", v)} />
-                  <PremiseField label="Pedidos projetados" value={state.premises.pedidos} onChange={(v) => setPremise("pedidos", v)} />
-                  <PremiseField label="Conversão" suffix="%" step={0.1} value={state.premises.conversao} onChange={(v) => setPremise("conversao", v)} />
-                  <PremiseField label="CAC" prefix="R$" value={state.premises.cac} onChange={(v) => setPremise("cac", v)} />
-                  <PremiseField label="ROAS" suffix="x" step={0.1} value={state.premises.roas} onChange={(v) => setPremise("roas", v)} />
-                  <PremiseField label="Invest. mídia" prefix="R$" value={state.premises.invest} onChange={(v) => setPremise("invest", v)} />
-                </PremisesGroup>
-
-                <PremisesGroup title="Receita por canal (Mês 1)">
-                  <PremiseField label="DTC / E-commerce" prefix="R$" value={state.premises.receitaDTC} onChange={(v) => setPremise("receitaDTC", v)} />
-                  <PremiseField label="WhatsApp" prefix="R$" value={state.premises.receitaWhatsApp} onChange={(v) => setPremise("receitaWhatsApp", v)} />
-                  <PremiseField label="Influenciadora" prefix="R$" value={state.premises.receitaInfluenciadora} onChange={(v) => setPremise("receitaInfluenciadora", v)} />
-                  <PremiseField label="TikTok Shop" prefix="R$" value={state.premises.receitaTikTokShop} onChange={(v) => setPremise("receitaTikTokShop", v)} />
-                  <PremiseField label="B2B" prefix="R$" value={state.premises.receitaB2B} onChange={(v) => setPremise("receitaB2B", v)} />
-                  <PremiseField label="Assinatura" prefix="R$" value={state.premises.receitaAssinatura} onChange={(v) => setPremise("receitaAssinatura", v)} />
-                  <PremiseField label="Marketplace" prefix="R$" value={state.premises.receitaMarketplace} onChange={(v) => setPremise("receitaMarketplace", v)} />
-                </PremisesGroup>
-
                 <PremisesGroup title="Saúde & Retenção">
                   <PremiseField label="Margem Bruta" suffix="%" step={0.5} value={state.premises.margemBruta} onChange={(v) => setPremise("margemBruta", v)} />
-                  <PremiseField label="CMV" suffix="%" step={0.5} value={state.premises.cmv} onChange={(v) => setPremise("cmv", v)} />
                   <PremiseField label="Taxa de recompra" suffix="%" step={0.5} value={state.premises.recompra} onChange={(v) => setPremise("recompra", v)} />
                   <PremiseField label="LTV" prefix="R$" value={state.premises.ltv} onChange={(v) => setPremise("ltv", v)} />
                 </PremisesGroup>
 
+                <PremisesGroup title="Custos & Despesas (% da receita)">
+                  <PremiseField label="CMV (produto + frete)" suffix="%" step={0.5} value={state.premises.cmv} onChange={(v) => setPremise("cmv", v)} />
+                  <PremiseField label="OPEX" suffix="%" step={0.5} value={state.premises.opexPct} onChange={(v) => setPremise("opexPct", v)} />
+                  <PremiseField label="Imposto" suffix="%" step={0.5} value={state.premises.impostoPct} onChange={(v) => setPremise("impostoPct", v)} />
+                  <PremiseField label="Custo c/ Pessoas (Time)" suffix="%" step={0.5} value={state.premises.pessoasPct} onChange={(v) => setPremise("pessoasPct", v)} />
+                </PremisesGroup>
+
                 <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3">
-                  Junho é a <span style={{ color: SOMA_PALETTE.rose }}>base-mãe</span> · Faturamento = Pedidos × Ticket · ROAS = Receita ÷ Investimento · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
+                  Premissas de canal (ticket, pedidos, CAC, invest, funil) são editadas em <span style={{ color: SOMA_PALETTE.rose }}>"Desdobramento por Canal"</span> abaixo · Custos % cruzam a receita projetada para detalhar CMV, OPEX, Imposto e Time no forecast mensal · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
                 </div>
+
               </div>
             )}
           </Panel>
