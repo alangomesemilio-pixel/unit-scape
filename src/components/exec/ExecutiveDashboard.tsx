@@ -689,7 +689,7 @@ export function ExecutiveDashboard() {
         )}
 
           <div className="text-xs text-muted-foreground text-center pt-4 pb-8">
-            Semana {isoWeekKey()} · Mês {monthKey()} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Histórico no banco (Lovable Cloud)
+            Semana {mounted ? isoWeekKey() : "—"} · Mês {mounted ? monthKey() : "—"} · Atualizado em {mounted && state.lastUpdated ? new Date(state.lastUpdated).toLocaleString("pt-BR") : "—"} · Histórico no banco (Lovable Cloud)
           </div>
         </div>
       </Tabs>

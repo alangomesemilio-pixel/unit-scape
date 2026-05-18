@@ -242,7 +242,7 @@ const DEFAULT_OKRS: OkrObjective[] = [
     title: "Escalar Soma com saúde financeira",
     why: "Atingir R$ 3.5M no semestre mantendo EBITDA saudável e CAC sob controle.",
     owner: "Alan · CEO",
-    accent: "#c9a572",
+    accent: "#f28572",
     krs: [
       { id: "kr-rev",   title: "Receita semestre (Jun→Dez)", owner: "CEO",     unit: "R$", baseline: 0, target: 3500000, source: "receitaSemestre" },
       { id: "kr-ebit",  title: "EBITDA semestre",            owner: "CFO",     unit: "R$", baseline: 0, target: 700000,  source: "ebitdaSemestre" },
@@ -255,7 +255,7 @@ const DEFAULT_OKRS: OkrObjective[] = [
     title: "Construir base recorrente e fiel",
     why: "Cada cliente vale mais. Recompra, LTV e assinatura sustentam o crescimento.",
     owner: "CRM · Ian",
-    accent: "#d4a5a0",
+    accent: "#d6b4ff",
     krs: [
       { id: "kr-recompra", title: "Taxa de recompra",         owner: "CRM",   unit: "%",  baseline: 32, target: 38,    source: "recompra" },
       { id: "kr-ltvcac",   title: "LTV / CAC",                owner: "CRM",   unit: "x",  baseline: 5.0, target: 6.0,  source: "ltvCac" },
@@ -268,7 +268,7 @@ const DEFAULT_OKRS: OkrObjective[] = [
     title: "Transformar B2B em motor previsível",
     why: "Pedidos grandes, recorrência por canal e ticket médio alto.",
     owner: "Comercial · Igor",
-    accent: "#9ab397",
+    accent: "#b78cff",
     krs: [
       { id: "kr-b2brev", title: "Receita B2B semestre",       owner: "Comercial", unit: "R$", baseline: 0, target: 700000, source: "b2bRev" },
       { id: "kr-b2bsub", title: "Sub-canais B2B ativos",      owner: "Comercial", unit: "#",  baseline: 2, target: 5,      source: "manual", current: 4 },
@@ -280,7 +280,7 @@ const DEFAULT_OKRS: OkrObjective[] = [
     title: "Growth creator-led com previsibilidade",
     why: "Pedidos, ticket e receita por canais que sustentam aquisição.",
     owner: "Growth · Fernando",
-    accent: "#b8857f",
+    accent: "#ff9c8f",
     krs: [
       { id: "kr-ped",   title: "Pedidos semestre",            owner: "Growth", unit: "#",  baseline: 0, target: 12000, source: "pedidosSemestre" },
       { id: "kr-tk",    title: "Ticket médio",                owner: "Growth", unit: "R$", baseline: 245, target: 265,  source: "ticketMedio" },
@@ -314,18 +314,18 @@ const SCENARIO_MULT: Record<ScenarioKey, { rev: number; cac: number }> = {
 const STORAGE_KEY = "soma.forecast.v2";
 
 const SOMA_PALETTE = {
-  rose: "#d4a5a0",
-  roseDeep: "#b8857f",
-  sand: "#e8dccc",
-  cream: "#f5ede2",
-  ink: "#2a2420",
-  gold: "#c9a572",
-  sage: "#9ab397",
-  blush: "#efd5d0",
-  alert: "#d97a7a",
-  warn: "#e0b878",
+  rose: "#f28572",
+  roseDeep: "#e56b78",
+  sand: "#d6b4ff",
+  cream: "#f7f1e8",
+  ink: "#1b1426",
+  gold: "#b78cff",
+  sage: "#87d4b0",
+  blush: "#f1d6ff",
+  alert: "#ff8b94",
+  warn: "#ffb36b",
 };
-const PIE_COLORS = ["#d4a5a0", "#c9a572", "#9ab397", "#b8857f", "#e8dccc", "#efd5d0", "#8a7570", "#a89890"];
+const PIE_COLORS = ["#f28572", "#b78cff", "#87d4b0", "#e56b78", "#d6b4ff", "#f1d6ff", "#7b5ea7", "#8f7bc4"];
 
 // ============ HELPERS ============
 const brl = (n: number) => {
@@ -545,7 +545,7 @@ function EditNum({
         step={step}
         placeholder={placeholder}
         onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-        className="bg-transparent border-b border-transparent group-hover:border-[#d4a5a0]/40 focus:border-[#d4a5a0] focus:outline-none w-full text-right tabular-nums transition-colors placeholder:text-muted-foreground/40"
+        className="bg-transparent border-b border-transparent group-hover:border-[#f28572]/40 focus:border-[#f28572] focus:outline-none w-full text-right tabular-nums transition-colors placeholder:text-muted-foreground/40"
       />
       {suffix && <span className="text-xs text-muted-foreground">{suffix}</span>}
     </div>
@@ -923,7 +923,7 @@ export function SomaForecasting() {
     <div
       className="h-full overflow-y-auto"
       style={{
-        background: "linear-gradient(180deg, oklch(0.22 0.015 30) 0%, oklch(0.18 0.015 30) 100%)",
+        background: "linear-gradient(180deg, oklch(0.21 0.022 302) 0%, oklch(0.17 0.018 296) 100%)",
       }}
     >
       <div className="max-w-[1600px] mx-auto px-6 py-6 space-y-6">
@@ -1085,7 +1085,7 @@ export function SomaForecasting() {
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs">
                         <thead>
-                          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#f28572]/15">
                             <th className="py-1.5 px-2 text-left min-w-[200px]">Key Result</th>
                             <th className="py-1.5 px-2 text-left">Dono</th>
                             <th className="py-1.5 px-2 text-right">Baseline</th>
@@ -1121,7 +1121,7 @@ export function SomaForecasting() {
                             const paceColor = pacePct >= 100 ? SOMA_PALETTE.sage : pacePct >= 80 ? SOMA_PALETTE.warn : SOMA_PALETTE.alert;
                             const progColor = prog >= 90 ? SOMA_PALETTE.sage : prog >= 60 ? SOMA_PALETTE.warn : SOMA_PALETTE.alert;
                             return (
-                              <tr key={kr.id} className="border-b border-[#d4a5a0]/10 hover:bg-[#d4a5a0]/5">
+                              <tr key={kr.id} className="border-b border-[#f28572]/10 hover:bg-[#f28572]/5">
                                 <td className="py-2 px-2">
                                   <input
                                     value={kr.title}
@@ -1133,7 +1133,7 @@ export function SomaForecasting() {
                                     <select
                                       value={kr.source}
                                       onChange={(e) => setKr(obj.id, kr.id, { source: e.target.value as KrSource })}
-                                      className="bg-transparent border-b border-[#d4a5a0]/20 focus:outline-none text-[10px]"
+                                      className="bg-transparent border-b border-[#f28572]/20 focus:outline-none text-[10px]"
                                       style={{ color: SOMA_PALETTE.sand }}
                                     >
                                       <option value="manual">manual</option>
@@ -1150,7 +1150,7 @@ export function SomaForecasting() {
                                     <select
                                       value={kr.unit}
                                       onChange={(e) => setKr(obj.id, kr.id, { unit: e.target.value as KeyResult["unit"] })}
-                                      className="bg-transparent border-b border-[#d4a5a0]/20 focus:outline-none text-[10px]"
+                                      className="bg-transparent border-b border-[#f28572]/20 focus:outline-none text-[10px]"
                                       style={{ color: SOMA_PALETTE.sand }}
                                     >
                                       <option value="R$">R$</option>
@@ -1249,7 +1249,7 @@ export function SomaForecasting() {
               })}
             </div>
 
-            <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3 mt-4">
+            <div className="text-[11px] text-muted-foreground italic border-t border-[#f28572]/15 pt-3 mt-4">
               <strong style={{ color: SOMA_PALETTE.rose }}>Como funciona:</strong> KRs com fonte automática (receita, ebitda, pedidos, ROAS, B2B…) leem dados vivos do forecast — atual = realizado acumulado, pace = projetado total. KRs manuais (NPS, sub-canais, assinatura) você atualiza direto. <strong style={{ color: SOMA_PALETTE.gold }}>Meta mensal</strong> = (target − baseline) ÷ 7 meses · <strong style={{ color: SOMA_PALETTE.gold }}>Meta semanal</strong> = mensal ÷ 4.33 — distribua para o time bater no weekly.
             </div>
           </Panel>
@@ -1289,7 +1289,7 @@ export function SomaForecasting() {
                   <PremiseField label="Custo c/ Pessoas (Time)" suffix="%" step={0.5} value={state.premises.pessoasPct} onChange={(v) => setPremise("pessoasPct", v)} />
                 </PremisesGroup>
 
-                <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3">
+                <div className="text-[11px] text-muted-foreground italic border-t border-[#f28572]/15 pt-3">
                   Premissas de canal (ticket, pedidos, CAC, invest, funil) são editadas em <span style={{ color: SOMA_PALETTE.rose }}>"Desdobramento por Canal"</span> abaixo · Custos % cruzam a receita projetada para detalhar CMV, OPEX, Imposto e Time no forecast mensal · LTV/CAC = {(state.premises.ltv / Math.max(state.premises.cac, 1)).toFixed(1)}x
                 </div>
 
@@ -1316,8 +1316,8 @@ export function SomaForecasting() {
               <GrowthDial label="Operacional" value={state.premises.crescOperacional} onChange={(v) => setPremise("crescOperacional", v)} accent={SOMA_PALETTE.sand} />
               <GrowthDial label="Equipe" value={state.premises.crescEquipe} onChange={(v) => setPremise("crescEquipe", v)} accent={SOMA_PALETTE.cream} />
             </div>
-            <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3 mt-4">
-              Cada % é aplicado de forma composta sobre a base de Junho: <code className="text-[#d4a5a0]">Var<sub>mês</sub> = Var<sub>jun</sub> × (1 + g)<sup>n</sup></code>. Altere qualquer valor → todo o forecast recalcula em tempo real.
+            <div className="text-[11px] text-muted-foreground italic border-t border-[#f28572]/15 pt-3 mt-4">
+              Cada % é aplicado de forma composta sobre a base de Junho: <code className="text-[#f28572]">Var<sub>mês</sub> = Var<sub>jun</sub> × (1 + g)<sup>n</sup></code>. Altere qualquer valor → todo o forecast recalcula em tempo real.
             </div>
           </Panel>
         </Section>
@@ -1328,8 +1328,8 @@ export function SomaForecasting() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
-                    <th className="py-2 px-2 sticky left-0 bg-[#2a2420]/60 backdrop-blur z-10">Métrica</th>
+                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#f28572]/15">
+                    <th className="py-2 px-2 sticky left-0 bg-[#1b1426]/60 backdrop-blur z-10">Métrica</th>
                     {MONTHS.map((m) => (
                       <th key={m} className="py-2 px-3 text-right min-w-[120px]">{m}</th>
                     ))}
@@ -1340,8 +1340,8 @@ export function SomaForecasting() {
                   {/* Receita Projetada */}
                   <MetricRow label="Receita Projetada" data={projection.map((p) => brl(p.receita))} total={brl(totals.proj)} highlight />
                   {/* Receita Realizada (editável) */}
-                  <tr className="border-b border-[#d4a5a0]/10 bg-[#d4a5a0]/5">
-                    <td className="py-2 px-2 font-medium sticky left-0 bg-[#2a2420]/80 z-10" style={{ color: SOMA_PALETTE.rose }}>
+                  <tr className="border-b border-[#f28572]/10 bg-[#f28572]/5">
+                    <td className="py-2 px-2 font-medium sticky left-0 bg-[#1b1426]/80 z-10" style={{ color: SOMA_PALETTE.rose }}>
                       Receita Realizada
                     </td>
                     {MONTHS.map((m) => {
@@ -1360,8 +1360,8 @@ export function SomaForecasting() {
                     <td className="py-2 px-2 text-right tabular-nums font-medium" style={{ color: SOMA_PALETTE.cream }}>{brl(totals.real)}</td>
                   </tr>
                   {/* % Atingimento */}
-                  <tr className="border-b border-[#d4a5a0]/10">
-                    <td className="py-2 px-2 sticky left-0 bg-[#2a2420]/60 z-10 text-muted-foreground">% Atingimento</td>
+                  <tr className="border-b border-[#f28572]/10">
+                    <td className="py-2 px-2 sticky left-0 bg-[#1b1426]/60 z-10 text-muted-foreground">% Atingimento</td>
                     {projection.map((p) => {
                       const r = state.realized[p.month]?.receita || 0;
                       const a = p.receita ? (r / p.receita) * 100 : 0;
@@ -1377,8 +1377,8 @@ export function SomaForecasting() {
                     </td>
                   </tr>
                   {/* Diferença */}
-                  <tr className="border-b border-[#d4a5a0]/10">
-                    <td className="py-2 px-2 sticky left-0 bg-[#2a2420]/60 z-10 text-muted-foreground">Δ (Real − Proj)</td>
+                  <tr className="border-b border-[#f28572]/10">
+                    <td className="py-2 px-2 sticky left-0 bg-[#1b1426]/60 z-10 text-muted-foreground">Δ (Real − Proj)</td>
                     {projection.map((p) => {
                       const r = state.realized[p.month]?.receita || 0;
                       const d = r ? r - p.receita : 0;
@@ -1472,7 +1472,7 @@ export function SomaForecasting() {
             </div>
 
             {/* Legenda */}
-            <div className="flex items-center gap-4 mt-4 text-[11px] text-muted-foreground border-t border-[#d4a5a0]/15 pt-3">
+            <div className="flex items-center gap-4 mt-4 text-[11px] text-muted-foreground border-t border-[#f28572]/15 pt-3">
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: SOMA_PALETTE.sage }} /> ≥ 95% da meta</span>
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: SOMA_PALETTE.warn }} /> 80-94%</span>
               <span className="flex items-center gap-1.5"><span className="size-2 rounded-full" style={{ background: SOMA_PALETTE.alert }} /> &lt; 80% ou CAC acima</span>
@@ -1487,10 +1487,10 @@ export function SomaForecasting() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a0" strokeOpacity={0.15} />
-                    <XAxis dataKey="month" stroke="#a89890" fontSize={11} />
-                    <YAxis stroke="#a89890" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
+                    <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
+                    <YAxis stroke="#8f7bc4" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="Projetado" fill={SOMA_PALETTE.gold} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="Realizado" fill={SOMA_PALETTE.rose} radius={[4, 4, 0, 0]} />
@@ -1512,10 +1512,10 @@ export function SomaForecasting() {
                         <stop offset="100%" stopColor={SOMA_PALETTE.rose} stopOpacity={0.05} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a0" strokeOpacity={0.15} />
-                    <XAxis dataKey="month" stroke="#a89890" fontSize={11} />
-                    <YAxis stroke="#a89890" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
+                    <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
+                    <YAxis stroke="#8f7bc4" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Area type="monotone" dataKey="Proj" name="Proj. acum." stroke={SOMA_PALETTE.gold} fill="url(#accProj)" strokeWidth={2} />
                     <Area type="monotone" dataKey="Real" name="Real acum." stroke={SOMA_PALETTE.rose} fill="url(#accReal)" strokeWidth={2.5} />
@@ -1527,10 +1527,10 @@ export function SomaForecasting() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a0" strokeOpacity={0.15} />
-                    <XAxis dataKey="month" stroke="#a89890" fontSize={11} />
-                    <YAxis stroke="#a89890" fontSize={11} />
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
+                    <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
+                    <YAxis stroke="#8f7bc4" fontSize={11} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line type="monotone" dataKey="Pedidos" stroke={SOMA_PALETTE.gold} strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="PedidosReal" name="Real" stroke={SOMA_PALETTE.rose} strokeWidth={2.5} dot={{ r: 4 }} />
@@ -1542,10 +1542,10 @@ export function SomaForecasting() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <LineChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a0" strokeOpacity={0.15} />
-                    <XAxis dataKey="month" stroke="#a89890" fontSize={11} />
-                    <YAxis stroke="#a89890" fontSize={11} />
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
+                    <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
+                    <YAxis stroke="#8f7bc4" fontSize={11} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line type="monotone" dataKey="CAC" stroke={SOMA_PALETTE.gold} strokeWidth={2} dot={{ r: 3 }} />
                     <Line type="monotone" dataKey="CACReal" name="CAC real" stroke={SOMA_PALETTE.alert} strokeWidth={2.5} dot={{ r: 4 }} />
@@ -1564,7 +1564,7 @@ export function SomaForecasting() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                      <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#f28572]/15">
                         <th className="py-2 px-2">Canal</th>
                         <th className="py-2 px-2 text-right">Receita Proj. 6m</th>
                         <th className="py-2 px-2 text-right">Share</th>
@@ -1583,7 +1583,7 @@ export function SomaForecasting() {
                         const a = real.receita ? (real.receita / proj) * 100 : 0;
                         const s = statusOf(real.receita, proj);
                         return (
-                          <tr key={name} className="border-b border-[#d4a5a0]/10 hover:bg-[#d4a5a0]/5">
+                          <tr key={name} className="border-b border-[#f28572]/10 hover:bg-[#f28572]/5">
                             <td className="py-2 px-2 font-medium" style={{ color: PIE_COLORS[i % PIE_COLORS.length] }}>{name}</td>
                             <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{brl(proj)}</td>
                             <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{share.toFixed(1)}%</td>
@@ -1612,7 +1612,7 @@ export function SomaForecasting() {
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -1631,7 +1631,7 @@ export function SomaForecasting() {
               <div>
                 <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Mês de análise</div>
                 <Select value={String(channelMonthIdx)} onValueChange={(v) => setChannelMonthIdx(Number(v))}>
-                  <SelectTrigger className="w-40 bg-transparent border-[#d4a5a0]/30">
+                  <SelectTrigger className="w-40 bg-transparent border-[#f28572]/30">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -1664,7 +1664,7 @@ export function SomaForecasting() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                  <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-[#f28572]/15">
                     <th className="py-2 px-2">Canal</th>
                     <th className="py-2 px-2 text-right">Visitas</th>
                     <th className="py-2 px-2 text-right">→ Carrinho</th>
@@ -1684,7 +1684,7 @@ export function SomaForecasting() {
                     if (!cm) return null;
                     const color = PIE_COLORS[idx % PIE_COLORS.length];
                     return (
-                      <tr key={name} className="border-b border-[#d4a5a0]/10 hover:bg-[#d4a5a0]/5">
+                      <tr key={name} className="border-b border-[#f28572]/10 hover:bg-[#f28572]/5">
                         <td className="py-2 px-2 font-medium" style={{ color }}>{name}</td>
                         <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{Math.round(cm.visitas).toLocaleString("pt-BR")}</td>
                         <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">{Math.round(cm.carrinhos).toLocaleString("pt-BR")}</td>
@@ -1699,7 +1699,7 @@ export function SomaForecasting() {
                       </tr>
                     );
                   })}
-                  <tr className="bg-[#d4a5a0]/10 font-semibold">
+                  <tr className="bg-[#f28572]/10 font-semibold">
                     <td className="py-2 px-2 text-[11px] uppercase tracking-wider" style={{ color: SOMA_PALETTE.rose }}>Total Canais</td>
                     {(() => {
                       const sums = CHANNEL_KEYS.reduce((acc, { name }) => {
@@ -1735,10 +1735,10 @@ export function SomaForecasting() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <BarChart data={macroVsChannels}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a020" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f2857220" />
                     <XAxis dataKey="month" stroke={SOMA_PALETTE.cream} fontSize={11} />
                     <YAxis stroke={SOMA_PALETTE.cream} fontSize={11} tickFormatter={(v) => brl(v)} />
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar dataKey="MacroReceita" fill={SOMA_PALETTE.rose} radius={[4, 4, 0, 0]} />
                     <Bar dataKey="SomaCanais" fill={SOMA_PALETTE.gold} radius={[4, 4, 0, 0]} />
@@ -1750,10 +1750,10 @@ export function SomaForecasting() {
               <div className="h-64">
                 <ResponsiveContainer>
                   <LineChart data={MONTHS.map((m, i) => { const row: Record<string, number | string> = { month: m }; CHANNEL_KEYS.forEach(({ name }) => { row[name] = Math.round(channelProjections[name]?.[i]?.pedidos || 0); }); return row; })}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#d4a5a020" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f2857220" />
                     <XAxis dataKey="month" stroke={SOMA_PALETTE.cream} fontSize={11} />
                     <YAxis stroke={SOMA_PALETTE.cream} fontSize={11} />
-                    <Tooltip contentStyle={{ background: "#2a2420", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} />
+                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} />
                     <Legend wrapperStyle={{ fontSize: 10 }} />
                     {CHANNEL_KEYS.map(({ name }, i) => (
                       <Line key={name} type="monotone" dataKey={name} stroke={PIE_COLORS[i % PIE_COLORS.length]} strokeWidth={2} dot={false} />
@@ -1784,7 +1784,7 @@ export function SomaForecasting() {
                   </div>
 
                   {expanded && name !== "B2B" && (
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 p-3 rounded-md bg-[#f28572]/5 border border-[#f28572]/15">
                       <PremiseInline label="Visitas (Jun)" value={cp.visitas} onChange={(v) => setChannelPremise(name, { visitas: v })} />
                       <PremiseInline label="Ticket" value={cp.ticket} onChange={(v) => setChannelPremise(name, { ticket: v })} prefix="R$" />
                       <PremiseInline label="CAC" value={cp.cac} onChange={(v) => setChannelPremise(name, { cac: v })} prefix="R$" />
@@ -1798,15 +1798,15 @@ export function SomaForecasting() {
                   )}
 
                   {expanded && name === "B2B" && (
-                    <div className="mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15 space-y-2">
+                    <div className="mb-3 p-3 rounded-md bg-[#f28572]/5 border border-[#f28572]/15 space-y-2">
                       <div className="flex items-center justify-between">
                         <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Sub-canais B2B · medidos por leads & pedidos</div>
-                        <button onClick={addB2BSub} className="text-[11px] px-2 py-0.5 rounded border border-[#d4a5a0]/30 text-foreground hover:bg-[#d4a5a0]/10">+ Adicionar canal</button>
+                        <button onClick={addB2BSub} className="text-[11px] px-2 py-0.5 rounded border border-[#f28572]/30 text-foreground hover:bg-[#f28572]/10">+ Adicionar canal</button>
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                            <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#f28572]/15">
                               <th className="py-1.5 px-1">Canal</th>
                               <th className="py-1.5 px-1 text-right">Leads/mês</th>
                               <th className="py-1.5 px-1 text-right">Conv L→P</th>
@@ -1820,12 +1820,12 @@ export function SomaForecasting() {
                           </thead>
                           <tbody>
                             {state.b2bSubChannels.map((sub) => (
-                              <tr key={sub.id} className="border-b border-[#d4a5a0]/5">
+                              <tr key={sub.id} className="border-b border-[#f28572]/5">
                                 <td className="py-1 px-1">
                                   <input
                                     value={sub.name}
                                     onChange={(e) => setB2BSub(sub.id, { name: e.target.value })}
-                                    className="bg-transparent border-b border-transparent hover:border-[#d4a5a0]/40 focus:border-[#d4a5a0] focus:outline-none w-full text-xs"
+                                    className="bg-transparent border-b border-transparent hover:border-[#f28572]/40 focus:border-[#f28572] focus:outline-none w-full text-xs"
                                     style={{ color: SOMA_PALETTE.cream }}
                                   />
                                 </td>
@@ -1854,7 +1854,7 @@ export function SomaForecasting() {
                         if (!cm0) return null;
                         const subColor = PIE_COLORS[(idx + si + 1) % PIE_COLORS.length];
                         return (
-                          <div key={sub.id} className="rounded-md p-2 border border-[#d4a5a0]/15" style={{ background: `${subColor}12` }}>
+                          <div key={sub.id} className="rounded-md p-2 border border-[#f28572]/15" style={{ background: `${subColor}12` }}>
                             <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate" title={sub.name}>{sub.name}</div>
                             <div className="text-sm font-semibold tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{brl(cm0.receita)}</div>
                             <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
@@ -1876,10 +1876,10 @@ export function SomaForecasting() {
                         { label: "Pedidos", v: m0.pedidos, w: (m0.pedidos / m0.visitas) * 100 },
                       ];
                       return stages.map((s) => (
-                        <div key={s.label} className="rounded-md p-2 border border-[#d4a5a0]/15" style={{ background: `${color}10` }}>
+                        <div key={s.label} className="rounded-md p-2 border border-[#f28572]/15" style={{ background: `${color}10` }}>
                           <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{s.label}</div>
                           <div className="text-sm font-semibold tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{Math.round(s.v).toLocaleString("pt-BR")}</div>
-                          <div className="mt-1 h-1 rounded-full bg-[#d4a5a0]/10 overflow-hidden">
+                          <div className="mt-1 h-1 rounded-full bg-[#f28572]/10 overflow-hidden">
                             <div className="h-full rounded-full" style={{ width: `${s.w}%`, background: color }} />
                           </div>
                           <div className="text-[10px] text-muted-foreground mt-0.5">{s.w.toFixed(1)}%</div>
@@ -1892,7 +1892,7 @@ export function SomaForecasting() {
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                       <thead>
-                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                        <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#f28572]/15">
                           <th className="py-1.5 px-1">Mês</th>
                           <th className="py-1.5 px-1 text-right">Visitas</th>
                           <th className="py-1.5 px-1 text-right">Pedidos</th>
@@ -1902,7 +1902,7 @@ export function SomaForecasting() {
                       </thead>
                       <tbody>
                         {series.map((cm) => (
-                          <tr key={cm.month} className="border-b border-[#d4a5a0]/5">
+                          <tr key={cm.month} className="border-b border-[#f28572]/5">
                             <td className="py-1.5 px-1 font-medium" style={{ color: cm.idx === 0 ? color : SOMA_PALETTE.cream }}>{cm.month}{cm.idx === 0 ? " ·base" : ""}</td>
                             <td className="py-1.5 px-1 text-right tabular-nums text-muted-foreground">{Math.round(cm.visitas).toLocaleString("pt-BR")}</td>
                             <td className="py-1.5 px-1 text-right tabular-nums" style={{ color: SOMA_PALETTE.sage }}>{Math.round(cm.pedidos).toLocaleString("pt-BR")}</td>
@@ -2011,7 +2011,7 @@ function Header({
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <Select value={scenario} onValueChange={(v) => onScenario(v as ScenarioKey)}>
-            <SelectTrigger className="w-44 bg-transparent border-[#d4a5a0]/30">
+            <SelectTrigger className="w-44 bg-transparent border-[#f28572]/30">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -2028,7 +2028,7 @@ function Header({
           >
             <Zap className="size-4 mr-1" /> Recalibrar Forecast
           </Button>
-          <Button variant="outline" size="sm" onClick={onExport} className="border-[#d4a5a0]/30">
+          <Button variant="outline" size="sm" onClick={onExport} className="border-[#f28572]/30">
             <Download className="size-4 mr-1" /> Exportar
           </Button>
           <Button variant="ghost" size="sm" onClick={onReset}>
@@ -2053,7 +2053,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <div className="flex items-end justify-between border-b border-[#d4a5a0]/15 pb-2">
+      <div className="flex items-end justify-between border-b border-[#f28572]/15 pb-2">
         <div className="flex items-center gap-3">
           {Icon && <Icon className="size-5" style={{ color: SOMA_PALETTE.rose }} />}
           <div>
@@ -2104,7 +2104,7 @@ function ExecCard({
 }) {
   return (
     <div
-      className="rounded-xl border p-4 relative overflow-hidden group transition-all hover:border-[#d4a5a0]/40"
+      className="rounded-xl border p-4 relative overflow-hidden group transition-all hover:border-[#f28572]/40"
       style={{ background: "oklch(0.24 0.015 30 / 0.7)", borderColor: `${SOMA_PALETTE.rose}20` }}
     >
       <div className="flex items-start justify-between mb-2">
@@ -2151,7 +2151,7 @@ function PremiseField({
   return (
     <div className="rounded-lg border p-2.5" style={{ borderColor: `${SOMA_PALETTE.rose}20`, background: "oklch(0.22 0.015 30 / 0.5)" }}>
       <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</Label>
-      <div className="mt-1 flex items-center gap-1 border-b border-[#d4a5a0]/20 pb-0.5">
+      <div className="mt-1 flex items-center gap-1 border-b border-[#f28572]/20 pb-0.5">
         {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
         <input
           type="number"
@@ -2181,9 +2181,9 @@ function MetricRow({
   inverted?: boolean;
 }) {
   return (
-    <tr className="border-b border-[#d4a5a0]/10">
+    <tr className="border-b border-[#f28572]/10">
       <td
-        className="py-2 px-2 sticky left-0 bg-[#2a2420]/60 z-10"
+        className="py-2 px-2 sticky left-0 bg-[#1b1426]/60 z-10"
         style={{ color: highlight ? SOMA_PALETTE.cream : "var(--muted-foreground)", fontWeight: highlight ? 500 : 400 }}
       >
         {label}
@@ -2222,8 +2222,8 @@ function RealizedRow({
   prefix?: string;
 }) {
   return (
-    <tr className="border-b border-[#d4a5a0]/10 bg-[#d4a5a0]/[0.03]">
-      <td className="py-2 px-2 sticky left-0 bg-[#2a2420]/70 z-10 text-xs" style={{ color: SOMA_PALETTE.rose }}>{label}</td>
+    <tr className="border-b border-[#f28572]/10 bg-[#f28572]/[0.03]">
+      <td className="py-2 px-2 sticky left-0 bg-[#1b1426]/70 z-10 text-xs" style={{ color: SOMA_PALETTE.rose }}>{label}</td>
       {months.map((m, i) => {
         const s = statusOf(realized[i], projection[i], inverted);
         return (
@@ -2243,7 +2243,7 @@ function RealizedRow({
 function Separator({ label }: { label: string }) {
   return (
     <tr>
-      <td colSpan={9} className="py-1 px-2 text-[10px] uppercase tracking-[0.2em] sticky left-0 bg-[#2a2420]/80 z-10" style={{ color: SOMA_PALETTE.gold }}>
+      <td colSpan={9} className="py-1 px-2 text-[10px] uppercase tracking-[0.2em] sticky left-0 bg-[#1b1426]/80 z-10" style={{ color: SOMA_PALETTE.gold }}>
         — {label} —
       </td>
     </tr>
@@ -2316,12 +2316,12 @@ function GrowthDial({
           step={0.5}
           value={value === 0 ? "" : value}
           onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="bg-transparent border-b border-[#d4a5a0]/20 focus:border-[#d4a5a0] focus:outline-none w-full text-2xl font-light tabular-nums text-right"
+          className="bg-transparent border-b border-[#f28572]/20 focus:border-[#f28572] focus:outline-none w-full text-2xl font-light tabular-nums text-right"
           style={{ color: tone }}
         />
         <span className="text-sm" style={{ color: tone }}>%</span>
       </div>
-      <div className="mt-2 h-1 w-full rounded-full bg-[#d4a5a0]/10 overflow-hidden">
+      <div className="mt-2 h-1 w-full rounded-full bg-[#f28572]/10 overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{
@@ -2362,7 +2362,7 @@ function PremiseInline({
   return (
     <div className="flex flex-col gap-1">
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
-      <div className="flex items-center gap-1 px-2 py-1 rounded border border-[#d4a5a0]/20 bg-[#2a2420]/40">
+      <div className="flex items-center gap-1 px-2 py-1 rounded border border-[#f28572]/20 bg-[#1b1426]/40">
         {prefix && <span className="text-xs text-muted-foreground">{prefix}</span>}
         <input
           type="number"
