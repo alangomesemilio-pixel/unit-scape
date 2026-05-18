@@ -983,12 +983,12 @@ export function SomaForecasting() {
               series={projection.map((m) => ({ v: m.ebitda }))}
             />
             <ExecCard
-              label="Burn Rate Mensal"
-              value={brl(totals.investTotal / 7)}
-              delta={`R$ ${(totals.investTotal / 1000).toFixed(0)}k total`}
+              label="MER · Eficiência de Mídia"
+              value={`${(totals.proj / Math.max(totals.investTotal, 1)).toFixed(2)}x`}
+              delta={`R$ ${(totals.investTotal / 1000).toFixed(0)}k invest. · ${brl(totals.investTotal / 7)}/mês`}
               icon={Flame}
-              trend="up"
-              series={projection.map((m) => ({ v: m.invest }))}
+              trend={totals.proj / Math.max(totals.investTotal, 1) >= 3 ? "up" : "down"}
+              series={projection.map((m) => ({ v: m.invest > 0 ? m.receita / m.invest : 0 }))}
             />
             <ExecCard
               label="Meta Anual Projetada"
