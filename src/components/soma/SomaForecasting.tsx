@@ -2032,6 +2032,9 @@ function Header({
   onRecalibrate,
   onExport,
   onReset,
+  onSave,
+  onRestore,
+  savedAt,
 }: {
   scenario: ScenarioKey;
   onScenario: (s: ScenarioKey) => void;
@@ -2040,6 +2043,9 @@ function Header({
   onRecalibrate: () => void;
   onExport: () => void;
   onReset: () => void;
+  onSave: () => void;
+  onRestore: () => void;
+  savedAt: string | null;
 }) {
   const updateMult = (key: ScenarioKey, field: "rev" | "cac", deltaPct: number) => {
     onScenarioMults({
