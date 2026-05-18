@@ -36,6 +36,10 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
+  Trophy,
+  Flag,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -127,12 +131,46 @@ interface B2BSubChannel {
   growthConv: number;     // pp uplift cumulativo na conv por mês
 }
 
+// OKRs estratégicos · vinculam metas trimestrais/semestre ao forecast operacional
+type KrSource =
+  | "manual"
+  | "receitaSemestre"
+  | "ebitdaSemestre"
+  | "pedidosSemestre"
+  | "ticketMedio"
+  | "ltvCac"
+  | "recompra"
+  | "roas"
+  | "b2bRev"
+  | "investSemestre";
+
+interface KeyResult {
+  id: string;
+  title: string;
+  owner: string;
+  unit: "R$" | "%" | "x" | "#";
+  baseline: number;
+  target: number;
+  source: KrSource;
+  current?: number; // override manual
+}
+
+interface OkrObjective {
+  id: string;
+  title: string;
+  why: string;
+  owner: string;
+  accent: string;
+  krs: KeyResult[];
+}
+
 interface SomaState {
   premises: BasePremises;
   realized: Record<string, RealizedMonth>; // month label -> realized
   channelReal: Record<string, ChannelRealized>; // channel name -> realized
   channelPremises: Record<string, ChannelPremise>; // funil + forecast por canal
   b2bSubChannels: B2BSubChannel[]; // detalhamento robusto do B2B
+  okrs: OkrObjective[];
   scenario: ScenarioKey;
 }
 
@@ -198,6 +236,59 @@ const DEFAULT_B2B_SUBS: B2BSubChannel[] = [
   { id: "key-accounts",   name: "Key Accounts / Corporate", leads: 18,  convLeadPedido: 28, ticket: 7200, cac: 950, invest: 600,  growthLeads: 12, growthConv: 0.15 },
 ];
 
+const DEFAULT_OKRS: OkrObjective[] = [
+  {
+    id: "okr-receita",
+    title: "Escalar Soma com saúde financeira",
+    why: "Atingir R$ 3.5M no semestre mantendo EBITDA saudável e CAC sob controle.",
+    owner: "Alan · CEO",
+    accent: "#c9a572",
+    krs: [
+      { id: "kr-rev",   title: "Receita semestre (Jun→Dez)", owner: "CEO",     unit: "R$", baseline: 0, target: 3500000, source: "receitaSemestre" },
+      { id: "kr-ebit",  title: "EBITDA semestre",            owner: "CFO",     unit: "R$", baseline: 0, target: 700000,  source: "ebitdaSemestre" },
+      { id: "kr-roas",  title: "ROAS médio",                 owner: "Growth",  unit: "x",  baseline: 3.5, target: 4.0,   source: "roas" },
+      { id: "kr-inv",   title: "Investimento dentro do plano", owner: "CFO",   unit: "R$", baseline: 0, target: 480000,  source: "investSemestre" },
+    ],
+  },
+  {
+    id: "okr-retencao",
+    title: "Construir base recorrente e fiel",
+    why: "Cada cliente vale mais. Recompra, LTV e assinatura sustentam o crescimento.",
+    owner: "CRM · Ian",
+    accent: "#d4a5a0",
+    krs: [
+      { id: "kr-recompra", title: "Taxa de recompra",         owner: "CRM",   unit: "%",  baseline: 32, target: 38,    source: "recompra" },
+      { id: "kr-ltvcac",   title: "LTV / CAC",                owner: "CRM",   unit: "x",  baseline: 5.0, target: 6.0,  source: "ltvCac" },
+      { id: "kr-assin",    title: "Receita Assinatura semestre", owner: "CRM", unit: "R$", baseline: 0, target: 150000, source: "manual", current: 28000 },
+      { id: "kr-nps",      title: "NPS",                      owner: "CX",    unit: "#",  baseline: 70, target: 78,    source: "manual", current: 72 },
+    ],
+  },
+  {
+    id: "okr-b2b",
+    title: "Transformar B2B em motor previsível",
+    why: "Pedidos grandes, recorrência por canal e ticket médio alto.",
+    owner: "Comercial · Igor",
+    accent: "#9ab397",
+    krs: [
+      { id: "kr-b2brev", title: "Receita B2B semestre",       owner: "Comercial", unit: "R$", baseline: 0, target: 700000, source: "b2bRev" },
+      { id: "kr-b2bsub", title: "Sub-canais B2B ativos",      owner: "Comercial", unit: "#",  baseline: 2, target: 5,      source: "manual", current: 4 },
+      { id: "kr-b2btk",  title: "Ticket médio B2B",           owner: "Comercial", unit: "R$", baseline: 2200, target: 3500, source: "manual", current: 2800 },
+    ],
+  },
+  {
+    id: "okr-growth",
+    title: "Growth creator-led com previsibilidade",
+    why: "Pedidos, ticket e receita por canais que sustentam aquisição.",
+    owner: "Growth · Fernando",
+    accent: "#b8857f",
+    krs: [
+      { id: "kr-ped",   title: "Pedidos semestre",            owner: "Growth", unit: "#",  baseline: 0, target: 12000, source: "pedidosSemestre" },
+      { id: "kr-tk",    title: "Ticket médio",                owner: "Growth", unit: "R$", baseline: 245, target: 265,  source: "ticketMedio" },
+      { id: "kr-infl",  title: "Receita Influenciadora semestre", owner: "Growth", unit: "R$", baseline: 0, target: 400000, source: "manual", current: 95000 },
+    ],
+  },
+];
+
 const DEFAULT_STATE: SomaState = {
   premises: DEFAULT_PREMISES,
   realized: {
@@ -210,6 +301,7 @@ const DEFAULT_STATE: SomaState = {
   },
   channelPremises: DEFAULT_CHANNEL_PREMISES,
   b2bSubChannels: DEFAULT_B2B_SUBS,
+  okrs: DEFAULT_OKRS,
   scenario: "base",
 };
 
@@ -257,6 +349,7 @@ function loadState(): SomaState {
         channelReal: parsed.channelReal || {},
         channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
         b2bSubChannels: Array.isArray(parsed.b2bSubChannels) && parsed.b2bSubChannels.length > 0 ? parsed.b2bSubChannels : DEFAULT_B2B_SUBS,
+        okrs: Array.isArray(parsed.okrs) && parsed.okrs.length > 0 ? parsed.okrs : DEFAULT_OKRS,
       };
     }
   } catch {}
@@ -590,6 +683,57 @@ export function SomaForecasting() {
     return { proj, real, ebitda, pedidos, ating, investTotal };
   }, [projection, state.realized]);
 
+  // OKR live values (current = realizado; pace = projetado)
+  const okrLive = useMemo(() => {
+    const realReceita = totals.real;
+    const realPedidos = Object.values(state.realized).reduce((a, r) => a + (r.pedidos || 0), 0);
+    const realLucro = Object.values(state.realized).reduce((a, r) => a + (r.lucro || 0), 0);
+    const realInvest = Object.values(state.realized).reduce((a, r) => a + (r.invest || 0), 0);
+    const ticketReal = realPedidos > 0 ? realReceita / realPedidos : 0;
+    const roasReal = realInvest > 0 ? realReceita / realInvest : 0;
+    const b2bRealMonths = MONTHS.map((_, i) => channelProjections["B2B"]?.[i]?.receita || 0);
+    const realFilledMonths = MONTHS.filter((m) => state.realized[m]?.receita).length;
+    const b2bRealApprox = b2bRealMonths.slice(0, realFilledMonths).reduce((a, b) => a + b, 0);
+    const b2bProj = b2bRealMonths.reduce((a, b) => a + b, 0);
+    const ltvCac = state.premises.ltv / Math.max(state.premises.cac, 1);
+    return {
+      receitaSemestre:  { current: realReceita,         pace: totals.proj },
+      ebitdaSemestre:   { current: realLucro,           pace: totals.ebitda },
+      pedidosSemestre:  { current: realPedidos,         pace: totals.pedidos },
+      ticketMedio:      { current: ticketReal,          pace: state.premises.ticket },
+      roas:             { current: roasReal,            pace: state.premises.roas },
+      ltvCac:           { current: ltvCac,              pace: ltvCac },
+      recompra:         { current: state.premises.recompra, pace: state.premises.recompra },
+      b2bRev:           { current: b2bRealApprox,       pace: b2bProj },
+      investSemestre:   { current: realInvest,          pace: totals.investTotal },
+    } as const;
+  }, [totals, state.realized, state.premises, channelProjections]);
+
+  const krValues = (kr: KeyResult) => {
+    if (kr.source === "manual") {
+      const current = kr.current ?? 0;
+      return { current, pace: current };
+    }
+    return okrLive[kr.source];
+  };
+
+  const okrProgress = (objs: OkrObjective[]) => {
+    // média simples ponderada (cap em 100% por KR para evitar distorção)
+    let totalP = 0;
+    let totalK = 0;
+    objs.forEach((o) => {
+      o.krs.forEach((k) => {
+        const { current } = krValues(k);
+        const denom = k.target - k.baseline;
+        const num = current - k.baseline;
+        const p = denom > 0 ? (num / denom) * 100 : 0;
+        totalP += Math.max(0, Math.min(100, p));
+        totalK += 1;
+      });
+    });
+    return totalK > 0 ? totalP / totalK : 0;
+  };
+
   // Crescimento médio realizado
   const realGrowth = useMemo(() => {
     const reals = MONTHS.map((m) => state.realized[m]?.receita || 0).filter((v) => v > 0);
@@ -635,6 +779,54 @@ export function SomaForecasting() {
     }));
   const removeB2BSub = (id: string) =>
     setState((s) => ({ ...s, b2bSubChannels: s.b2bSubChannels.filter((sub) => sub.id !== id) }));
+
+  // ===== OKR setters =====
+  const setKr = (objId: string, krId: string, patch: Partial<KeyResult>) =>
+    setState((s) => ({
+      ...s,
+      okrs: s.okrs.map((o) =>
+        o.id !== objId ? o : { ...o, krs: o.krs.map((k) => (k.id === krId ? { ...k, ...patch } : k)) },
+      ),
+    }));
+  const addKr = (objId: string) =>
+    setState((s) => ({
+      ...s,
+      okrs: s.okrs.map((o) =>
+        o.id !== objId
+          ? o
+          : {
+              ...o,
+              krs: [
+                ...o.krs,
+                { id: `kr-${Date.now()}`, title: "Novo Key Result", owner: o.owner.split(" ")[0], unit: "R$", baseline: 0, target: 100000, source: "manual", current: 0 },
+              ],
+            },
+      ),
+    }));
+  const removeKr = (objId: string, krId: string) =>
+    setState((s) => ({
+      ...s,
+      okrs: s.okrs.map((o) => (o.id !== objId ? o : { ...o, krs: o.krs.filter((k) => k.id !== krId) })),
+    }));
+  const addObjective = () =>
+    setState((s) => ({
+      ...s,
+      okrs: [
+        ...s.okrs,
+        {
+          id: `obj-${Date.now()}`,
+          title: "Novo Objetivo",
+          why: "Descreva o porquê estratégico.",
+          owner: "Time Soma",
+          accent: SOMA_PALETTE.sage,
+          krs: [],
+        },
+      ],
+    }));
+  const removeObjective = (id: string) =>
+    setState((s) => ({ ...s, okrs: s.okrs.filter((o) => o.id !== id) }));
+  const setObjective = (id: string, patch: Partial<OkrObjective>) =>
+    setState((s) => ({ ...s, okrs: s.okrs.map((o) => (o.id === id ? { ...o, ...patch } : o)) }));
 
   // Recalibrar forecast: usa última performance real para reescrever premissas
   const recalibrate = () => {
@@ -798,7 +990,271 @@ export function SomaForecasting() {
           </div>
         </Section>
 
-        {/* PREMISSAS BASE (MÊS 1) */}
+        {/* OKRs ESTRATÉGICOS */}
+        <Section
+          title="OKRs Estratégicos · Soma"
+          subtitle="Objetivos do semestre → Key Results vivos → meta mensal e semanal pro time bater"
+          icon={Trophy}
+        >
+          <Panel>
+            <div className="flex items-center justify-between mb-4">
+              <div className="text-xs text-muted-foreground">
+                Progresso geral do plano · {okrProgress(state.okrs).toFixed(0)}% atingido
+                <span className="ml-3 text-[10px] uppercase tracking-wider" style={{ color: SOMA_PALETTE.rose }}>
+                  Semestre Jun → Dez · 30 semanas
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={addObjective}
+                className="h-7 text-xs"
+                style={{ color: SOMA_PALETTE.rose }}
+              >
+                <Plus className="size-3 mr-1" /> Novo objetivo
+              </Button>
+            </div>
+
+            {/* Barra de progresso global */}
+            <div className="h-2 rounded-full overflow-hidden mb-6" style={{ background: `${SOMA_PALETTE.rose}15` }}>
+              <div
+                className="h-full transition-all"
+                style={{
+                  width: `${Math.min(100, okrProgress(state.okrs))}%`,
+                  background: `linear-gradient(90deg, ${SOMA_PALETTE.rose}, ${SOMA_PALETTE.gold})`,
+                }}
+              />
+            </div>
+
+            <div className="space-y-5">
+              {state.okrs.map((obj) => {
+                const objProg = okrProgress([obj]);
+                return (
+                  <div
+                    key={obj.id}
+                    className="rounded-xl border p-4"
+                    style={{
+                      borderColor: `${obj.accent}40`,
+                      background: `linear-gradient(135deg, ${obj.accent}08, transparent)`,
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-start gap-3 flex-1">
+                        <div
+                          className="size-10 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ background: `${obj.accent}25`, color: obj.accent }}
+                        >
+                          <Flag className="size-5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <input
+                            value={obj.title}
+                            onChange={(e) => setObjective(obj.id, { title: e.target.value })}
+                            className="bg-transparent font-medium text-sm w-full focus:outline-none border-b border-transparent focus:border-[color:var(--soma-rose)]/30"
+                            style={{ color: SOMA_PALETTE.cream }}
+                          />
+                          <input
+                            value={obj.why}
+                            onChange={(e) => setObjective(obj.id, { why: e.target.value })}
+                            className="bg-transparent text-xs text-muted-foreground italic w-full mt-0.5 focus:outline-none"
+                          />
+                          <div className="text-[10px] uppercase tracking-wider mt-1" style={{ color: obj.accent }}>
+                            {obj.owner}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-right">
+                          <div className="text-2xl font-light tabular-nums" style={{ color: obj.accent }}>
+                            {objProg.toFixed(0)}%
+                          </div>
+                          <div className="text-[10px] text-muted-foreground">{obj.krs.length} KRs</div>
+                        </div>
+                        <button
+                          onClick={() => removeObjective(obj.id)}
+                          className="text-muted-foreground hover:text-[color:var(--destructive)] p-1"
+                          title="Remover objetivo"
+                          style={{ color: SOMA_PALETTE.alert }}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* KR table */}
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                            <th className="py-1.5 px-2 text-left min-w-[200px]">Key Result</th>
+                            <th className="py-1.5 px-2 text-left">Dono</th>
+                            <th className="py-1.5 px-2 text-right">Baseline</th>
+                            <th className="py-1.5 px-2 text-right">Meta semestre</th>
+                            <th className="py-1.5 px-2 text-right">Atual</th>
+                            <th className="py-1.5 px-2 text-right">Pace forecast</th>
+                            <th className="py-1.5 px-2 text-right">Meta mensal</th>
+                            <th className="py-1.5 px-2 text-right">Meta semanal</th>
+                            <th className="py-1.5 px-2 text-right w-[140px]">Atingimento</th>
+                            <th className="py-1.5 px-1"></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {obj.krs.map((kr) => {
+                            const { current, pace } = krValues(kr);
+                            const denom = kr.target - kr.baseline;
+                            const prog = denom > 0 ? Math.max(0, Math.min(100, ((current - kr.baseline) / denom) * 100)) : 0;
+                            const pacePct = denom > 0 ? Math.max(0, Math.min(150, ((pace - kr.baseline) / denom) * 100)) : 0;
+                            const isMoney = kr.unit === "R$";
+                            const isPctOrX = kr.unit === "%" || kr.unit === "x" || kr.unit === "#";
+                            const fmt = (n: number) =>
+                              isMoney
+                                ? brl(n)
+                                : kr.unit === "%"
+                                ? `${n.toFixed(1)}%`
+                                : kr.unit === "x"
+                                ? `${n.toFixed(2)}x`
+                                : Math.round(n).toLocaleString("pt-BR");
+                            // metas mensais e semanais derivadas do delta (target - baseline) / 7 meses
+                            const monthlyDelta = denom / MONTHS.length;
+                            const monthlyTarget = isPctOrX ? kr.target : monthlyDelta;
+                            const weeklyTarget = isPctOrX ? kr.target : monthlyDelta / 4.33;
+                            const paceColor = pacePct >= 100 ? SOMA_PALETTE.sage : pacePct >= 80 ? SOMA_PALETTE.warn : SOMA_PALETTE.alert;
+                            const progColor = prog >= 90 ? SOMA_PALETTE.sage : prog >= 60 ? SOMA_PALETTE.warn : SOMA_PALETTE.alert;
+                            return (
+                              <tr key={kr.id} className="border-b border-[#d4a5a0]/10 hover:bg-[#d4a5a0]/5">
+                                <td className="py-2 px-2">
+                                  <input
+                                    value={kr.title}
+                                    onChange={(e) => setKr(obj.id, kr.id, { title: e.target.value })}
+                                    className="bg-transparent w-full focus:outline-none"
+                                    style={{ color: SOMA_PALETTE.cream }}
+                                  />
+                                  <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2">
+                                    <select
+                                      value={kr.source}
+                                      onChange={(e) => setKr(obj.id, kr.id, { source: e.target.value as KrSource })}
+                                      className="bg-transparent border-b border-[#d4a5a0]/20 focus:outline-none text-[10px]"
+                                      style={{ color: SOMA_PALETTE.sand }}
+                                    >
+                                      <option value="manual">manual</option>
+                                      <option value="receitaSemestre">receita (real)</option>
+                                      <option value="ebitdaSemestre">ebitda (real)</option>
+                                      <option value="pedidosSemestre">pedidos (real)</option>
+                                      <option value="ticketMedio">ticket médio</option>
+                                      <option value="roas">ROAS</option>
+                                      <option value="ltvCac">LTV/CAC</option>
+                                      <option value="recompra">recompra</option>
+                                      <option value="b2bRev">receita B2B</option>
+                                      <option value="investSemestre">investimento</option>
+                                    </select>
+                                    <select
+                                      value={kr.unit}
+                                      onChange={(e) => setKr(obj.id, kr.id, { unit: e.target.value as KeyResult["unit"] })}
+                                      className="bg-transparent border-b border-[#d4a5a0]/20 focus:outline-none text-[10px]"
+                                      style={{ color: SOMA_PALETTE.sand }}
+                                    >
+                                      <option value="R$">R$</option>
+                                      <option value="%">%</option>
+                                      <option value="x">x</option>
+                                      <option value="#">#</option>
+                                    </select>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-2">
+                                  <input
+                                    value={kr.owner}
+                                    onChange={(e) => setKr(obj.id, kr.id, { owner: e.target.value })}
+                                    className="bg-transparent w-20 focus:outline-none text-[11px]"
+                                    style={{ color: SOMA_PALETTE.sand }}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 text-right">
+                                  <input
+                                    type="number"
+                                    value={kr.baseline}
+                                    onChange={(e) => setKr(obj.id, kr.id, { baseline: parseFloat(e.target.value) || 0 })}
+                                    className="bg-transparent w-20 text-right focus:outline-none tabular-nums"
+                                    style={{ color: SOMA_PALETTE.cream }}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 text-right">
+                                  <input
+                                    type="number"
+                                    value={kr.target}
+                                    onChange={(e) => setKr(obj.id, kr.id, { target: parseFloat(e.target.value) || 0 })}
+                                    className="bg-transparent w-24 text-right focus:outline-none tabular-nums font-medium"
+                                    style={{ color: obj.accent }}
+                                  />
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums">
+                                  {kr.source === "manual" ? (
+                                    <input
+                                      type="number"
+                                      value={kr.current ?? 0}
+                                      onChange={(e) => setKr(obj.id, kr.id, { current: parseFloat(e.target.value) || 0 })}
+                                      className="bg-transparent w-20 text-right focus:outline-none tabular-nums"
+                                      style={{ color: SOMA_PALETTE.cream }}
+                                    />
+                                  ) : (
+                                    <span style={{ color: SOMA_PALETTE.cream }}>{fmt(current)}</span>
+                                  )}
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums" style={{ color: paceColor }}>
+                                  {fmt(pace)}
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums text-muted-foreground">
+                                  {fmt(monthlyTarget)}
+                                </td>
+                                <td className="py-2 px-2 text-right tabular-nums" style={{ color: SOMA_PALETTE.gold }}>
+                                  {fmt(weeklyTarget)}
+                                </td>
+                                <td className="py-2 px-2">
+                                  <div className="flex items-center gap-2 justify-end">
+                                    <div className="h-1.5 w-16 rounded-full overflow-hidden" style={{ background: `${SOMA_PALETTE.rose}15` }}>
+                                      <div className="h-full" style={{ width: `${prog}%`, background: progColor }} />
+                                    </div>
+                                    <span className="tabular-nums w-10 text-right" style={{ color: progColor }}>
+                                      {prog.toFixed(0)}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="py-2 px-1 text-right">
+                                  <button
+                                    onClick={() => removeKr(obj.id, kr.id)}
+                                    className="text-muted-foreground hover:opacity-100 opacity-50"
+                                    title="Remover KR"
+                                  >
+                                    <Trash2 className="size-3" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr>
+                            <td colSpan={10} className="pt-2">
+                              <button
+                                onClick={() => addKr(obj.id)}
+                                className="text-[11px] text-muted-foreground hover:text-[color:var(--foreground)] flex items-center gap-1"
+                                style={{ color: obj.accent }}
+                              >
+                                <Plus className="size-3" /> adicionar Key Result
+                              </button>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="text-[11px] text-muted-foreground italic border-t border-[#d4a5a0]/15 pt-3 mt-4">
+              <strong style={{ color: SOMA_PALETTE.rose }}>Como funciona:</strong> KRs com fonte automática (receita, ebitda, pedidos, ROAS, B2B…) leem dados vivos do forecast — atual = realizado acumulado, pace = projetado total. KRs manuais (NPS, sub-canais, assinatura) você atualiza direto. <strong style={{ color: SOMA_PALETTE.gold }}>Meta mensal</strong> = (target − baseline) ÷ 7 meses · <strong style={{ color: SOMA_PALETTE.gold }}>Meta semanal</strong> = mensal ÷ 4.33 — distribua para o time bater no weekly.
+            </div>
+          </Panel>
+        </Section>
+
         <Section
           title="Premissas Iniciais — Mês Base (Junho)"
           subtitle="Alimente o Mês 1 · o sistema projeta automaticamente Jun → Dez"
