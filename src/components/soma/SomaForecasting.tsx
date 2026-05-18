@@ -478,6 +478,26 @@ export function SomaForecasting() {
 
   const mult = SCENARIO_MULT[state.scenario];
 
+  // Projeção dos sub-canais B2B (por lead, não por visita)
+  const b2bSubProjections = useMemo(() => {
+    const out: Record<string, ChannelMonth[]> = {};
+    state.b2bSubChannels.forEach((sub) => {
+      const gL = sub.growthLeads / 100;
+      out[sub.id] = MONTHS.map((m, i) => {
+        const visitas = sub.leads * Math.pow(1 + gL, i); // "visitas" = leads
+        const conv = Math.min(95, sub.convLeadPedido + sub.growthConv * i);
+        const pedidos = visitas * (conv / 100);
+        const ticket = sub.ticket * (1 + i * 0.004);
+        const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
+        const cac = sub.cac * (i === 0 ? 1 : mult.cac);
+        const invest = sub.invest * Math.pow(1 + gL * 0.7, i);
+        const roas = invest > 0 ? receita / invest : 0;
+        return { month: m, idx: i, visitas, carrinhos: visitas, checkouts: visitas, pedidos, receita, ticket, cac, invest, roas, convFinal: conv };
+      });
+    });
+    return out;
+  }, [state.b2bSubChannels, mult]);
+
   // Projeção por canal (funil) — fonte da verdade do macro
   const channelProjections = useMemo(() => {
     const out: Record<string, ChannelMonth[]> = {};
@@ -485,8 +505,30 @@ export function SomaForecasting() {
       const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
       out[name] = projectChannel(cp, mult);
     });
+    // Override B2B: soma dos sub-canais (leads-based)
+    const subs = Object.values(b2bSubProjections);
+    if (subs.length > 0) {
+      out["B2B"] = MONTHS.map((m, i) => {
+        let leads = 0, pedidos = 0, receita = 0, invest = 0, cacW = 0;
+        subs.forEach((arr) => {
+          const cm = arr[i];
+          if (!cm) return;
+          leads += cm.visitas;
+          pedidos += cm.pedidos;
+          receita += cm.receita;
+          invest += cm.invest;
+          cacW += cm.cac * cm.pedidos;
+        });
+        const ticket = pedidos > 0 ? receita / pedidos : 0;
+        const cac = pedidos > 0 ? cacW / pedidos : 0;
+        const roas = invest > 0 ? receita / invest : 0;
+        const convFinal = leads > 0 ? (pedidos / leads) * 100 : 0;
+        return { month: m, idx: i, visitas: leads, carrinhos: leads, checkouts: leads, pedidos, receita, ticket, cac, invest, roas, convFinal };
+      });
+    }
     return out;
-  }, [state.channelPremises, mult]);
+  }, [state.channelPremises, mult, b2bSubProjections]);
+
 
   // Macro = soma dos canais (reflete edições nos canais como no forecast do mês)
   const projection = useMemo(() => {
