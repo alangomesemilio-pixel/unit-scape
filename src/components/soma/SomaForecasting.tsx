@@ -2155,10 +2155,27 @@ function Header({
           >
             <Zap className="size-4 mr-1" /> Recalibrar Forecast
           </Button>
+          <Button
+            size="sm"
+            onClick={onSave}
+            className="border-0 font-semibold"
+            style={{ background: SOMA_PALETTE.sage, color: SOMA_PALETTE.ink }}
+            title={savedAt ? `Último salvamento: ${new Date(savedAt).toLocaleString("pt-BR")}` : "Salvar cenário atual"}
+          >
+            <Save className="size-4 mr-1" />
+            {savedAt
+              ? `Salvo · ${new Date(savedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+              : "Salvar Cenário"}
+          </Button>
+          {savedAt && (
+            <Button variant="outline" size="sm" onClick={onRestore} className="border-[#f28572]/30" title="Restaurar último cenário salvo">
+              <RotateCcw className="size-4 mr-1" /> Restaurar salvo
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onExport} className="border-[#f28572]/30">
             <Download className="size-4 mr-1" /> Exportar
           </Button>
-          <Button variant="ghost" size="sm" onClick={onReset}>
+          <Button variant="ghost" size="sm" onClick={onReset} title="Resetar tudo">
             <RotateCcw className="size-4" />
           </Button>
         </div>
