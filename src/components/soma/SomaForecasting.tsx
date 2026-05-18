@@ -40,6 +40,7 @@ import {
   Flag,
   Plus,
   Trash2,
+  Save,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -320,6 +321,7 @@ const SCENARIO_MULT: Record<ScenarioKey, { rev: number; cac: number }> = {
 };
 
 const STORAGE_KEY = "soma.forecast.v2";
+const SNAPSHOT_KEY = "soma.forecast.snapshot.v1";
 
 const SOMA_PALETTE = {
   rose: "#f28572",
@@ -567,9 +569,17 @@ export function SomaForecasting() {
   const [premisesOpen, setPremisesOpen] = useState(true);
   const [channelMonthIdx, setChannelMonthIdx] = useState(0);
   const [channelExpanded, setChannelExpanded] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
+    try {
+      const snap = localStorage.getItem(SNAPSHOT_KEY);
+      if (snap) {
+        const parsed = JSON.parse(snap);
+        if (parsed?.savedAt) setSavedAt(parsed.savedAt);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -884,6 +894,35 @@ export function SomaForecasting() {
     toast.success("Forecast exportado");
   };
 
+  const saveSnapshot = () => {
+    try {
+      const ts = new Date().toISOString();
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ savedAt: ts, state }));
+      setSavedAt(ts);
+      const hhmm = new Date(ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      toast.success(`Cenário salvo · ${hhmm}`);
+    } catch {
+      toast.error("Não foi possível salvar o cenário");
+    }
+  };
+
+  const restoreSnapshot = () => {
+    try {
+      const raw = localStorage.getItem(SNAPSHOT_KEY);
+      if (!raw) {
+        toast.error("Nenhum cenário salvo encontrado");
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed?.state) {
+        setState(parsed.state);
+        toast.success("Último cenário salvo restaurado");
+      }
+    } catch {
+      toast.error("Falha ao restaurar cenário");
+    }
+  };
+
   // Dados gráficos
   const chartData = projection.map((p) => ({
     month: p.month,
@@ -945,6 +984,9 @@ export function SomaForecasting() {
           onRecalibrate={recalibrate}
           onExport={exportJSON}
           onReset={reset}
+          onSave={saveSnapshot}
+          onRestore={restoreSnapshot}
+          savedAt={savedAt}
         />
 
         {/* VISÃO CEO */}
@@ -1990,6 +2032,9 @@ function Header({
   onRecalibrate,
   onExport,
   onReset,
+  onSave,
+  onRestore,
+  savedAt,
 }: {
   scenario: ScenarioKey;
   onScenario: (s: ScenarioKey) => void;
@@ -1998,6 +2043,9 @@ function Header({
   onRecalibrate: () => void;
   onExport: () => void;
   onReset: () => void;
+  onSave: () => void;
+  onRestore: () => void;
+  savedAt: string | null;
 }) {
   const updateMult = (key: ScenarioKey, field: "rev" | "cac", deltaPct: number) => {
     onScenarioMults({
@@ -2107,10 +2155,27 @@ function Header({
           >
             <Zap className="size-4 mr-1" /> Recalibrar Forecast
           </Button>
+          <Button
+            size="sm"
+            onClick={onSave}
+            className="border-0 font-semibold"
+            style={{ background: SOMA_PALETTE.sage, color: SOMA_PALETTE.ink }}
+            title={savedAt ? `Último salvamento: ${new Date(savedAt).toLocaleString("pt-BR")}` : "Salvar cenário atual"}
+          >
+            <Save className="size-4 mr-1" />
+            {savedAt
+              ? `Salvo · ${new Date(savedAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`
+              : "Salvar Cenário"}
+          </Button>
+          {savedAt && (
+            <Button variant="outline" size="sm" onClick={onRestore} className="border-[#f28572]/30" title="Restaurar último cenário salvo">
+              <RotateCcw className="size-4 mr-1" /> Restaurar salvo
+            </Button>
+          )}
           <Button variant="outline" size="sm" onClick={onExport} className="border-[#f28572]/30">
             <Download className="size-4 mr-1" /> Exportar
           </Button>
-          <Button variant="ghost" size="sm" onClick={onReset}>
+          <Button variant="ghost" size="sm" onClick={onReset} title="Resetar tudo">
             <RotateCcw className="size-4" />
           </Button>
         </div>
