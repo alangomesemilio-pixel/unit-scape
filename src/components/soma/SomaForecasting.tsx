@@ -938,6 +938,8 @@ export function SomaForecasting() {
         <Header
           scenario={state.scenario}
           onScenario={(s) => setState((p) => ({ ...p, scenario: s }))}
+          scenarioMults={state.scenarioMults}
+          onScenarioMults={(m) => setState((p) => ({ ...p, scenarioMults: m }))}
           onRecalibrate={recalibrate}
           onExport={exportJSON}
           onReset={reset}
