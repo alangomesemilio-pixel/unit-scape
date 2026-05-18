@@ -63,9 +63,13 @@ interface BasePremises {
   receitaMarketplace: number;
   // Saúde
   margemBruta: number; // %
-  cmv: number; // %
+  cmv: number; // % (produto + frete)
   recompra: number; // %
   ltv: number;
+  // Custos como % da receita — alimentam o forecast mensal
+  opexPct: number;     // % despesas operacionais
+  impostoPct: number;  // % impostos sobre receita
+  pessoasPct: number;  // % custo com pessoas (time)
   // Crescimentos mensais (%) — MOTOR DO FORECAST
   crescMensal: number; // fallback / crescimento geral
   crescReceita: number;
