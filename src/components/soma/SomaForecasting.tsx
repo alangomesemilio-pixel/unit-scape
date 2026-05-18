@@ -729,6 +729,54 @@ export function SomaForecasting() {
   const removeB2BSub = (id: string) =>
     setState((s) => ({ ...s, b2bSubChannels: s.b2bSubChannels.filter((sub) => sub.id !== id) }));
 
+  // ===== OKR setters =====
+  const setKr = (objId: string, krId: string, patch: Partial<KeyResult>) =>
+    setState((s) => ({
+      ...s,
+      okrs: s.okrs.map((o) =>
+        o.id !== objId ? o : { ...o, krs: o.krs.map((k) => (k.id === krId ? { ...k, ...patch } : k)) },
+      ),
+    }));
+  const addKr = (objId: string) =>
+    setState((s) => ({
+      ...s,
+      okrs: s.okrs.map((o) =>
+        o.id !== objId
+          ? o
+          : {
+              ...o,
+              krs: [
+                ...o.krs,
+                { id: `kr-${Date.now()}`, title: "Novo Key Result", owner: o.owner.split(" ")[0], unit: "R$", baseline: 0, target: 100000, source: "manual", current: 0 },
+              ],
+            },
+      ),
+    }));
+  const removeKr = (objId: string, krId: string) =>
+    setState((s) => ({
+      ...s,
+      okrs: s.okrs.map((o) => (o.id !== objId ? o : { ...o, krs: o.krs.filter((k) => k.id !== krId) })),
+    }));
+  const addObjective = () =>
+    setState((s) => ({
+      ...s,
+      okrs: [
+        ...s.okrs,
+        {
+          id: `obj-${Date.now()}`,
+          title: "Novo Objetivo",
+          why: "Descreva o porquê estratégico.",
+          owner: "Time Soma",
+          accent: SOMA_PALETTE.sage,
+          krs: [],
+        },
+      ],
+    }));
+  const removeObjective = (id: string) =>
+    setState((s) => ({ ...s, okrs: s.okrs.filter((o) => o.id !== id) }));
+  const setObjective = (id: string, patch: Partial<OkrObjective>) =>
+    setState((s) => ({ ...s, okrs: s.okrs.map((o) => (o.id === id ? { ...o, ...patch } : o)) }));
+
   // Recalibrar forecast: usa última performance real para reescrever premissas
   const recalibrate = () => {
     const filled = MONTHS.map((m) => ({ m, r: state.realized[m] })).filter((x) => x.r?.receita);
