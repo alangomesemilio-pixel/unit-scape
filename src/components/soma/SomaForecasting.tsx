@@ -683,6 +683,57 @@ export function SomaForecasting() {
     return { proj, real, ebitda, pedidos, ating, investTotal };
   }, [projection, state.realized]);
 
+  // OKR live values (current = realizado; pace = projetado)
+  const okrLive = useMemo(() => {
+    const realReceita = totals.real;
+    const realPedidos = Object.values(state.realized).reduce((a, r) => a + (r.pedidos || 0), 0);
+    const realLucro = Object.values(state.realized).reduce((a, r) => a + (r.lucro || 0), 0);
+    const realInvest = Object.values(state.realized).reduce((a, r) => a + (r.invest || 0), 0);
+    const ticketReal = realPedidos > 0 ? realReceita / realPedidos : 0;
+    const roasReal = realInvest > 0 ? realReceita / realInvest : 0;
+    const b2bRealMonths = MONTHS.map((_, i) => channelProjections["B2B"]?.[i]?.receita || 0);
+    const realFilledMonths = MONTHS.filter((m) => state.realized[m]?.receita).length;
+    const b2bRealApprox = b2bRealMonths.slice(0, realFilledMonths).reduce((a, b) => a + b, 0);
+    const b2bProj = b2bRealMonths.reduce((a, b) => a + b, 0);
+    const ltvCac = state.premises.ltv / Math.max(state.premises.cac, 1);
+    return {
+      receitaSemestre:  { current: realReceita,         pace: totals.proj },
+      ebitdaSemestre:   { current: realLucro,           pace: totals.ebitda },
+      pedidosSemestre:  { current: realPedidos,         pace: totals.pedidos },
+      ticketMedio:      { current: ticketReal,          pace: state.premises.ticket },
+      roas:             { current: roasReal,            pace: state.premises.roas },
+      ltvCac:           { current: ltvCac,              pace: ltvCac },
+      recompra:         { current: state.premises.recompra, pace: state.premises.recompra },
+      b2bRev:           { current: b2bRealApprox,       pace: b2bProj },
+      investSemestre:   { current: realInvest,          pace: totals.investTotal },
+    } as const;
+  }, [totals, state.realized, state.premises, channelProjections]);
+
+  const krValues = (kr: KeyResult) => {
+    if (kr.source === "manual") {
+      const current = kr.current ?? 0;
+      return { current, pace: current };
+    }
+    return okrLive[kr.source];
+  };
+
+  const okrProgress = (objs: OkrObjective[]) => {
+    // média simples ponderada (cap em 100% por KR para evitar distorção)
+    let totalP = 0;
+    let totalK = 0;
+    objs.forEach((o) => {
+      o.krs.forEach((k) => {
+        const { current } = krValues(k);
+        const denom = k.target - k.baseline;
+        const num = current - k.baseline;
+        const p = denom > 0 ? (num / denom) * 100 : 0;
+        totalP += Math.max(0, Math.min(100, p));
+        totalK += 1;
+      });
+    });
+    return totalK > 0 ? totalP / totalK : 0;
+  };
+
   // Crescimento médio realizado
   const realGrowth = useMemo(() => {
     const reals = MONTHS.map((m) => state.realized[m]?.receita || 0).filter((v) => v > 0);
