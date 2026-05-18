@@ -33,7 +33,7 @@ function Index() {
       {/* Top nav */}
       <nav className="flex items-center gap-1 px-4 py-2 border-b border-border bg-card/80 backdrop-blur z-20">
         <div className="flex items-center gap-2 mr-4">
-          <div className="size-7 rounded-md bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+          <div className="size-7 rounded-md soma-brand-gradient flex items-center justify-center text-primary-foreground font-bold text-sm shadow-md">
             G
           </div>
           <span className="font-bold text-sm">GRAx Group</span>
