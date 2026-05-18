@@ -318,8 +318,12 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
     const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
     const roas = invest > 0 ? receita / invest : 0;
     const margem = p.margemBruta;
-    const lucro = receita * (margem / 100 - 0.18);
-    const ebitda = receita * (margem / 100 - 0.22);
+    const cmvCost = receita * (p.cmv / 100);
+    const opexCost = receita * (p.opexPct / 100);
+    const impostoCost = receita * (p.impostoPct / 100);
+    const pessoasCost = receita * (p.pessoasPct / 100);
+    const ebitda = receita - cmvCost - opexCost - pessoasCost;
+    const lucro = ebitda - impostoCost;
 
     const canalGrowth: Record<string, number> = {
       DTC: fRev,
@@ -349,6 +353,10 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
       ebitda,
       conversao: p.conversao * (1 + i * 0.01),
       margem,
+      cmvCost,
+      opexCost,
+      impostoCost,
+      pessoasCost,
       canais,
       receitaB2B: p.receitaB2B * fB2B,
       receitaInfluenciadora: p.receitaInfluenciadora * fInf,
