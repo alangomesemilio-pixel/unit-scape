@@ -889,11 +889,18 @@ export function SomaForecasting() {
                   <MetricRow label="ROAS" data={projection.map((p) => `${p.roas.toFixed(2)}x`)} />
                   <MetricRow label="Conversão" data={projection.map((p) => `${p.conversao.toFixed(1)}%`)} />
 
+                  <Separator label="Custos & Despesas" />
+
+                  <MetricRow label={`CMV (${state.premises.cmv.toFixed(1)}%)`} data={projection.map((p) => brl(p.cmvCost))} inverted total={brl(projection.reduce((a, p) => a + p.cmvCost, 0))} />
+                  <MetricRow label={`OPEX (${state.premises.opexPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.opexCost))} inverted total={brl(projection.reduce((a, p) => a + p.opexCost, 0))} />
+                  <MetricRow label={`Time / Pessoas (${state.premises.pessoasPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.pessoasCost))} inverted total={brl(projection.reduce((a, p) => a + p.pessoasCost, 0))} />
+                  <MetricRow label={`Imposto (${state.premises.impostoPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.impostoCost))} inverted total={brl(projection.reduce((a, p) => a + p.impostoCost, 0))} />
+
                   <Separator label="Resultado" />
 
-                  <MetricRow label="Lucro Líquido" data={projection.map((p) => brl(p.lucro))} highlight />
-                  <MetricRow label="EBITDA" data={projection.map((p) => brl(p.ebitda))} />
-                  <MetricRow label="Margem" data={projection.map((p) => `${p.margem.toFixed(1)}%`)} />
+                  <MetricRow label="EBITDA" data={projection.map((p) => brl(p.ebitda))} total={brl(projection.reduce((a, p) => a + p.ebitda, 0))} />
+                  <MetricRow label="Lucro Líquido" data={projection.map((p) => brl(p.lucro))} total={brl(projection.reduce((a, p) => a + p.lucro, 0))} highlight />
+                  <MetricRow label="Margem Líquida" data={projection.map((p) => p.receita ? `${((p.lucro / p.receita) * 100).toFixed(1)}%` : "—")} />
 
                   <Separator label="Canais" />
 
