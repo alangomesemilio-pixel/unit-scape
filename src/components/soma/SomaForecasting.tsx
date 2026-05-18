@@ -484,8 +484,12 @@ export function SomaForecasting() {
       const ticket = sumPed > 0 ? sumRec / sumPed : m.ticket;
       const cac = sumPed > 0 ? sumCacWeighted / sumPed : m.cac;
       const roas = sumInv > 0 ? sumRec / sumInv : 0;
-      const lucro = sumRec * (m.margem / 100 - 0.18);
-      const ebitda = sumRec * (m.margem / 100 - 0.22);
+      const cmvCost = sumRec * (state.premises.cmv / 100);
+      const opexCost = sumRec * (state.premises.opexPct / 100);
+      const impostoCost = sumRec * (state.premises.impostoPct / 100);
+      const pessoasCost = sumRec * (state.premises.pessoasPct / 100);
+      const ebitda = sumRec - cmvCost - opexCost - pessoasCost;
+      const lucro = ebitda - impostoCost;
       return {
         ...m,
         receita: sumRec,
@@ -494,6 +498,10 @@ export function SomaForecasting() {
         ticket,
         cac,
         roas,
+        cmvCost,
+        opexCost,
+        impostoCost,
+        pessoasCost,
         lucro,
         ebitda,
         canais,
