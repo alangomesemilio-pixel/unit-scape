@@ -1306,7 +1306,7 @@ export function SomaForecasting() {
                     </button>
                   </div>
 
-                  {expanded && (
+                  {expanded && name !== "B2B" && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15">
                       <PremiseInline label="Visitas (Jun)" value={cp.visitas} onChange={(v) => setChannelPremise(name, { visitas: v })} />
                       <PremiseInline label="Ticket" value={cp.ticket} onChange={(v) => setChannelPremise(name, { ticket: v })} prefix="R$" />
@@ -1320,6 +1320,74 @@ export function SomaForecasting() {
                     </div>
                   )}
 
+                  {expanded && name === "B2B" && (
+                    <div className="mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Sub-canais B2B · medidos por leads & pedidos</div>
+                        <button onClick={addB2BSub} className="text-[11px] px-2 py-0.5 rounded border border-[#d4a5a0]/30 text-foreground hover:bg-[#d4a5a0]/10">+ Adicionar canal</button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                              <th className="py-1.5 px-1">Canal</th>
+                              <th className="py-1.5 px-1 text-right">Leads/mês</th>
+                              <th className="py-1.5 px-1 text-right">Conv L→P</th>
+                              <th className="py-1.5 px-1 text-right">Ticket</th>
+                              <th className="py-1.5 px-1 text-right">CAC</th>
+                              <th className="py-1.5 px-1 text-right">Invest.</th>
+                              <th className="py-1.5 px-1 text-right">Cresc.Leads</th>
+                              <th className="py-1.5 px-1 text-right">Uplift</th>
+                              <th />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.b2bSubChannels.map((sub) => (
+                              <tr key={sub.id} className="border-b border-[#d4a5a0]/5">
+                                <td className="py-1 px-1">
+                                  <input
+                                    value={sub.name}
+                                    onChange={(e) => setB2BSub(sub.id, { name: e.target.value })}
+                                    className="bg-transparent border-b border-transparent hover:border-[#d4a5a0]/40 focus:border-[#d4a5a0] focus:outline-none w-full text-xs"
+                                    style={{ color: SOMA_PALETTE.cream }}
+                                  />
+                                </td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.leads} onChange={(v) => setB2BSub(sub.id, { leads: v })} /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.convLeadPedido} onChange={(v) => setB2BSub(sub.id, { convLeadPedido: v })} suffix="%" step={0.5} /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.ticket} onChange={(v) => setB2BSub(sub.id, { ticket: v })} prefix="R$" /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.cac} onChange={(v) => setB2BSub(sub.id, { cac: v })} prefix="R$" /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.invest} onChange={(v) => setB2BSub(sub.id, { invest: v })} prefix="R$" /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.growthLeads} onChange={(v) => setB2BSub(sub.id, { growthLeads: v })} suffix="%" step={0.5} /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.growthConv} onChange={(v) => setB2BSub(sub.id, { growthConv: v })} suffix="pp" step={0.05} /></td>
+                                <td className="py-1 px-1 text-right">
+                                  <button onClick={() => removeB2BSub(sub.id)} className="text-muted-foreground hover:text-[color:var(--soma-alert)]" title="Remover" style={{ color: SOMA_PALETTE.alert }}>×</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {name === "B2B" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-3">
+                      {state.b2bSubChannels.map((sub, si) => {
+                        const cm0 = b2bSubProjections[sub.id]?.[0];
+                        if (!cm0) return null;
+                        const subColor = PIE_COLORS[(idx + si + 1) % PIE_COLORS.length];
+                        return (
+                          <div key={sub.id} className="rounded-md p-2 border border-[#d4a5a0]/15" style={{ background: `${subColor}12` }}>
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate" title={sub.name}>{sub.name}</div>
+                            <div className="text-sm font-semibold tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{brl(cm0.receita)}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                              {Math.round(cm0.visitas).toLocaleString("pt-BR")} leads · {Math.round(cm0.pedidos).toLocaleString("pt-BR")} ped · {cm0.convFinal.toFixed(1)}%
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-4 gap-1.5 mb-3">
                     {(() => {
                       const m0 = series[0];
@@ -1342,6 +1410,7 @@ export function SomaForecasting() {
                       ));
                     })()}
                   </div>
+                  )}
 
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
