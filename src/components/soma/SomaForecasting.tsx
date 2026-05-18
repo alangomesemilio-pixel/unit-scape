@@ -2105,35 +2105,64 @@ export function SomaForecasting() {
         </Section>
 
         {/* ROADMAP */}
-        <Section title="Roadmap Estratégico" subtitle="6 meses de execução" icon={Calendar}>
+        <Section title="Roadmap Estratégico" subtitle="Clique em um mês para planejar campanhas, ideias e aproveitar o calendário comercial" icon={Calendar}>
           <Panel>
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-3">
-              {[
-                { m: "Junho", t: "Mês base", icon: Flame },
-                { m: "Julho", t: "Escala creators", icon: Heart },
-                { m: "Agosto", t: "Expansão Meta/TikTok", icon: TrendingUp },
-                { m: "Setembro", t: "B2B forte", icon: Briefcase },
-                { m: "Outubro", t: "Assinatura", icon: Repeat },
-                { m: "Novembro", t: "Black Friday", icon: Sparkles },
-                { m: "Dezembro", t: "Expansão SKUs", icon: Zap },
-              ].map(({ m, t, icon: Icon }, i) => (
-                <div
-                  key={m}
-                  className="relative rounded-xl p-4 border transition-all hover:scale-[1.02]"
-                  style={{
-                    borderColor: `${SOMA_PALETTE.rose}30`,
-                    background: `linear-gradient(135deg, ${SOMA_PALETTE.rose}10, ${SOMA_PALETTE.gold}05)`,
-                  }}
-                >
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Mês {i + 1}</div>
-                  <Icon className="size-5 mb-2" style={{ color: SOMA_PALETTE.rose }} />
-                  <div className="font-semibold text-sm" style={{ color: SOMA_PALETTE.cream }}>{m}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{t}</div>
-                </div>
-              ))}
+              {ROADMAP_MONTHS.map(({ m, t, suggestedDates }, i) => {
+                const Icon = [Flame, Heart, TrendingUp, Briefcase, Repeat, Sparkles, Zap][i] || Calendar;
+                const plan = roadmapPlans[m];
+                const hasPlan = plan && (plan.tema || plan.objetivo || plan.ideias || plan.campanhas || (plan.datasSelecionadas?.length ?? 0) > 0);
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setOpenMonth(m)}
+                    className="text-left relative rounded-xl p-4 border transition-all hover:scale-[1.03] hover:shadow-lg cursor-pointer"
+                    style={{
+                      borderColor: hasPlan ? `${SOMA_PALETTE.sage}80` : `${SOMA_PALETTE.rose}30`,
+                      background: hasPlan
+                        ? `linear-gradient(135deg, ${SOMA_PALETTE.sage}18, ${SOMA_PALETTE.gold}08)`
+                        : `linear-gradient(135deg, ${SOMA_PALETTE.rose}10, ${SOMA_PALETTE.gold}05)`,
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Mês {i + 1}</div>
+                      {hasPlan && <CheckCircle2 className="size-3.5" style={{ color: SOMA_PALETTE.sage }} />}
+                    </div>
+                    <Icon className="size-5 mb-2" style={{ color: hasPlan ? SOMA_PALETTE.sage : SOMA_PALETTE.rose }} />
+                    <div className="font-semibold text-sm" style={{ color: SOMA_PALETTE.cream }}>{m}</div>
+                    <div className="text-xs text-muted-foreground mt-1 line-clamp-1">
+                      {plan?.tema || t}
+                    </div>
+                    <div className="text-[10px] mt-2 flex items-center gap-1" style={{ color: SOMA_PALETTE.gold }}>
+                      <Calendar className="size-3" />
+                      {suggestedDates.length} datas no calendário
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </Panel>
         </Section>
+
+        <MonthPlanDialog
+          openMonth={openMonth}
+          onClose={() => setOpenMonth(null)}
+          plans={roadmapPlans}
+          onSave={(month, plan) => {
+            setRoadmapPlans((prev) => ({ ...prev, [month]: plan }));
+            toast.success(`Plano de ${month} salvo`, { description: "As ideias foram persistidas localmente." });
+            setOpenMonth(null);
+          }}
+          onClear={(month) => {
+            setRoadmapPlans((prev) => {
+              const next = { ...prev };
+              delete next[month];
+              return next;
+            });
+            toast.success(`Plano de ${month} limpo`);
+            setOpenMonth(null);
+          }}
+        />
 
         <div className="text-center text-xs text-muted-foreground pt-4 pb-8">
           SOMA · Creator-led Wellness Brand · Forecasting Estratégico
