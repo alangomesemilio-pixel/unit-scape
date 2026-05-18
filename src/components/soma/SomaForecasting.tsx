@@ -114,11 +114,25 @@ interface ChannelPremise {
   growthConv: number;    // pp uplift cumulativo na conv final por mês
 }
 
+// Sub-canais de B2B: cada fonte de captação tem leads, conv, ticket e crescimento próprios
+interface B2BSubChannel {
+  id: string;
+  name: string;
+  leads: number;          // leads/contatos/oportunidades no mês base
+  convLeadPedido: number; // % lead → pedido fechado
+  ticket: number;         // ticket médio do pedido B2B desse canal
+  cac: number;            // custo médio por cliente fechado
+  invest: number;         // investimento mensal nesse canal (ads, comissão, time)
+  growthLeads: number;    // % crescimento m/m de leads
+  growthConv: number;     // pp uplift cumulativo na conv por mês
+}
+
 interface SomaState {
   premises: BasePremises;
   realized: Record<string, RealizedMonth>; // month label -> realized
   channelReal: Record<string, ChannelRealized>; // channel name -> realized
   channelPremises: Record<string, ChannelPremise>; // funil + forecast por canal
+  b2bSubChannels: B2BSubChannel[]; // detalhamento robusto do B2B
   scenario: ScenarioKey;
 }
 
@@ -177,6 +191,13 @@ const DEFAULT_CHANNEL_PREMISES: Record<string, ChannelPremise> = {
   Marketplace:    { visitas: 9000,  ctc: 7,  cco: 40, cop: 50, ticket: 210,  cac: 55,  invest: 0,     growthVisitas: 12, growthConv: 0.08 },
 };
 
+const DEFAULT_B2B_SUBS: B2BSubChannel[] = [
+  { id: "funil-direto",   name: "Funil Direto (site)",      leads: 320, convLeadPedido: 18, ticket: 1800, cac: 220, invest: 1500, growthLeads: 18, growthConv: 0.20 },
+  { id: "distribuidores", name: "Distribuidores",            leads: 90,  convLeadPedido: 38, ticket: 4500, cac: 580, invest: 800,  growthLeads: 14, growthConv: 0.15 },
+  { id: "cadeias-pdv",    name: "Cadeias PDV (grandes redes)", leads: 35, convLeadPedido: 22, ticket: 9800, cac: 1200, invest: 600, growthLeads: 10, growthConv: 0.10 },
+  { id: "key-accounts",   name: "Key Accounts / Corporate", leads: 18,  convLeadPedido: 28, ticket: 7200, cac: 950, invest: 600,  growthLeads: 12, growthConv: 0.15 },
+];
+
 const DEFAULT_STATE: SomaState = {
   premises: DEFAULT_PREMISES,
   realized: {
@@ -188,6 +209,7 @@ const DEFAULT_STATE: SomaState = {
     WhatsApp: { receita: 24000, pedidos: 82, cac: 38, margem: 64, roas: 5.0 },
   },
   channelPremises: DEFAULT_CHANNEL_PREMISES,
+  b2bSubChannels: DEFAULT_B2B_SUBS,
   scenario: "base",
 };
 
@@ -234,6 +256,7 @@ function loadState(): SomaState {
         realized: parsed.realized || {},
         channelReal: parsed.channelReal || {},
         channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
+        b2bSubChannels: Array.isArray(parsed.b2bSubChannels) && parsed.b2bSubChannels.length > 0 ? parsed.b2bSubChannels : DEFAULT_B2B_SUBS,
       };
     }
   } catch {}
@@ -455,6 +478,26 @@ export function SomaForecasting() {
 
   const mult = SCENARIO_MULT[state.scenario];
 
+  // Projeção dos sub-canais B2B (por lead, não por visita)
+  const b2bSubProjections = useMemo(() => {
+    const out: Record<string, ChannelMonth[]> = {};
+    state.b2bSubChannels.forEach((sub) => {
+      const gL = sub.growthLeads / 100;
+      out[sub.id] = MONTHS.map((m, i) => {
+        const visitas = sub.leads * Math.pow(1 + gL, i); // "visitas" = leads
+        const conv = Math.min(95, sub.convLeadPedido + sub.growthConv * i);
+        const pedidos = visitas * (conv / 100);
+        const ticket = sub.ticket * (1 + i * 0.004);
+        const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
+        const cac = sub.cac * (i === 0 ? 1 : mult.cac);
+        const invest = sub.invest * Math.pow(1 + gL * 0.7, i);
+        const roas = invest > 0 ? receita / invest : 0;
+        return { month: m, idx: i, visitas, carrinhos: visitas, checkouts: visitas, pedidos, receita, ticket, cac, invest, roas, convFinal: conv };
+      });
+    });
+    return out;
+  }, [state.b2bSubChannels, mult]);
+
   // Projeção por canal (funil) — fonte da verdade do macro
   const channelProjections = useMemo(() => {
     const out: Record<string, ChannelMonth[]> = {};
@@ -462,8 +505,30 @@ export function SomaForecasting() {
       const cp = state.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name];
       out[name] = projectChannel(cp, mult);
     });
+    // Override B2B: soma dos sub-canais (leads-based)
+    const subs = Object.values(b2bSubProjections);
+    if (subs.length > 0) {
+      out["B2B"] = MONTHS.map((m, i) => {
+        let leads = 0, pedidos = 0, receita = 0, invest = 0, cacW = 0;
+        subs.forEach((arr) => {
+          const cm = arr[i];
+          if (!cm) return;
+          leads += cm.visitas;
+          pedidos += cm.pedidos;
+          receita += cm.receita;
+          invest += cm.invest;
+          cacW += cm.cac * cm.pedidos;
+        });
+        const ticket = pedidos > 0 ? receita / pedidos : 0;
+        const cac = pedidos > 0 ? cacW / pedidos : 0;
+        const roas = invest > 0 ? receita / invest : 0;
+        const convFinal = leads > 0 ? (pedidos / leads) * 100 : 0;
+        return { month: m, idx: i, visitas: leads, carrinhos: leads, checkouts: leads, pedidos, receita, ticket, cac, invest, roas, convFinal };
+      });
+    }
     return out;
-  }, [state.channelPremises, mult]);
+  }, [state.channelPremises, mult, b2bSubProjections]);
+
 
   // Macro = soma dos canais (reflete edições nos canais como no forecast do mês)
   const projection = useMemo(() => {
@@ -554,6 +619,22 @@ export function SomaForecasting() {
         [name]: { ...(s.channelPremises[name] || DEFAULT_CHANNEL_PREMISES[name]), ...patch },
       },
     }));
+
+  const setB2BSub = (id: string, patch: Partial<B2BSubChannel>) =>
+    setState((s) => ({
+      ...s,
+      b2bSubChannels: s.b2bSubChannels.map((sub) => (sub.id === id ? { ...sub, ...patch } : sub)),
+    }));
+  const addB2BSub = () =>
+    setState((s) => ({
+      ...s,
+      b2bSubChannels: [
+        ...s.b2bSubChannels,
+        { id: `sub-${Date.now()}`, name: "Novo canal B2B", leads: 50, convLeadPedido: 20, ticket: 2500, cac: 400, invest: 500, growthLeads: 12, growthConv: 0.10 },
+      ],
+    }));
+  const removeB2BSub = (id: string) =>
+    setState((s) => ({ ...s, b2bSubChannels: s.b2bSubChannels.filter((sub) => sub.id !== id) }));
 
   // Recalibrar forecast: usa última performance real para reescrever premissas
   const recalibrate = () => {
@@ -1225,7 +1306,7 @@ export function SomaForecasting() {
                     </button>
                   </div>
 
-                  {expanded && (
+                  {expanded && name !== "B2B" && (
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15">
                       <PremiseInline label="Visitas (Jun)" value={cp.visitas} onChange={(v) => setChannelPremise(name, { visitas: v })} />
                       <PremiseInline label="Ticket" value={cp.ticket} onChange={(v) => setChannelPremise(name, { ticket: v })} prefix="R$" />
@@ -1239,6 +1320,74 @@ export function SomaForecasting() {
                     </div>
                   )}
 
+                  {expanded && name === "B2B" && (
+                    <div className="mb-3 p-3 rounded-md bg-[#d4a5a0]/5 border border-[#d4a5a0]/15 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Sub-canais B2B · medidos por leads & pedidos</div>
+                        <button onClick={addB2BSub} className="text-[11px] px-2 py-0.5 rounded border border-[#d4a5a0]/30 text-foreground hover:bg-[#d4a5a0]/10">+ Adicionar canal</button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-left text-[10px] uppercase tracking-wider text-muted-foreground border-b border-[#d4a5a0]/15">
+                              <th className="py-1.5 px-1">Canal</th>
+                              <th className="py-1.5 px-1 text-right">Leads/mês</th>
+                              <th className="py-1.5 px-1 text-right">Conv L→P</th>
+                              <th className="py-1.5 px-1 text-right">Ticket</th>
+                              <th className="py-1.5 px-1 text-right">CAC</th>
+                              <th className="py-1.5 px-1 text-right">Invest.</th>
+                              <th className="py-1.5 px-1 text-right">Cresc.Leads</th>
+                              <th className="py-1.5 px-1 text-right">Uplift</th>
+                              <th />
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {state.b2bSubChannels.map((sub) => (
+                              <tr key={sub.id} className="border-b border-[#d4a5a0]/5">
+                                <td className="py-1 px-1">
+                                  <input
+                                    value={sub.name}
+                                    onChange={(e) => setB2BSub(sub.id, { name: e.target.value })}
+                                    className="bg-transparent border-b border-transparent hover:border-[#d4a5a0]/40 focus:border-[#d4a5a0] focus:outline-none w-full text-xs"
+                                    style={{ color: SOMA_PALETTE.cream }}
+                                  />
+                                </td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.leads} onChange={(v) => setB2BSub(sub.id, { leads: v })} /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.convLeadPedido} onChange={(v) => setB2BSub(sub.id, { convLeadPedido: v })} suffix="%" step={0.5} /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.ticket} onChange={(v) => setB2BSub(sub.id, { ticket: v })} prefix="R$" /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.cac} onChange={(v) => setB2BSub(sub.id, { cac: v })} prefix="R$" /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.invest} onChange={(v) => setB2BSub(sub.id, { invest: v })} prefix="R$" /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.growthLeads} onChange={(v) => setB2BSub(sub.id, { growthLeads: v })} suffix="%" step={0.5} /></td>
+                                <td className="py-1 px-1 text-right"><EditNum value={sub.growthConv} onChange={(v) => setB2BSub(sub.id, { growthConv: v })} suffix="pp" step={0.05} /></td>
+                                <td className="py-1 px-1 text-right">
+                                  <button onClick={() => removeB2BSub(sub.id)} className="text-muted-foreground hover:text-[color:var(--soma-alert)]" title="Remover" style={{ color: SOMA_PALETTE.alert }}>×</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {name === "B2B" ? (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-3">
+                      {state.b2bSubChannels.map((sub, si) => {
+                        const cm0 = b2bSubProjections[sub.id]?.[0];
+                        if (!cm0) return null;
+                        const subColor = PIE_COLORS[(idx + si + 1) % PIE_COLORS.length];
+                        return (
+                          <div key={sub.id} className="rounded-md p-2 border border-[#d4a5a0]/15" style={{ background: `${subColor}12` }}>
+                            <div className="text-[10px] uppercase tracking-wider text-muted-foreground truncate" title={sub.name}>{sub.name}</div>
+                            <div className="text-sm font-semibold tabular-nums" style={{ color: SOMA_PALETTE.cream }}>{brl(cm0.receita)}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">
+                              {Math.round(cm0.visitas).toLocaleString("pt-BR")} leads · {Math.round(cm0.pedidos).toLocaleString("pt-BR")} ped · {cm0.convFinal.toFixed(1)}%
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-4 gap-1.5 mb-3">
                     {(() => {
                       const m0 = series[0];
@@ -1261,6 +1410,7 @@ export function SomaForecasting() {
                       ));
                     })()}
                   </div>
+                  )}
 
                   <div className="overflow-x-auto">
                     <table className="w-full text-xs">
