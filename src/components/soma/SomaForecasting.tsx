@@ -256,6 +256,7 @@ function loadState(): SomaState {
         realized: parsed.realized || {},
         channelReal: parsed.channelReal || {},
         channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
+        b2bSubChannels: Array.isArray(parsed.b2bSubChannels) && parsed.b2bSubChannels.length > 0 ? parsed.b2bSubChannels : DEFAULT_B2B_SUBS,
       };
     }
   } catch {}
