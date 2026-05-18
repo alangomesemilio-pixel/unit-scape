@@ -569,9 +569,17 @@ export function SomaForecasting() {
   const [premisesOpen, setPremisesOpen] = useState(true);
   const [channelMonthIdx, setChannelMonthIdx] = useState(0);
   const [channelExpanded, setChannelExpanded] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
+    try {
+      const snap = localStorage.getItem(SNAPSHOT_KEY);
+      if (snap) {
+        const parsed = JSON.parse(snap);
+        if (parsed?.savedAt) setSavedAt(parsed.savedAt);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
