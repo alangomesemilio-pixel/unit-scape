@@ -1403,7 +1403,28 @@ export function SomaForecasting() {
                     realized={MONTHS.map((m) => state.realized[m]?.pedidos)}
                     onEdit={(m, v) => setRealized(m, { pedidos: v })}
                   />
-                  <MetricRow label="Ticket Médio" data={projection.map((p) => brl(p.ticket))} />
+                  {(() => {
+                    const b2bSeries = channelProjections["B2B"] || [];
+                    const ticketB2B = MONTHS.map((_, i) => {
+                      const c = b2bSeries[i];
+                      return c && c.pedidos > 0 ? c.receita / c.pedidos : 0;
+                    });
+                    const ticketNonB2B = MONTHS.map((_, i) => {
+                      let rec = 0, ped = 0;
+                      CHANNEL_KEYS.forEach(({ name }) => {
+                        if (name === "B2B") return;
+                        const c = channelProjections[name]?.[i];
+                        if (c) { rec += c.receita; ped += c.pedidos; }
+                      });
+                      return ped > 0 ? rec / ped : 0;
+                    });
+                    return (
+                      <>
+                        <MetricRow label="Ticket Médio (ex-B2B)" data={ticketNonB2B.map((v) => brl(v))} />
+                        <MetricRow label="Ticket Médio B2B" data={ticketB2B.map((v) => brl(v))} />
+                      </>
+                    );
+                  })()}
                   <MetricRow label="CAC Projetado" data={projection.map((p) => brl(p.cac))} inverted />
                   <RealizedRow
                     label="CAC Realizado"
