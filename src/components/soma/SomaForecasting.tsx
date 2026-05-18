@@ -324,6 +324,111 @@ const SCENARIO_MULT: Record<ScenarioKey, { rev: number; cac: number }> = {
 
 const STORAGE_KEY = "soma.forecast.v2";
 const SNAPSHOT_KEY = "soma.forecast.snapshot.v1";
+const ROADMAP_KEY = "soma.roadmap.plans.v1";
+
+// ============ ROADMAP / CALENDÁRIO COMERCIAL BR ============
+interface CalendarDate {
+  date: string; // dd/mm
+  label: string;
+  type: "data" | "campanha" | "sazonal";
+}
+interface MonthPlan {
+  tema: string;
+  objetivo: string;
+  ideias: string;
+  campanhas: string;
+  kpi: string;
+  observacoes: string;
+  datasSelecionadas: string[]; // labels das datas escolhidas
+}
+const EMPTY_PLAN: MonthPlan = {
+  tema: "",
+  objetivo: "",
+  ideias: "",
+  campanhas: "",
+  kpi: "",
+  observacoes: "",
+  datasSelecionadas: [],
+};
+const ROADMAP_MONTHS: { m: string; t: string; suggestedDates: CalendarDate[] }[] = [
+  {
+    m: "Junho",
+    t: "Mês base",
+    suggestedDates: [
+      { date: "12/06", label: "Dia dos Namorados", type: "data" },
+      { date: "13/06", label: "Santo Antônio (casamenteiro)", type: "data" },
+      { date: "24/06", label: "São João / Festas Juninas", type: "sazonal" },
+      { date: "21/06", label: "Início do Inverno", type: "sazonal" },
+    ],
+  },
+  {
+    m: "Julho",
+    t: "Escala creators",
+    suggestedDates: [
+      { date: "01-31/07", label: "Férias Escolares (alto consumo digital)", type: "sazonal" },
+      { date: "20/07", label: "Dia do Amigo", type: "data" },
+      { date: "25/07", label: "Dia da Mulher Negra Latino-Americana", type: "data" },
+      { date: "26/07", label: "Dia dos Avós", type: "data" },
+      { date: "Meio do mês", label: "Christmas in July (campanha global)", type: "campanha" },
+    ],
+  },
+  {
+    m: "Agosto",
+    t: "Expansão Meta/TikTok",
+    suggestedDates: [
+      { date: "2º dom", label: "Dia dos Pais", type: "data" },
+      { date: "11/08", label: "Dia do Estudante", type: "data" },
+      { date: "15/08", label: "Aniversário da marca / Friendship Week", type: "campanha" },
+      { date: "27/08", label: "Dia do Psicólogo (wellness/saúde mental)", type: "data" },
+    ],
+  },
+  {
+    m: "Setembro",
+    t: "B2B forte",
+    suggestedDates: [
+      { date: "07/09", label: "Independência do Brasil", type: "data" },
+      { date: "10/09", label: "Setembro Amarelo (saúde mental)", type: "sazonal" },
+      { date: "15/09", label: "Dia do Cliente", type: "campanha" },
+      { date: "21/09", label: "Dia da Árvore (sustentabilidade)", type: "data" },
+      { date: "23/09", label: "Início da Primavera (renovação)", type: "sazonal" },
+    ],
+  },
+  {
+    m: "Outubro",
+    t: "Assinatura",
+    suggestedDates: [
+      { date: "01-31/10", label: "Outubro Rosa (câncer de mama)", type: "sazonal" },
+      { date: "12/10", label: "Dia das Crianças / N.Sra. Aparecida", type: "data" },
+      { date: "15/10", label: "Dia do Professor", type: "data" },
+      { date: "31/10", label: "Halloween (promo temática)", type: "campanha" },
+      { date: "Meio do mês", label: "Pré-Black Friday (warm-up base)", type: "campanha" },
+    ],
+  },
+  {
+    m: "Novembro",
+    t: "Black Friday",
+    suggestedDates: [
+      { date: "01-30/11", label: "Novembro Azul (saúde do homem)", type: "sazonal" },
+      { date: "15/11", label: "Proclamação da República", type: "data" },
+      { date: "20/11", label: "Consciência Negra", type: "data" },
+      { date: "28/11", label: "Black Friday (última sexta)", type: "campanha" },
+      { date: "01/12", label: "Cyber Monday", type: "campanha" },
+    ],
+  },
+  {
+    m: "Dezembro",
+    t: "Expansão SKUs",
+    suggestedDates: [
+      { date: "Mês todo", label: "13º salário (poder de compra alto)", type: "sazonal" },
+      { date: "01-24/12", label: "Calendário do Advento / contagem regressiva", type: "campanha" },
+      { date: "15/12", label: "Última semana logística viável (Natal)", type: "sazonal" },
+      { date: "25/12", label: "Natal", type: "data" },
+      { date: "21/12", label: "Início do Verão", type: "sazonal" },
+      { date: "31/12", label: "Réveillon / metas Ano Novo (wellness)", type: "campanha" },
+    ],
+  },
+];
+
 
 const SOMA_PALETTE = {
   rose: "#f28572",
