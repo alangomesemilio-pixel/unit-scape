@@ -274,6 +274,11 @@ interface ProjMonth {
   ebitda: number;
   conversao: number;
   margem: number;
+  // custos detalhados
+  cmvCost: number;
+  opexCost: number;
+  impostoCost: number;
+  pessoasCost: number;
   // canais
   canais: Record<string, number>;
   receitaB2B: number;
