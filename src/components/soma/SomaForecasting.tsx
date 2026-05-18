@@ -620,6 +620,22 @@ export function SomaForecasting() {
       },
     }));
 
+  const setB2BSub = (id: string, patch: Partial<B2BSubChannel>) =>
+    setState((s) => ({
+      ...s,
+      b2bSubChannels: s.b2bSubChannels.map((sub) => (sub.id === id ? { ...sub, ...patch } : sub)),
+    }));
+  const addB2BSub = () =>
+    setState((s) => ({
+      ...s,
+      b2bSubChannels: [
+        ...s.b2bSubChannels,
+        { id: `sub-${Date.now()}`, name: "Novo canal B2B", leads: 50, convLeadPedido: 20, ticket: 2500, cac: 400, invest: 500, growthLeads: 12, growthConv: 0.10 },
+      ],
+    }));
+  const removeB2BSub = (id: string) =>
+    setState((s) => ({ ...s, b2bSubChannels: s.b2bSubChannels.filter((sub) => sub.id !== id) }));
+
   // Recalibrar forecast: usa última performance real para reescrever premissas
   const recalibrate = () => {
     const filled = MONTHS.map((m) => ({ m, r: state.realized[m] })).filter((x) => x.r?.receita);
