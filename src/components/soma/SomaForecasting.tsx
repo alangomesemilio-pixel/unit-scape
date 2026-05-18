@@ -437,10 +437,10 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
     const invest = p.invest * fInv;
     const cac = p.cac * fCac;
     const ticket = p.ticket * (1 + i * 0.005);
-    // Pedidos: aplica crescimento direto sobre base de Junho
-    const pedidos = p.pedidos * fPed;
+    // Pedidos: crescimento + cenário (ticket fixo → pedidos absorvem Δreceita)
+    const pedidos = p.pedidos * fPed * mult.rev;
     // Receita = pedidos × ticket (fórmula central)
-    const receita = pedidos * ticket * mult.rev;
+    const receita = pedidos * ticket;
     const roas = invest > 0 ? receita / invest : 0;
     const margem = p.margemBruta;
     const cmvCost = receita * (p.cmv / 100);
@@ -516,9 +516,9 @@ function projectChannel(cp: ChannelPremise, mult: { rev: number; cac: number }):
     const checkouts = carrinhos * (cp.cco / 100);
     // pequeno uplift de conv final (cop) ao longo do tempo via growthConv (pp)
     const cop = Math.min(95, cp.cop + cp.growthConv * i);
-    const pedidos = checkouts * (cop / 100);
+    const pedidos = checkouts * (cop / 100) * mult.rev;
     const ticket = cp.ticket * (1 + i * 0.004);
-    const receita = pedidos * ticket * mult.rev;
+    const receita = pedidos * ticket;
     const cac = cp.cac * mult.cac;
     const invest = cp.invest * Math.pow(1 + gVis * 0.7, i);
     const roas = invest > 0 ? receita / invest : 0;
@@ -588,9 +588,9 @@ export function SomaForecasting() {
       out[sub.id] = MONTHS.map((m, i) => {
         const visitas = sub.leads * Math.pow(1 + gL, i); // "visitas" = leads
         const conv = Math.min(95, sub.convLeadPedido + sub.growthConv * i);
-        const pedidos = visitas * (conv / 100);
+        const pedidos = visitas * (conv / 100) * mult.rev;
         const ticket = sub.ticket * (1 + i * 0.004);
-        const receita = pedidos * ticket * mult.rev;
+        const receita = pedidos * ticket;
         const cac = sub.cac * mult.cac;
         const invest = sub.invest * Math.pow(1 + gL * 0.7, i);
         const roas = invest > 0 ? receita / invest : 0;
