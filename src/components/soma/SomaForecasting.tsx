@@ -43,7 +43,9 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 
 // ============ TYPES ============
@@ -172,6 +174,7 @@ interface SomaState {
   b2bSubChannels: B2BSubChannel[]; // detalhamento robusto do B2B
   okrs: OkrObjective[];
   scenario: ScenarioKey;
+  scenarioMults: Record<ScenarioKey, { rev: number; cac: number }>;
 }
 
 const MONTHS = ["Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
@@ -303,6 +306,11 @@ const DEFAULT_STATE: SomaState = {
   b2bSubChannels: DEFAULT_B2B_SUBS,
   okrs: DEFAULT_OKRS,
   scenario: "base",
+  scenarioMults: {
+    conservador: { rev: 0.85, cac: 1.15 },
+    base: { rev: 1, cac: 1 },
+    agressivo: { rev: 1.22, cac: 0.85 },
+  },
 };
 
 const SCENARIO_MULT: Record<ScenarioKey, { rev: number; cac: number }> = {
@@ -350,6 +358,7 @@ function loadState(): SomaState {
         channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
         b2bSubChannels: Array.isArray(parsed.b2bSubChannels) && parsed.b2bSubChannels.length > 0 ? parsed.b2bSubChannels : DEFAULT_B2B_SUBS,
         okrs: Array.isArray(parsed.okrs) && parsed.okrs.length > 0 ? parsed.okrs : DEFAULT_OKRS,
+        scenarioMults: { ...DEFAULT_STATE.scenarioMults, ...(parsed.scenarioMults || {}) },
       };
     }
   } catch {}
@@ -569,7 +578,7 @@ export function SomaForecasting() {
     } catch {}
   }, [state]);
 
-  const mult = SCENARIO_MULT[state.scenario];
+  const mult = state.scenarioMults[state.scenario];
 
   // Projeção dos sub-canais B2B (por lead, não por visita)
   const b2bSubProjections = useMemo(() => {
@@ -931,6 +940,8 @@ export function SomaForecasting() {
         <Header
           scenario={state.scenario}
           onScenario={(s) => setState((p) => ({ ...p, scenario: s }))}
+          scenarioMults={state.scenarioMults}
+          onScenarioMults={(m) => setState((p) => ({ ...p, scenarioMults: m }))}
           onRecalibrate={recalibrate}
           onExport={exportJSON}
           onReset={reset}
@@ -1974,16 +1985,30 @@ export function SomaForecasting() {
 function Header({
   scenario,
   onScenario,
+  scenarioMults,
+  onScenarioMults,
   onRecalibrate,
   onExport,
   onReset,
 }: {
   scenario: ScenarioKey;
   onScenario: (s: ScenarioKey) => void;
+  scenarioMults: Record<ScenarioKey, { rev: number; cac: number }>;
+  onScenarioMults: (m: Record<ScenarioKey, { rev: number; cac: number }>) => void;
   onRecalibrate: () => void;
   onExport: () => void;
   onReset: () => void;
 }) {
+  const updateMult = (key: ScenarioKey, field: "rev" | "cac", deltaPct: number) => {
+    onScenarioMults({
+      ...scenarioMults,
+      [key]: { ...scenarioMults[key], [field]: 1 + deltaPct / 100 },
+    });
+  };
+  const currentMult = scenarioMults[scenario];
+  const revDelta = ((currentMult.rev - 1) * 100).toFixed(0);
+  const cacDelta = ((currentMult.cac - 1) * 100).toFixed(0);
+
   return (
     <div
       className="rounded-2xl p-6 border"
@@ -2005,7 +2030,7 @@ function Header({
               SOMA
             </h1>
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground mt-1">
-              Forecasting Estratégico · Mês base alimenta Jun → Dez
+              Forecasting Estratégico · Cenário ativo: receita {Number(revDelta) >= 0 ? "+" : ""}{revDelta}% · CAC {Number(cacDelta) >= 0 ? "+" : ""}{cacDelta}%
             </p>
           </div>
         </div>
@@ -2020,6 +2045,60 @@ function Header({
               <SelectItem value="agressivo">🚀 Agressivo</SelectItem>
             </SelectContent>
           </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="border-[#f28572]/30">
+                <Settings2 className="size-4 mr-1" /> Cenários
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[380px]" align="end">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-semibold">Calibrar cenários</p>
+                  <p className="text-xs text-muted-foreground">
+                    Defina o % de variação de receita e CAC sobre a base, aplicado a Jul → Dez.
+                  </p>
+                </div>
+                <div className="grid grid-cols-[1fr_90px_90px] gap-2 items-center text-xs font-medium text-muted-foreground">
+                  <span></span>
+                  <span className="text-center">Receita Δ%</span>
+                  <span className="text-center">CAC Δ%</span>
+                </div>
+                {(["conservador", "base", "agressivo"] as ScenarioKey[]).map((k) => {
+                  const m = scenarioMults[k];
+                  const rev = ((m.rev - 1) * 100).toFixed(0);
+                  const cac = ((m.cac - 1) * 100).toFixed(0);
+                  const labels: Record<ScenarioKey, string> = {
+                    conservador: "🛡️ Conservador",
+                    base: "⚖️ Base",
+                    agressivo: "🚀 Agressivo",
+                  };
+                  return (
+                    <div key={k} className="grid grid-cols-[1fr_90px_90px] gap-2 items-center">
+                      <Label className="text-sm">{labels[k]}</Label>
+                      <Input
+                        type="number"
+                        value={rev}
+                        disabled={k === "base"}
+                        onChange={(e) => updateMult(k, "rev", Number(e.target.value) || 0)}
+                        className="h-8 text-xs text-center"
+                      />
+                      <Input
+                        type="number"
+                        value={cac}
+                        disabled={k === "base"}
+                        onChange={(e) => updateMult(k, "cac", Number(e.target.value) || 0)}
+                        className="h-8 text-xs text-center"
+                      />
+                    </div>
+                  );
+                })}
+                <p className="text-[10px] text-muted-foreground leading-relaxed pt-1 border-t">
+                  Base sempre = 0%. Conservador costuma ser receita negativa + CAC positivo; agressivo o oposto.
+                </p>
+              </div>
+            </PopoverContent>
+          </Popover>
           <Button
             size="sm"
             onClick={onRecalibrate}
