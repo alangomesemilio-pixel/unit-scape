@@ -2670,3 +2670,203 @@ function PremiseInline({
     </div>
   );
 }
+
+// ============ MONTH PLAN DIALOG ============
+function MonthPlanDialog({
+  openMonth,
+  onClose,
+  plans,
+  onSave,
+  onClear,
+}: {
+  openMonth: string | null;
+  onClose: () => void;
+  plans: Record<string, MonthPlan>;
+  onSave: (month: string, plan: MonthPlan) => void;
+  onClear: (month: string) => void;
+}) {
+  const monthDef = ROADMAP_MONTHS.find((r) => r.m === openMonth);
+  const [draft, setDraft] = useState<MonthPlan>(EMPTY_PLAN);
+
+  useEffect(() => {
+    if (openMonth) {
+      setDraft(plans[openMonth] ?? { ...EMPTY_PLAN, tema: monthDef?.t ?? "" });
+    }
+  }, [openMonth, plans, monthDef]);
+
+  if (!openMonth || !monthDef) return null;
+
+  const toggleDate = (label: string) => {
+    setDraft((d) => {
+      const has = d.datasSelecionadas.includes(label);
+      return {
+        ...d,
+        datasSelecionadas: has
+          ? d.datasSelecionadas.filter((x) => x !== label)
+          : [...d.datasSelecionadas, label],
+      };
+    });
+  };
+
+  const typeColor = (type: CalendarDate["type"]) => {
+    if (type === "campanha") return SOMA_PALETTE.rose;
+    if (type === "sazonal") return SOMA_PALETTE.gold;
+    return SOMA_PALETTE.sage;
+  };
+
+  return (
+    <Dialog open={!!openMonth} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        className="max-w-3xl max-h-[90vh] overflow-y-auto"
+        style={{ background: SOMA_PALETTE.ink, borderColor: `${SOMA_PALETTE.rose}40`, color: SOMA_PALETTE.cream }}
+      >
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl" style={{ color: SOMA_PALETTE.cream }}>
+            <Calendar className="size-5" style={{ color: SOMA_PALETTE.rose }} />
+            Planejamento de {openMonth}
+          </DialogTitle>
+          <DialogDescription>
+            Estruture o foco, campanhas e ideias do mês. As datas sugeridas vêm do calendário comercial brasileiro.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 pt-2">
+          {/* Datas sugeridas */}
+          <div
+            className="rounded-xl p-4 border"
+            style={{ borderColor: `${SOMA_PALETTE.gold}30`, background: `${SOMA_PALETTE.gold}08` }}
+          >
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="size-4" style={{ color: SOMA_PALETTE.gold }} />
+              <h3 className="text-sm font-semibold" style={{ color: SOMA_PALETTE.cream }}>
+                Datas do calendário comercial — {openMonth}
+              </h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              {monthDef.suggestedDates.map((d) => {
+                const selected = draft.datasSelecionadas.includes(d.label);
+                return (
+                  <button
+                    key={d.label}
+                    onClick={() => toggleDate(d.label)}
+                    className="flex items-start gap-2 text-left rounded-lg p-2.5 border transition-all hover:scale-[1.01]"
+                    style={{
+                      borderColor: selected ? typeColor(d.type) : `${SOMA_PALETTE.cream}15`,
+                      background: selected ? `${typeColor(d.type)}20` : "transparent",
+                    }}
+                  >
+                    <div
+                      className="mt-0.5 size-4 rounded border flex items-center justify-center shrink-0"
+                      style={{
+                        borderColor: typeColor(d.type),
+                        background: selected ? typeColor(d.type) : "transparent",
+                      }}
+                    >
+                      {selected && <CheckCircle2 className="size-3" style={{ color: SOMA_PALETTE.ink }} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-mono" style={{ color: typeColor(d.type) }}>
+                        {d.date}
+                      </div>
+                      <div className="text-sm" style={{ color: SOMA_PALETTE.cream }}>
+                        {d.label}
+                      </div>
+                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">
+                        {d.type}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-2">
+              Clique para incluir/excluir do plano deste mês.
+            </div>
+          </div>
+
+          {/* Campos */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">Tema / Foco do mês</Label>
+              <Input
+                value={draft.tema}
+                onChange={(e) => setDraft({ ...draft, tema: e.target.value })}
+                placeholder="Ex: Aquisição via creators"
+                className="mt-1"
+              />
+            </div>
+            <div>
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground">KPI alvo</Label>
+              <Input
+                value={draft.kpi}
+                onChange={(e) => setDraft({ ...draft, kpi: e.target.value })}
+                placeholder="Ex: ROAS ≥ 3.5x · 1.500 pedidos"
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Objetivo estratégico</Label>
+            <Textarea
+              value={draft.objetivo}
+              onChange={(e) => setDraft({ ...draft, objetivo: e.target.value })}
+              placeholder="O que precisa ser conquistado neste mês?"
+              className="mt-1 min-h-[70px]"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Campanhas planejadas</Label>
+            <Textarea
+              value={draft.campanhas}
+              onChange={(e) => setDraft({ ...draft, campanhas: e.target.value })}
+              placeholder="Liste campanhas: nome · canal · período · investimento"
+              className="mt-1 min-h-[80px]"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Ideias / Hipóteses</Label>
+            <Textarea
+              value={draft.ideias}
+              onChange={(e) => setDraft({ ...draft, ideias: e.target.value })}
+              placeholder="Hipóteses criativas, testes, oportunidades sazonais..."
+              className="mt-1 min-h-[80px]"
+            />
+          </div>
+
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground">Observações</Label>
+            <Textarea
+              value={draft.observacoes}
+              onChange={(e) => setDraft({ ...draft, observacoes: e.target.value })}
+              placeholder="Riscos, dependências, aprendizados anteriores..."
+              className="mt-1 min-h-[60px]"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2 sm:gap-2 pt-2">
+          {plans[openMonth] && (
+            <Button
+              variant="ghost"
+              onClick={() => onClear(openMonth)}
+              className="text-xs"
+              style={{ color: SOMA_PALETTE.alert }}
+            >
+              <Trash2 className="size-3.5 mr-1" /> Limpar plano
+            </Button>
+          )}
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button
+            onClick={() => onSave(openMonth, draft)}
+            style={{ background: SOMA_PALETTE.sage, color: SOMA_PALETTE.ink }}
+          >
+            <Save className="size-4 mr-1.5" /> Salvar plano de {openMonth}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
