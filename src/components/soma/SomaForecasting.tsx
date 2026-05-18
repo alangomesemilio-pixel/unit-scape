@@ -236,6 +236,59 @@ const DEFAULT_B2B_SUBS: B2BSubChannel[] = [
   { id: "key-accounts",   name: "Key Accounts / Corporate", leads: 18,  convLeadPedido: 28, ticket: 7200, cac: 950, invest: 600,  growthLeads: 12, growthConv: 0.15 },
 ];
 
+const DEFAULT_OKRS: OkrObjective[] = [
+  {
+    id: "okr-receita",
+    title: "Escalar Soma com saúde financeira",
+    why: "Atingir R$ 3.5M no semestre mantendo EBITDA saudável e CAC sob controle.",
+    owner: "Alan · CEO",
+    accent: "#c9a572",
+    krs: [
+      { id: "kr-rev",   title: "Receita semestre (Jun→Dez)", owner: "CEO",     unit: "R$", baseline: 0, target: 3500000, source: "receitaSemestre" },
+      { id: "kr-ebit",  title: "EBITDA semestre",            owner: "CFO",     unit: "R$", baseline: 0, target: 700000,  source: "ebitdaSemestre" },
+      { id: "kr-roas",  title: "ROAS médio",                 owner: "Growth",  unit: "x",  baseline: 3.5, target: 4.0,   source: "roas" },
+      { id: "kr-inv",   title: "Investimento dentro do plano", owner: "CFO",   unit: "R$", baseline: 0, target: 480000,  source: "investSemestre" },
+    ],
+  },
+  {
+    id: "okr-retencao",
+    title: "Construir base recorrente e fiel",
+    why: "Cada cliente vale mais. Recompra, LTV e assinatura sustentam o crescimento.",
+    owner: "CRM · Ian",
+    accent: "#d4a5a0",
+    krs: [
+      { id: "kr-recompra", title: "Taxa de recompra",         owner: "CRM",   unit: "%",  baseline: 32, target: 38,    source: "recompra" },
+      { id: "kr-ltvcac",   title: "LTV / CAC",                owner: "CRM",   unit: "x",  baseline: 5.0, target: 6.0,  source: "ltvCac" },
+      { id: "kr-assin",    title: "Receita Assinatura semestre", owner: "CRM", unit: "R$", baseline: 0, target: 150000, source: "manual", current: 28000 },
+      { id: "kr-nps",      title: "NPS",                      owner: "CX",    unit: "#",  baseline: 70, target: 78,    source: "manual", current: 72 },
+    ],
+  },
+  {
+    id: "okr-b2b",
+    title: "Transformar B2B em motor previsível",
+    why: "Pedidos grandes, recorrência por canal e ticket médio alto.",
+    owner: "Comercial · Igor",
+    accent: "#9ab397",
+    krs: [
+      { id: "kr-b2brev", title: "Receita B2B semestre",       owner: "Comercial", unit: "R$", baseline: 0, target: 700000, source: "b2bRev" },
+      { id: "kr-b2bsub", title: "Sub-canais B2B ativos",      owner: "Comercial", unit: "#",  baseline: 2, target: 5,      source: "manual", current: 4 },
+      { id: "kr-b2btk",  title: "Ticket médio B2B",           owner: "Comercial", unit: "R$", baseline: 2200, target: 3500, source: "manual", current: 2800 },
+    ],
+  },
+  {
+    id: "okr-growth",
+    title: "Growth creator-led com previsibilidade",
+    why: "Pedidos, ticket e receita por canais que sustentam aquisição.",
+    owner: "Growth · Fernando",
+    accent: "#b8857f",
+    krs: [
+      { id: "kr-ped",   title: "Pedidos semestre",            owner: "Growth", unit: "#",  baseline: 0, target: 12000, source: "pedidosSemestre" },
+      { id: "kr-tk",    title: "Ticket médio",                owner: "Growth", unit: "R$", baseline: 245, target: 265,  source: "ticketMedio" },
+      { id: "kr-infl",  title: "Receita Influenciadora semestre", owner: "Growth", unit: "R$", baseline: 0, target: 400000, source: "manual", current: 95000 },
+    ],
+  },
+];
+
 const DEFAULT_STATE: SomaState = {
   premises: DEFAULT_PREMISES,
   realized: {
@@ -248,6 +301,7 @@ const DEFAULT_STATE: SomaState = {
   },
   channelPremises: DEFAULT_CHANNEL_PREMISES,
   b2bSubChannels: DEFAULT_B2B_SUBS,
+  okrs: DEFAULT_OKRS,
   scenario: "base",
 };
 
