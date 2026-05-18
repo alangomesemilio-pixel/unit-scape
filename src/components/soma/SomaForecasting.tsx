@@ -191,6 +191,13 @@ const DEFAULT_CHANNEL_PREMISES: Record<string, ChannelPremise> = {
   Marketplace:    { visitas: 9000,  ctc: 7,  cco: 40, cop: 50, ticket: 210,  cac: 55,  invest: 0,     growthVisitas: 12, growthConv: 0.08 },
 };
 
+const DEFAULT_B2B_SUBS: B2BSubChannel[] = [
+  { id: "funil-direto",   name: "Funil Direto (site)",      leads: 320, convLeadPedido: 18, ticket: 1800, cac: 220, invest: 1500, growthLeads: 18, growthConv: 0.20 },
+  { id: "distribuidores", name: "Distribuidores",            leads: 90,  convLeadPedido: 38, ticket: 4500, cac: 580, invest: 800,  growthLeads: 14, growthConv: 0.15 },
+  { id: "cadeias-pdv",    name: "Cadeias PDV (grandes redes)", leads: 35, convLeadPedido: 22, ticket: 9800, cac: 1200, invest: 600, growthLeads: 10, growthConv: 0.10 },
+  { id: "key-accounts",   name: "Key Accounts / Corporate", leads: 18,  convLeadPedido: 28, ticket: 7200, cac: 950, invest: 600,  growthLeads: 12, growthConv: 0.15 },
+];
+
 const DEFAULT_STATE: SomaState = {
   premises: DEFAULT_PREMISES,
   realized: {
@@ -202,6 +209,7 @@ const DEFAULT_STATE: SomaState = {
     WhatsApp: { receita: 24000, pedidos: 82, cac: 38, margem: 64, roas: 5.0 },
   },
   channelPremises: DEFAULT_CHANNEL_PREMISES,
+  b2bSubChannels: DEFAULT_B2B_SUBS,
   scenario: "base",
 };
 
