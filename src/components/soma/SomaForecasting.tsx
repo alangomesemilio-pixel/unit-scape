@@ -677,11 +677,30 @@ export function SomaForecasting() {
   const [channelMonthIdx, setChannelMonthIdx] = useState(0);
   const [channelExpanded, setChannelExpanded] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [roadmapPlans, setRoadmapPlans] = useState<Record<string, MonthPlan>>({});
+  const [openMonth, setOpenMonth] = useState<string | null>(null);
 
   useEffect(() => {
     setState(loadState());
     try {
       const snap = localStorage.getItem(SNAPSHOT_KEY);
+      if (snap) {
+        const parsed = JSON.parse(snap);
+        if (parsed?.savedAt) setSavedAt(parsed.savedAt);
+      }
+    } catch {}
+    try {
+      const raw = localStorage.getItem(ROADMAP_KEY);
+      if (raw) setRoadmapPlans(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ROADMAP_KEY, JSON.stringify(roadmapPlans));
+    } catch {}
+  }, [roadmapPlans]);
+
       if (snap) {
         const parsed = JSON.parse(snap);
         if (parsed?.savedAt) setSavedAt(parsed.savedAt);
