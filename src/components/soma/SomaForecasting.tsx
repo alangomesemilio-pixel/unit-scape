@@ -131,12 +131,46 @@ interface B2BSubChannel {
   growthConv: number;     // pp uplift cumulativo na conv por mês
 }
 
+// OKRs estratégicos · vinculam metas trimestrais/semestre ao forecast operacional
+type KrSource =
+  | "manual"
+  | "receitaSemestre"
+  | "ebitdaSemestre"
+  | "pedidosSemestre"
+  | "ticketMedio"
+  | "ltvCac"
+  | "recompra"
+  | "roas"
+  | "b2bRev"
+  | "investSemestre";
+
+interface KeyResult {
+  id: string;
+  title: string;
+  owner: string;
+  unit: "R$" | "%" | "x" | "#";
+  baseline: number;
+  target: number;
+  source: KrSource;
+  current?: number; // override manual
+}
+
+interface OkrObjective {
+  id: string;
+  title: string;
+  why: string;
+  owner: string;
+  accent: string;
+  krs: KeyResult[];
+}
+
 interface SomaState {
   premises: BasePremises;
   realized: Record<string, RealizedMonth>; // month label -> realized
   channelReal: Record<string, ChannelRealized>; // channel name -> realized
   channelPremises: Record<string, ChannelPremise>; // funil + forecast por canal
   b2bSubChannels: B2BSubChannel[]; // detalhamento robusto do B2B
+  okrs: OkrObjective[];
   scenario: ScenarioKey;
 }
 
