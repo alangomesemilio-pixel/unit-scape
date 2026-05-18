@@ -356,6 +356,7 @@ function loadState(): SomaState {
         channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
         b2bSubChannels: Array.isArray(parsed.b2bSubChannels) && parsed.b2bSubChannels.length > 0 ? parsed.b2bSubChannels : DEFAULT_B2B_SUBS,
         okrs: Array.isArray(parsed.okrs) && parsed.okrs.length > 0 ? parsed.okrs : DEFAULT_OKRS,
+        scenarioMults: { ...DEFAULT_STATE.scenarioMults, ...(parsed.scenarioMults || {}) },
       };
     }
   } catch {}
