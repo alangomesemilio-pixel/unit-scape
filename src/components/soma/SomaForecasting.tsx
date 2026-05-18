@@ -321,6 +321,7 @@ const SCENARIO_MULT: Record<ScenarioKey, { rev: number; cac: number }> = {
 };
 
 const STORAGE_KEY = "soma.forecast.v2";
+const SNAPSHOT_KEY = "soma.forecast.snapshot.v1";
 
 const SOMA_PALETTE = {
   rose: "#f28572",
