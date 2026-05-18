@@ -984,6 +984,9 @@ export function SomaForecasting() {
           onRecalibrate={recalibrate}
           onExport={exportJSON}
           onReset={reset}
+          onSave={saveSnapshot}
+          onRestore={restoreSnapshot}
+          savedAt={savedAt}
         />
 
         {/* VISÃO CEO */}
