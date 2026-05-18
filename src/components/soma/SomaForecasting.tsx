@@ -576,7 +576,7 @@ export function SomaForecasting() {
     } catch {}
   }, [state]);
 
-  const mult = SCENARIO_MULT[state.scenario];
+  const mult = state.scenarioMults[state.scenario];
 
   // Projeção dos sub-canais B2B (por lead, não por visita)
   const b2bSubProjections = useMemo(() => {
