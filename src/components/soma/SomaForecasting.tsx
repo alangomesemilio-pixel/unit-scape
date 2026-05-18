@@ -114,11 +114,25 @@ interface ChannelPremise {
   growthConv: number;    // pp uplift cumulativo na conv final por mês
 }
 
+// Sub-canais de B2B: cada fonte de captação tem leads, conv, ticket e crescimento próprios
+interface B2BSubChannel {
+  id: string;
+  name: string;
+  leads: number;          // leads/contatos/oportunidades no mês base
+  convLeadPedido: number; // % lead → pedido fechado
+  ticket: number;         // ticket médio do pedido B2B desse canal
+  cac: number;            // custo médio por cliente fechado
+  invest: number;         // investimento mensal nesse canal (ads, comissão, time)
+  growthLeads: number;    // % crescimento m/m de leads
+  growthConv: number;     // pp uplift cumulativo na conv por mês
+}
+
 interface SomaState {
   premises: BasePremises;
   realized: Record<string, RealizedMonth>; // month label -> realized
   channelReal: Record<string, ChannelRealized>; // channel name -> realized
   channelPremises: Record<string, ChannelPremise>; // funil + forecast por canal
+  b2bSubChannels: B2BSubChannel[]; // detalhamento robusto do B2B
   scenario: ScenarioKey;
 }
 
