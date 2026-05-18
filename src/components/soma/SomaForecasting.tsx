@@ -426,9 +426,9 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
   return MONTHS.map((m, i) => {
     // i=0 → Junho (mês base, sem crescimento aplicado)
     const fPed = Math.pow(1 + gPed, i);
-    const fCac = Math.pow(1 + gCac, i) * (i === 0 ? 1 : mult.cac);
+    const fCac = Math.pow(1 + gCac, i) * mult.cac;
     const fInv = Math.pow(1 + gInv, i);
-    const fRev = Math.pow(1 + gRev, i) * (i === 0 ? 1 : mult.rev);
+    const fRev = Math.pow(1 + gRev, i) * mult.rev;
     const fB2B = Math.pow(1 + gB2B, i);
     const fInf = Math.pow(1 + gInf, i);
     const fWpp = Math.pow(1 + gWpp, i);
@@ -440,7 +440,7 @@ function project(p: BasePremises, mult: { rev: number; cac: number }): ProjMonth
     // Pedidos: aplica crescimento direto sobre base de Junho
     const pedidos = p.pedidos * fPed;
     // Receita = pedidos × ticket (fórmula central)
-    const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
+    const receita = pedidos * ticket * mult.rev;
     const roas = invest > 0 ? receita / invest : 0;
     const margem = p.margemBruta;
     const cmvCost = receita * (p.cmv / 100);
@@ -518,8 +518,8 @@ function projectChannel(cp: ChannelPremise, mult: { rev: number; cac: number }):
     const cop = Math.min(95, cp.cop + cp.growthConv * i);
     const pedidos = checkouts * (cop / 100);
     const ticket = cp.ticket * (1 + i * 0.004);
-    const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
-    const cac = cp.cac * (i === 0 ? 1 : mult.cac);
+    const receita = pedidos * ticket * mult.rev;
+    const cac = cp.cac * mult.cac;
     const invest = cp.invest * Math.pow(1 + gVis * 0.7, i);
     const roas = invest > 0 ? receita / invest : 0;
     const convFinal = visitas > 0 ? (pedidos / visitas) * 100 : 0;
@@ -590,8 +590,8 @@ export function SomaForecasting() {
         const conv = Math.min(95, sub.convLeadPedido + sub.growthConv * i);
         const pedidos = visitas * (conv / 100);
         const ticket = sub.ticket * (1 + i * 0.004);
-        const receita = pedidos * ticket * (i === 0 ? 1 : mult.rev);
-        const cac = sub.cac * (i === 0 ? 1 : mult.cac);
+        const receita = pedidos * ticket * mult.rev;
+        const cac = sub.cac * mult.cac;
         const invest = sub.invest * Math.pow(1 + gL * 0.7, i);
         const roas = invest > 0 ? receita / invest : 0;
         return { month: m, idx: i, visitas, carrinhos: visitas, checkouts: visitas, pedidos, receita, ticket, cac, invest, roas, convFinal: conv };
