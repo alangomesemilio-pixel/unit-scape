@@ -264,7 +264,7 @@ export function ForecastingDashboard() {
       : null;
 
   return (
-    <div className="h-full overflow-auto bg-background">
+    <div className="h-full overflow-auto">
       <div className="max-w-[1500px] mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">

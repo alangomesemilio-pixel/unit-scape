@@ -406,7 +406,7 @@ export function ExecutiveDashboard() {
     setState((s) => ({ ...s, pdca: s.pdca.filter((p) => p.id !== id) }));
 
   return (
-    <div className="h-full overflow-y-auto bg-background">
+    <div className="h-full overflow-y-auto">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-border bg-card/90 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <div>
