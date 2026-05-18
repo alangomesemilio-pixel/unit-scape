@@ -894,6 +894,35 @@ export function SomaForecasting() {
     toast.success("Forecast exportado");
   };
 
+  const saveSnapshot = () => {
+    try {
+      const ts = new Date().toISOString();
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ savedAt: ts, state }));
+      setSavedAt(ts);
+      const hhmm = new Date(ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      toast.success(`Cenário salvo · ${hhmm}`);
+    } catch {
+      toast.error("Não foi possível salvar o cenário");
+    }
+  };
+
+  const restoreSnapshot = () => {
+    try {
+      const raw = localStorage.getItem(SNAPSHOT_KEY);
+      if (!raw) {
+        toast.error("Nenhum cenário salvo encontrado");
+        return;
+      }
+      const parsed = JSON.parse(raw);
+      if (parsed?.state) {
+        setState(parsed.state);
+        toast.success("Último cenário salvo restaurado");
+      }
+    } catch {
+      toast.error("Falha ao restaurar cenário");
+    }
+  };
+
   // Dados gráficos
   const chartData = projection.map((p) => ({
     month: p.month,
