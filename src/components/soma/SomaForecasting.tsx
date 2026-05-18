@@ -172,6 +172,7 @@ interface SomaState {
   b2bSubChannels: B2BSubChannel[]; // detalhamento robusto do B2B
   okrs: OkrObjective[];
   scenario: ScenarioKey;
+  scenarioMults: Record<ScenarioKey, { rev: number; cac: number }>;
 }
 
 const MONTHS = ["Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
