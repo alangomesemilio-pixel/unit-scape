@@ -40,41 +40,41 @@
 
 :root {
   --radius: 1rem;
-  /* Soma identity: deep plum/aubergine canvas, coral primary, lavender accent, cream text */
-  --background: oklch(0.20 0.035 15);
-  --foreground: oklch(0.96 0.02 70);
-  --card: oklch(0.25 0.04 15);
-  --card-foreground: oklch(0.96 0.02 70);
-  --popover: oklch(0.25 0.04 15);
-  --popover-foreground: oklch(0.96 0.02 70);
-  --primary: oklch(0.74 0.17 35);          /* coral */
-  --primary-foreground: oklch(0.20 0.035 15);
-  --secondary: oklch(0.30 0.045 320);      /* lavender-tinted */
-  --secondary-foreground: oklch(0.96 0.02 70);
-  --muted: oklch(0.30 0.035 320);
-  --muted-foreground: oklch(0.78 0.04 50);
-  --accent: oklch(0.72 0.13 310);          /* lavender */
-  --accent-foreground: oklch(0.20 0.035 15);
+  /* Soma identity v2: neutral near-black canvas with soft coral↔lavender atmosphere */
+  --background: oklch(0.16 0.012 300);
+  --foreground: oklch(0.97 0.015 80);
+  --card: oklch(0.21 0.014 300);
+  --card-foreground: oklch(0.97 0.015 80);
+  --popover: oklch(0.21 0.014 300);
+  --popover-foreground: oklch(0.97 0.015 80);
+  --primary: oklch(0.76 0.16 38);            /* coral */
+  --primary-foreground: oklch(0.18 0.02 300);
+  --secondary: oklch(0.26 0.025 305);
+  --secondary-foreground: oklch(0.97 0.015 80);
+  --muted: oklch(0.26 0.018 300);
+  --muted-foreground: oklch(0.74 0.025 80);
+  --accent: oklch(0.78 0.11 310);            /* lavender */
+  --accent-foreground: oklch(0.18 0.02 300);
   --destructive: oklch(0.62 0.22 25);
-  --destructive-foreground: oklch(0.96 0.02 70);
-  --border: oklch(0.34 0.04 320);
-  --input: oklch(0.30 0.04 320);
-  --ring: oklch(0.74 0.17 35);
+  --destructive-foreground: oklch(0.97 0.015 80);
+  --border: oklch(0.30 0.025 305);
+  --input: oklch(0.26 0.022 305);
+  --ring: oklch(0.76 0.16 38);
 
   /* Soma palette tokens */
-  --soma-coral: oklch(0.74 0.17 35);
-  --soma-coral-soft: oklch(0.80 0.12 35);
-  --soma-lavender: oklch(0.72 0.13 310);
-  --soma-lilac: oklch(0.80 0.09 310);
-  --soma-cream: oklch(0.96 0.02 70);
-  --soma-plum: oklch(0.20 0.035 15);
+  --soma-coral: oklch(0.76 0.16 38);
+  --soma-coral-soft: oklch(0.82 0.11 38);
+  --soma-lavender: oklch(0.78 0.11 310);
+  --soma-lilac: oklch(0.84 0.07 305);
+  --soma-cream: oklch(0.97 0.015 80);
+  --soma-ink: oklch(0.16 0.012 300);
 
-  --level-ceo: oklch(0.74 0.17 35);
-  --level-coo: oklch(0.72 0.13 310);
-  --level-intl: oklch(0.78 0.14 350);
-  --level-director: oklch(0.80 0.12 35);
-  --level-head: oklch(0.74 0.11 280);
-  --level-team: oklch(0.60 0.04 320);
+  --level-ceo: oklch(0.76 0.16 38);
+  --level-coo: oklch(0.78 0.11 310);
+  --level-intl: oklch(0.78 0.13 350);
+  --level-director: oklch(0.82 0.11 38);
+  --level-head: oklch(0.74 0.10 280);
+  --level-team: oklch(0.60 0.025 305);
 }
 
 .dark {
@@ -88,11 +88,10 @@
     color: var(--color-foreground);
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     background-image:
-      radial-gradient(60% 45% at 12% 8%, color-mix(in oklab, var(--soma-coral) 32%, transparent) 0%, transparent 70%),
-      radial-gradient(55% 45% at 92% 18%, color-mix(in oklab, var(--soma-lavender) 30%, transparent) 0%, transparent 72%),
-      radial-gradient(70% 55% at 75% 95%, color-mix(in oklab, var(--soma-coral-soft) 22%, transparent) 0%, transparent 75%),
-      radial-gradient(60% 50% at 18% 88%, color-mix(in oklab, var(--soma-lilac) 22%, transparent) 0%, transparent 75%);
+      radial-gradient(48% 38% at 0% 0%, color-mix(in oklab, var(--soma-coral) 22%, transparent) 0%, transparent 70%),
+      radial-gradient(50% 40% at 100% 100%, color-mix(in oklab, var(--soma-lavender) 22%, transparent) 0%, transparent 72%);
     background-attachment: fixed;
+    background-repeat: no-repeat;
   }
 }
 
