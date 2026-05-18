@@ -29,7 +29,7 @@ function Index() {
   const [view, setView] = useState<View>("exec");
 
   return (
-    <div className="h-screen w-screen flex flex-col bg-background">
+    <div className="h-screen w-screen flex flex-col">
       {/* Top nav */}
       <nav className="flex items-center gap-1 px-4 py-2 border-b border-border bg-card/80 backdrop-blur z-20">
         <div className="flex items-center gap-2 mr-4">
