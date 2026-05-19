@@ -18,10 +18,11 @@ import { initialNodes, initialEdges, type OrgNodeData } from "@/lib/org-data";
 import { useServerFn } from "@tanstack/react-start";
 import { getSomaKv, setSomaKv } from "@/lib/soma-store.functions";
 import { Button } from "@/components/ui/button";
-import { Plus, Presentation, Pencil, Download, Upload, RotateCcw } from "lucide-react";
+import { Plus, Presentation, Pencil, Download, Upload, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
 const STORAGE_KEY = "grax-org-v1";
+const KV_KEY = "org.state.v1";
 const nodeTypes = { org: OrgNode };
 
 interface SavedState {
