@@ -728,7 +728,7 @@ export function SomaForecasting() {
           setSavedAt((snapRow.value as any).savedAt);
         }
         if (roadRow?.value && typeof roadRow.value === "object") {
-          setRoadmapPlans(roadRow.value as Record<string, MonthPlan>);
+          setRoadmapPlans(roadRow.value as unknown as Record<string, MonthPlan>);
         }
       } catch (e) {
         console.warn("[soma] hydrate from server failed", e);
