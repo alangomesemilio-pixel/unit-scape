@@ -61,7 +61,7 @@ function Inner() {
       try {
         const res = await fetchKv({ data: { key: KV_KEY } });
         if (!cancelled && res?.value) {
-          const v = res.value as SavedState;
+          const v = res.value as unknown as SavedState;
           if (v.nodes && v.edges) {
             setNodes(v.nodes);
             setEdges(v.edges);
