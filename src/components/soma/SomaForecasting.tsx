@@ -1093,18 +1093,20 @@ export function SomaForecasting() {
     }
   };
 
-  const restoreSnapshot = () => {
+  const restoreSnapshot = async () => {
     try {
-      const raw = localStorage.getItem(SNAPSHOT_KEY);
-      if (!raw) {
+      const remote = await fetchKv({ data: { key: "forecast.snapshot" } });
+      const parsed: any = remote?.value ?? (() => {
+        const raw = localStorage.getItem(SNAPSHOT_KEY);
+        return raw ? JSON.parse(raw) : null;
+      })();
+      if (!parsed?.state) {
         toast.error("Nenhum cenário salvo encontrado");
         return;
       }
-      const parsed = JSON.parse(raw);
-      if (parsed?.state) {
-        setState(parsed.state);
-        toast.success("Último cenário salvo restaurado");
-      }
+      setState(parsed.state);
+      if (parsed.savedAt) setSavedAt(parsed.savedAt);
+      toast.success("Último cenário salvo restaurado");
     } catch {
       toast.error("Falha ao restaurar cenário");
     }
