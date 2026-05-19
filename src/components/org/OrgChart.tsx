@@ -163,6 +163,19 @@ function Inner() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  const saveToServer = async () => {
+    setSaving(true);
+    try {
+      await writeKv({ data: { key: KV_KEY, value: { nodes, edges } as unknown as Record<string, unknown> } });
+      toast.success("Organograma salvo — visível para todos");
+    } catch {
+      toast.error("Falha ao salvar no servidor");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
   return (
     <div className={`h-full w-full flex flex-col bg-background ${presenting ? "present-mode" : ""}`}>
       <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/50 backdrop-blur z-10">
