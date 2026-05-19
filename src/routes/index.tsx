@@ -7,6 +7,7 @@ import { ExecAiChat } from "@/components/ai/ExecAiChat";
 import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard";
 import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { Toaster } from "@/components/ui/sonner";
+import { PasswordGate } from "@/components/auth/PasswordGate";
 import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -29,6 +30,7 @@ function Index() {
   const [view, setView] = useState<View>("exec");
 
   return (
+    <PasswordGate>
     <div className="h-screen w-screen flex flex-col">
       {/* Top nav */}
       <nav className="flex items-center gap-1 px-4 py-2 border-b border-border bg-card/80 backdrop-blur z-20">
@@ -75,6 +77,7 @@ function Index() {
       </div>
       <Toaster theme="dark" />
     </div>
+    </PasswordGate>
   );
 }
 
