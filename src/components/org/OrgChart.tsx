@@ -203,6 +203,9 @@ function Inner() {
               <Button variant="outline" size="sm" onClick={reset}>
                 <RotateCcw className="size-4 mr-1" /> Reset
               </Button>
+              <Button size="sm" onClick={saveToServer} disabled={saving}>
+                <Save className="size-4 mr-1" /> {saving ? "Salvando..." : "Salvar"}
+              </Button>
             </>
           )}
           <Button
