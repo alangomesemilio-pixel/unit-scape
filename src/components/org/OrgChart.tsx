@@ -48,8 +48,37 @@ function Inner() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(saved?.edges ?? initialEdges);
   const [editing, setEditing] = useState<Node<OrgNodeData> | null>(null);
   const [presenting, setPresenting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const hydratedRef = useRef(false);
 
-  // autosave
+  const fetchKv = useServerFn(getSomaKv);
+  const writeKv = useServerFn(setSomaKv);
+
+  // hydrate from server (shared across users)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchKv({ data: { key: KV_KEY } });
+        if (!cancelled && res?.value) {
+          const v = res.value as SavedState;
+          if (v.nodes && v.edges) {
+            setNodes(v.nodes);
+            setEdges(v.edges);
+          }
+        }
+      } catch {
+        // keep local fallback
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchKv, setNodes, setEdges]);
+
+  // autosave to localStorage (local draft)
   useEffect(() => {
     const t = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges }));
