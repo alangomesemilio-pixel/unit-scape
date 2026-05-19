@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactFlow, {
   Background,
   Controls,
@@ -15,11 +15,14 @@ import ReactFlow, {
 import { OrgNode } from "./OrgNode";
 import { NodeEditor } from "./NodeEditor";
 import { initialNodes, initialEdges, type OrgNodeData } from "@/lib/org-data";
+import { useServerFn } from "@tanstack/react-start";
+import { getSomaKv, setSomaKv } from "@/lib/soma-store.functions";
 import { Button } from "@/components/ui/button";
-import { Plus, Presentation, Pencil, Download, Upload, RotateCcw } from "lucide-react";
+import { Plus, Presentation, Pencil, Download, Upload, RotateCcw, Save } from "lucide-react";
 import { toast } from "sonner";
 
 const STORAGE_KEY = "grax-org-v1";
+const KV_KEY = "org.state.v1";
 const nodeTypes = { org: OrgNode };
 
 interface SavedState {
@@ -45,8 +48,37 @@ function Inner() {
   const [edges, setEdges, onEdgesChange] = useEdgesState(saved?.edges ?? initialEdges);
   const [editing, setEditing] = useState<Node<OrgNodeData> | null>(null);
   const [presenting, setPresenting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const hydratedRef = useRef(false);
 
-  // autosave
+  const fetchKv = useServerFn(getSomaKv);
+  const writeKv = useServerFn(setSomaKv);
+
+  // hydrate from server (shared across users)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchKv({ data: { key: KV_KEY } });
+        if (!cancelled && res?.value) {
+          const v = res.value as unknown as SavedState;
+          if (v.nodes && v.edges) {
+            setNodes(v.nodes);
+            setEdges(v.edges);
+          }
+        }
+      } catch {
+        // keep local fallback
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchKv, setNodes, setEdges]);
+
+  // autosave to localStorage (local draft)
   useEffect(() => {
     const t = setTimeout(() => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ nodes, edges }));
@@ -131,6 +163,19 @@ function Inner() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
+  const saveToServer = async () => {
+    setSaving(true);
+    try {
+      await writeKv({ data: { key: KV_KEY, value: { nodes, edges } as unknown as Record<string, unknown> } });
+      toast.success("Organograma salvo — visível para todos");
+    } catch {
+      toast.error("Falha ao salvar no servidor");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
   return (
     <div className={`h-full w-full flex flex-col bg-background ${presenting ? "present-mode" : ""}`}>
       <header className="flex items-center justify-between px-6 py-3 border-b border-border bg-card/50 backdrop-blur z-10">
@@ -157,6 +202,9 @@ function Inner() {
               </Button>
               <Button variant="outline" size="sm" onClick={reset}>
                 <RotateCcw className="size-4 mr-1" /> Reset
+              </Button>
+              <Button size="sm" onClick={saveToServer} disabled={saving}>
+                <Save className="size-4 mr-1" /> {saving ? "Salvando..." : "Salvar"}
               </Button>
             </>
           )}
