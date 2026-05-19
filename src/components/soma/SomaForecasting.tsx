@@ -1075,15 +1075,21 @@ export function SomaForecasting() {
     toast.success("Forecast exportado");
   };
 
-  const saveSnapshot = () => {
+  const saveSnapshot = async () => {
     try {
       const ts = new Date().toISOString();
-      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ savedAt: ts, state }));
+      const payload = { savedAt: ts, state };
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(payload));
       setSavedAt(ts);
+      await Promise.all([
+        writeKv({ data: { key: "forecast.snapshot", value: payload } }),
+        writeKv({ data: { key: "forecast.state", value: state } }),
+      ]);
       const hhmm = new Date(ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-      toast.success(`Cenário salvo · ${hhmm}`);
-    } catch {
-      toast.error("Não foi possível salvar o cenário");
+      toast.success(`Cenário salvo e compartilhado · ${hhmm}`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível salvar o cenário no servidor");
     }
   };
 
