@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
+import { getSomaKv, setSomaKv } from "@/lib/soma-store.functions";
 import {
   LineChart,
   Line,
@@ -680,33 +682,92 @@ export function SomaForecasting() {
   const [roadmapPlans, setRoadmapPlans] = useState<Record<string, MonthPlan>>({});
   const [openMonth, setOpenMonth] = useState<string | null>(null);
 
-  useEffect(() => {
-    setState(loadState());
-    try {
-      const snap = localStorage.getItem(SNAPSHOT_KEY);
-      if (snap) {
-        const parsed = JSON.parse(snap);
-        if (parsed?.savedAt) setSavedAt(parsed.savedAt);
-      }
-    } catch {}
-    try {
-      const raw = localStorage.getItem(ROADMAP_KEY);
-      if (raw) setRoadmapPlans(JSON.parse(raw));
-    } catch {}
-  }, []);
+  const fetchKv = useServerFn(getSomaKv);
+  const writeKv = useServerFn(setSomaKv);
+  const hydratedRef = useRef(false);
 
+  // Hydrate from shared server store (falls back to localStorage)
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      // Local fallback first (instant paint)
+      const local = loadState();
+      if (!cancelled) setState(local);
+      try {
+        const snapLocal = localStorage.getItem(SNAPSHOT_KEY);
+        if (snapLocal) {
+          const parsed = JSON.parse(snapLocal);
+          if (parsed?.savedAt && !cancelled) setSavedAt(parsed.savedAt);
+        }
+        const roadLocal = localStorage.getItem(ROADMAP_KEY);
+        if (roadLocal && !cancelled) setRoadmapPlans(JSON.parse(roadLocal));
+      } catch {}
+
+      try {
+        const [stateRow, snapRow, roadRow] = await Promise.all([
+          fetchKv({ data: { key: "forecast.state" } }),
+          fetchKv({ data: { key: "forecast.snapshot" } }),
+          fetchKv({ data: { key: "roadmap.plans" } }),
+        ]);
+        if (cancelled) return;
+        if (stateRow?.value) {
+          const parsed = stateRow.value as Partial<SomaState>;
+          setState({
+            ...DEFAULT_STATE,
+            ...parsed,
+            premises: { ...DEFAULT_PREMISES, ...(parsed.premises || {}) },
+            realized: parsed.realized || {},
+            channelReal: parsed.channelReal || {},
+            channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(parsed.channelPremises || {}) },
+            b2bSubChannels: Array.isArray(parsed.b2bSubChannels) && parsed.b2bSubChannels.length > 0 ? parsed.b2bSubChannels : DEFAULT_B2B_SUBS,
+            okrs: Array.isArray(parsed.okrs) && parsed.okrs.length > 0 ? parsed.okrs : DEFAULT_OKRS,
+            scenarioMults: { ...DEFAULT_STATE.scenarioMults, ...(parsed.scenarioMults || {}) },
+          } as SomaState);
+        }
+        if (snapRow?.value && (snapRow.value as any).savedAt) {
+          setSavedAt((snapRow.value as any).savedAt);
+        }
+        if (roadRow?.value && typeof roadRow.value === "object") {
+          setRoadmapPlans(roadRow.value as unknown as Record<string, MonthPlan>);
+        }
+      } catch (e) {
+        console.warn("[soma] hydrate from server failed", e);
+      } finally {
+        hydratedRef.current = true;
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchKv]);
+
+  // Persist roadmap (local cache + shared server, debounced)
   useEffect(() => {
     try {
       localStorage.setItem(ROADMAP_KEY, JSON.stringify(roadmapPlans));
     } catch {}
-  }, [roadmapPlans]);
+    if (!hydratedRef.current) return;
+    const t = setTimeout(() => {
+      writeKv({ data: { key: "roadmap.plans", value: roadmapPlans } }).catch((e) =>
+        console.warn("[soma] save roadmap failed", e)
+      );
+    }, 800);
+    return () => clearTimeout(t);
+  }, [roadmapPlans, writeKv]);
 
-
+  // Persist state (local cache + shared server, debounced)
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {}
-  }, [state]);
+    if (!hydratedRef.current) return;
+    const t = setTimeout(() => {
+      writeKv({ data: { key: "forecast.state", value: state } }).catch((e) =>
+        console.warn("[soma] save state failed", e)
+      );
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [state, writeKv]);
 
   const mult = state.scenarioMults[state.scenario];
 
@@ -1014,30 +1075,38 @@ export function SomaForecasting() {
     toast.success("Forecast exportado");
   };
 
-  const saveSnapshot = () => {
+  const saveSnapshot = async () => {
     try {
       const ts = new Date().toISOString();
-      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify({ savedAt: ts, state }));
+      const payload = { savedAt: ts, state };
+      localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(payload));
       setSavedAt(ts);
+      await Promise.all([
+        writeKv({ data: { key: "forecast.snapshot", value: payload } }),
+        writeKv({ data: { key: "forecast.state", value: state } }),
+      ]);
       const hhmm = new Date(ts).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-      toast.success(`Cenário salvo · ${hhmm}`);
-    } catch {
-      toast.error("Não foi possível salvar o cenário");
+      toast.success(`Cenário salvo e compartilhado · ${hhmm}`);
+    } catch (e) {
+      console.error(e);
+      toast.error("Não foi possível salvar o cenário no servidor");
     }
   };
 
-  const restoreSnapshot = () => {
+  const restoreSnapshot = async () => {
     try {
-      const raw = localStorage.getItem(SNAPSHOT_KEY);
-      if (!raw) {
+      const remote = await fetchKv({ data: { key: "forecast.snapshot" } });
+      const parsed: any = remote?.value ?? (() => {
+        const raw = localStorage.getItem(SNAPSHOT_KEY);
+        return raw ? JSON.parse(raw) : null;
+      })();
+      if (!parsed?.state) {
         toast.error("Nenhum cenário salvo encontrado");
         return;
       }
-      const parsed = JSON.parse(raw);
-      if (parsed?.state) {
-        setState(parsed.state);
-        toast.success("Último cenário salvo restaurado");
-      }
+      setState(parsed.state);
+      if (parsed.savedAt) setSavedAt(parsed.savedAt);
+      toast.success("Último cenário salvo restaurado");
     } catch {
       toast.error("Falha ao restaurar cenário");
     }
