@@ -42,8 +42,9 @@ function findHeaderRow(values: string[][]) {
 }
 
 // Cache em memória para evitar 429 (quota: 60 reads/min por usuário)
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 5 * 60_000; // 5 min
 const sheetCache = new Map<string, { at: number; body: any }>();
+const inflight = new Map<string, Promise<any>>();
 
 async function fetchWithRetry(url: string, headers: Record<string, string>, attempts = 4) {
   let lastBody: any = null;
@@ -85,26 +86,43 @@ export const fetchSheetKpis = createServerFn({ method: "POST" })
     if (cached && now - cached.at < CACHE_TTL_MS) {
       body = cached.body;
     } else {
-      const { res, body: respBody } = await fetchWithRetry(url, {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": GOOGLE_SHEETS_API_KEY,
-      });
-      if (!res.ok) {
-        // se temos cache antigo, usa para não derrubar a UI
+      try {
+        let pending = inflight.get(cacheKey);
+        if (!pending) {
+          pending = (async () => {
+            const { res, body: respBody } = await fetchWithRetry(url, {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "X-Connection-Api-Key": GOOGLE_SHEETS_API_KEY,
+            });
+            if (!res.ok) {
+              const err: any = new Error(
+                respBody?.error?.message || `HTTP ${res.status}`
+              );
+              err.status = res.status;
+              err.respBody = respBody;
+              throw err;
+            }
+            return respBody;
+          })();
+          inflight.set(cacheKey, pending);
+        }
+        try {
+          body = await pending;
+        } finally {
+          inflight.delete(cacheKey);
+        }
+        sheetCache.set(cacheKey, { at: now, body });
+      } catch (err: any) {
+        // Se temos qualquer cache (mesmo vencido), serve stale para não derrubar a UI
         if (cached) {
           body = cached.body;
+        } else if (err?.status === 429) {
+          // Sem cache + rate-limited: retorna vazio em vez de quebrar a tela
+          return { rows: [] as SheetKpiRow[], count: 0, rateLimited: true };
         } else {
-          const msg = respBody?.error?.message || JSON.stringify(respBody);
-          if (res.status === 429) {
-            throw new Error(
-              `Limite de leituras do Google Sheets atingido (60/min). Aguarde ~1 minuto e tente novamente.`
-            );
-          }
-          throw new Error(`Falha ao ler planilha [${res.status}]: ${msg}`);
+          const msg = err?.respBody?.error?.message || err?.message || "erro desconhecido";
+          throw new Error(`Falha ao ler planilha [${err?.status ?? "?"}]: ${msg}`);
         }
-      } else {
-        body = respBody;
-        sheetCache.set(cacheKey, { at: now, body });
       }
     }
 
