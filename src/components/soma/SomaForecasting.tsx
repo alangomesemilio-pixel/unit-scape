@@ -915,7 +915,11 @@ export function SomaForecasting() {
       const current = kr.current ?? 0;
       return { current, pace: current };
     }
-    return okrLive[kr.source];
+    const live = okrLive[kr.source as keyof typeof okrLive];
+    if (live) return live;
+    // Fonte desconhecida (ex.: KR de margem importado) → trata como manual
+    const current = kr.current ?? kr.baseline ?? 0;
+    return { current, pace: current };
   };
 
   const okrProgress = (objs: OkrObjective[]) => {
