@@ -1336,6 +1336,7 @@ export function SomaForecasting() {
           onScenarioMults={(m) => setState((p) => ({ ...p, scenarioMults: m }))}
           onRecalibrate={recalibrate}
           onExport={exportJSON}
+          onImport={importFile}
           onReset={reset}
           onSave={saveSnapshot}
           onRestore={restoreSnapshot}
