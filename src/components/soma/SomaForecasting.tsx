@@ -1065,14 +1065,79 @@ export function SomaForecasting() {
   };
 
   const exportJSON = () => {
-    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `soma-forecast-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Forecast exportado");
+    const today = new Date().toISOString().slice(0, 10);
+    const stamp = new Date().toISOString();
+
+    // 1) JSON completo: inputs + tudo que está na tela (projeção, canais, totais, OKR)
+    const fullPayload = {
+      exportedAt: stamp,
+      inputs: state,
+      computed: {
+        projection,
+        totals,
+        channelProjections,
+        b2bSubProjections,
+        okrLive,
+        realGrowth,
+      },
+    };
+    const jsonBlob = new Blob([JSON.stringify(fullPayload, null, 2)], { type: "application/json" });
+    const jsonUrl = URL.createObjectURL(jsonBlob);
+    const aJson = document.createElement("a");
+    aJson.href = jsonUrl;
+    aJson.download = `soma-forecast-${today}.json`;
+    aJson.click();
+    URL.revokeObjectURL(jsonUrl);
+
+    // 2) CSV da tela principal (mês a mês, projetado vs realizado)
+    const headers = [
+      "Mês","Receita Projetada","Receita Realizada","Atingimento %",
+      "Pedidos Projetados","Pedidos Realizados","Ticket Projetado","CAC Projetado",
+      "Investimento","ROAS","Conversão %","CMV","OPEX","Imposto","Time/Pessoas",
+      "EBITDA","Lucro",
+      ...CHANNEL_KEYS.map((c) => `Receita ${c.name}`),
+    ];
+    const fmt = (n: number | undefined) =>
+      n === undefined || n === null || !Number.isFinite(n) ? "" : String(Number(n).toFixed(2)).replace(".", ",");
+    const rows = projection.map((p) => {
+      const r = state.realized[p.month] ?? {};
+      const ating = p.receita > 0 ? ((r.receita || 0) / p.receita) * 100 : 0;
+      return [
+        p.month,
+        fmt(p.receita), fmt(r.receita), fmt(ating),
+        fmt(p.pedidos), fmt(r.pedidos), fmt(p.ticket), fmt(p.cac),
+        fmt(p.invest), fmt(p.roas), fmt(p.conversao),
+        fmt(p.cmvCost), fmt(p.opexCost), fmt(p.impostoCost), fmt(p.pessoasCost),
+        fmt(p.ebitda), fmt(p.lucro),
+        ...CHANNEL_KEYS.map((c) => fmt(p.canais?.[c.name])),
+      ];
+    });
+    const totalRow = [
+      "TOTAL",
+      fmt(totals.proj), fmt(totals.real), fmt(totals.ating),
+      fmt(totals.pedidos), "",
+      "", "",
+      fmt(totals.investTotal), "", "",
+      fmt(projection.reduce((a, p) => a + p.cmvCost, 0)),
+      fmt(projection.reduce((a, p) => a + p.opexCost, 0)),
+      fmt(projection.reduce((a, p) => a + p.impostoCost, 0)),
+      fmt(projection.reduce((a, p) => a + p.pessoasCost, 0)),
+      fmt(totals.ebitda),
+      fmt(projection.reduce((a, p) => a + p.lucro, 0)),
+      ...CHANNEL_KEYS.map((c) => fmt(projection.reduce((a, p) => a + (p.canais?.[c.name] || 0), 0))),
+    ];
+    const csv = [headers, ...rows, totalRow]
+      .map((row) => row.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+    const csvBlob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const csvUrl = URL.createObjectURL(csvBlob);
+    const aCsv = document.createElement("a");
+    aCsv.href = csvUrl;
+    aCsv.download = `soma-forecast-${today}.csv`;
+    aCsv.click();
+    URL.revokeObjectURL(csvUrl);
+
+    toast.success("Forecast exportado (JSON + CSV com dados da tela)");
   };
 
   const saveSnapshot = async () => {
