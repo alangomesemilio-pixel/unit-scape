@@ -2561,6 +2561,26 @@ function Header({
           <Button variant="outline" size="sm" onClick={onExport} className="border-[#f28572]/30">
             <Download className="size-4 mr-1" /> Exportar
           </Button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,.csv,application/json,text/csv"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0];
+              if (f) await onImport(f);
+              if (fileInputRef.current) fileInputRef.current.value = "";
+            }}
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            className="border-[#b78cff]/40"
+            title="Importar JSON exportado ou CSV com realizado mensal"
+          >
+            <Upload className="size-4 mr-1" /> Importar
+          </Button>
           <Button variant="ghost" size="sm" onClick={onReset} title="Resetar tudo">
             <RotateCcw className="size-4" />
           </Button>
