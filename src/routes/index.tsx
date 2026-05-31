@@ -6,9 +6,10 @@ import { ExecutiveDashboard } from "@/components/exec/ExecutiveDashboard";
 import { ExecAiChat } from "@/components/ai/ExecAiChat";
 import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard";
 import { SomaForecasting } from "@/components/soma/SomaForecasting";
+import { NovoForecast } from "@/components/soma/NovoForecast";
 import { Toaster } from "@/components/ui/sonner";
 import { PasswordGate } from "@/components/auth/PasswordGate";
-import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart, Rocket } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -24,7 +25,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "exec" | "forecast" | "soma" | "org" | "meetings" | "ai";
+type View = "exec" | "forecast" | "soma" | "novo" | "org" | "meetings" | "ai";
 
 function Index() {
   const [view, setView] = useState<View>("exec");
@@ -49,6 +50,9 @@ function Index() {
         <NavBtn active={view === "soma"} onClick={() => setView("soma")} icon={Heart}>
           Forecasting Estratégico – Soma
         </NavBtn>
+        <NavBtn active={view === "novo"} onClick={() => setView("novo")} icon={Rocket}>
+          Novo Forecast Estratégico – teste
+        </NavBtn>
         <NavBtn active={view === "org"} onClick={() => setView("org")} icon={Network}>
           Organograma
         </NavBtn>
@@ -67,6 +71,8 @@ function Index() {
           <ForecastingDashboard />
         ) : view === "soma" ? (
           <SomaForecasting />
+        ) : view === "novo" ? (
+          <NovoForecast />
         ) : view === "org" ? (
           <OrgChart />
         ) : view === "meetings" ? (
