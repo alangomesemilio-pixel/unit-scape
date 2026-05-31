@@ -1,0 +1,432 @@
+{
+  "meta": {
+    "empresa": "SOMA",
+    "periodo": "Jun → Dez 2026",
+    "versao": "2.0",
+    "geradoEm": "2026-05-31",
+    "metaSemestral": 14600000,
+    "ebitdaMeta": 7100000,
+    "margemMeta": 55
+  },
+  "fases": [
+    {
+      "id": "fase-1",
+      "mes": "Jun",
+      "label": "Lançamento",
+      "metaReceita": 1402000,
+      "metaEbitda": 687000,
+      "descricao": "Dois picos de receita — Dia 03 e Dia 15. Motor: Influenciadora sócia.",
+      "eventos": [
+        {
+          "nome": "Lançamento Dia 03",
+          "meta": 701000,
+          "pct": 50,
+          "canais": [
+            "Influenciadora"
+          ]
+        },
+        {
+          "nome": "Lançamento Dia 15",
+          "meta": 701000,
+          "pct": 50,
+          "canais": [
+            "Influenciadora",
+            "DTC"
+          ]
+        }
+      ],
+      "canais": [
+        {
+          "id": "influenciadora",
+          "nome": "Influenciadora",
+          "receita": 864000,
+          "margem": 50,
+          "pctTotal": 61.6,
+          "responsavel": "Fernando / Vanessa",
+          "estrategia": "Lançamentos Dia 03 e Dia 15. Canal de menor CAC da operação.",
+          "kpis": [
+            "ROAS ≥ 4x",
+            "Receita ≥ R$864k",
+            "Creators ativos: sócia"
+          ]
+        },
+        {
+          "id": "dtc",
+          "nome": "DTC",
+          "receita": 238000,
+          "margem": 56,
+          "pctTotal": 17.0,
+          "responsavel": "Luís / Fernando",
+          "estrategia": "LP separada. Foco em remarketing e ativação — não aquisição fria em Junho.",
+          "kpis": [
+            "CVR LP ≥ 3.5%",
+            "ROAS ≥ 3x",
+            "Receita ≥ R$238k"
+          ]
+        },
+        {
+          "id": "b2b",
+          "nome": "B2B",
+          "receita": 300000,
+          "margem": 45,
+          "pctTotal": 21.4,
+          "responsavel": "Igor / Otávio",
+          "estrategia": "Base atual de distribuidores. Estruturar pipeline para Julho.",
+          "kpis": [
+            "Receita ≥ R$300k",
+            "Ticket médio R$5.000",
+            "Pipeline R$200k"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fase-2",
+      "mes": "Jul",
+      "label": "Diversificação",
+      "metaReceita": 1612300,
+      "metaEbitda": 790000,
+      "crescimento": 15,
+      "descricao": "DTC entra com aquisição fria. WhatsApp CRM inicia. Influenciadora mantém.",
+      "canais": [
+        {
+          "id": "influenciadora",
+          "nome": "Influenciadora",
+          "receita": 993600,
+          "margem": 50,
+          "crescimento": 15,
+          "responsavel": "Fernando / Vanessa",
+          "estrategia": "Creators secundários começam a ser ativados. Reduz dependência da sócia.",
+          "kpis": [
+            "Receita ≥ R$993k",
+            "Creators secundários: 5 ativos",
+            "ROAS ≥ 4x"
+          ]
+        },
+        {
+          "id": "dtc",
+          "nome": "DTC",
+          "receita": 273700,
+          "margem": 56,
+          "crescimento": 15,
+          "responsavel": "Luís / Fernando",
+          "estrategia": "Aquisição fria entra. HPI + remarketing + público frio.",
+          "kpis": [
+            "CVR ≥ 3.5%",
+            "CAC ≤ R$65",
+            "ROAS ≥ 3.5x"
+          ]
+        },
+        {
+          "id": "b2b",
+          "nome": "B2B",
+          "receita": 345000,
+          "margem": 45,
+          "crescimento": 15,
+          "responsavel": "Igor",
+          "estrategia": "Cadeias PDV entra em piloto. Distribuidores escalam.",
+          "kpis": [
+            "Receita ≥ R$345k",
+            "Ticket ≥ R$5.500",
+            "2 sub-canais ativos"
+          ]
+        },
+        {
+          "id": "whatsapp",
+          "nome": "WhatsApp CRM",
+          "receita": 0,
+          "margem": 64,
+          "crescimento": 0,
+          "responsavel": "Ian / Léo Maia",
+          "estrategia": "INICIA EM JULHO. Léo Maia operando retenção. Luís captura leads para WPP.",
+          "kpis": [
+            "Base WPP ≥ 5.000 contatos",
+            "Primeira receita WPP",
+            "Taxa abertura ≥ 60%"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fase-3",
+      "mes": "Ago",
+      "label": "Escala",
+      "metaReceita": 1854145,
+      "metaEbitda": 908731,
+      "crescimento": 15,
+      "descricao": "TikTok Shop entra em teste. Todos canais principais em crescimento.",
+      "canaisNovos": [
+        "TikTok Shop"
+      ]
+    },
+    {
+      "id": "fase-4",
+      "mes": "Set",
+      "label": "Recorrência",
+      "metaReceita": 2132267,
+      "metaEbitda": 1044811,
+      "crescimento": 15,
+      "descricao": "Assinatura ativada. Base recorrente começa a sustentar parcela da receita.",
+      "canaisNovos": [
+        "Assinatura"
+      ]
+    },
+    {
+      "id": "fase-5",
+      "mes": "Out",
+      "label": "Consolidação",
+      "metaReceita": 2452107,
+      "metaEbitda": 1201532,
+      "crescimento": 15,
+      "descricao": "Marketplace entra. Operação multi-canal consolidada.",
+      "canaisNovos": [
+        "Marketplace"
+      ]
+    },
+    {
+      "id": "fase-6",
+      "mes": "Dez",
+      "label": "Liderança",
+      "metaReceita": 2819923,
+      "metaEbitda": 1381762,
+      "crescimento": 15,
+      "descricao": "Influenciadora não é mais dependência única. B2B e retenção sustentam base sólida."
+    }
+  ],
+  "responsaveis": [
+    {
+      "id": "alan",
+      "nome": "Alan",
+      "cargo": "CEO",
+      "okr": "Receita semestral R$14,6M com EBITDA ≥ R$7,1M",
+      "kpis": [
+        "Receita total/mês",
+        "EBITDA/mês",
+        "Crescimento MoM ≥ 15%",
+        "NPS cultura ≥ 75"
+      ],
+      "rotinas": [
+        "Revisão OKRs semanal — toda segunda",
+        "Revisão forecasting mensal",
+        "Aprovações estratégicas"
+      ]
+    },
+    {
+      "id": "fernando",
+      "nome": "Fernando",
+      "cargo": "Head Growth",
+      "okr": "Receita Influenciadora semestre R$9,8M + ativar DTC e TikTok",
+      "kpis": [
+        "ROAS ≥ 4x",
+        "CAC ≤ R$65",
+        "Pedidos semestre ≥ 52k",
+        "Creators ativos ≥ 30"
+      ],
+      "rotinas": [
+        "Daily performance — 15min",
+        "Sprint semanal de campanhas — 45min",
+        "Alinhamento Igor quinzenal"
+      ]
+    },
+    {
+      "id": "ian",
+      "nome": "Ian",
+      "cargo": "Head CRM & Retenção",
+      "okr": "Taxa recompra 38% + Receita WPP R$150k semestre",
+      "kpis": [
+        "Taxa recompra ≥ 38%",
+        "LTV/CAC ≥ 11x",
+        "Receita WPP/mês",
+        "NPS ≥ 78"
+      ],
+      "rotinas": [
+        "Abertura métricas CRM diária — 15min",
+        "Revisão retenção semanal",
+        "Briefing Léo Maia semanal"
+      ]
+    },
+    {
+      "id": "igor",
+      "nome": "Igor",
+      "cargo": "Head Comercial B2B",
+      "okr": "Receita B2B semestre R$2,1M com ticket médio R$3.500",
+      "kpis": [
+        "Receita B2B/mês",
+        "Ticket médio B2B",
+        "Pipeline ativo",
+        "Sub-canais ativos"
+      ],
+      "rotinas": [
+        "Pipeline review semanal",
+        "Alinhamento Fernando quinzenal",
+        "Revisão distribuidores mensal"
+      ]
+    },
+    {
+      "id": "luis",
+      "nome": "Luís",
+      "cargo": "Performance / Tráfego",
+      "okr": "ROAS ≥ 4x + CAC ≤ R$65 em todos os canais pagos",
+      "kpis": [
+        "ROAS",
+        "CPA",
+        "CTR",
+        "CPM",
+        "CVR"
+      ],
+      "rotinas": [
+        "Daily de mídia — 15min",
+        "Otimização de campanhas — 3x/semana"
+      ]
+    },
+    {
+      "id": "vanessa",
+      "nome": "Vanessa",
+      "cargo": "Head Influencers",
+      "okr": "30 creators secundários ativos gerando receita até Dezembro",
+      "kpis": [
+        "Creators ativos/mês",
+        "Receita por creator",
+        "EMV",
+        "Conversão de influência"
+      ],
+      "rotinas": [
+        "Pipeline de creators semanal",
+        "Briefing creators quinzenal"
+      ]
+    },
+    {
+      "id": "miller",
+      "nome": "Miller",
+      "cargo": "COO",
+      "okr": "Margem bruta ≥ 55% + SLA entrega ≥ 98%",
+      "kpis": [
+        "SLA entrega",
+        "Lead time produção",
+        "Ruptura estoque",
+        "Margem operacional"
+      ],
+      "rotinas": [
+        "Reunião operacional semanal",
+        "Revisão estoque quinzenal",
+        "Revisão financeira mensal"
+      ]
+    }
+  ],
+  "rotinasSemana": {
+    "segunda": [
+      {
+        "horario": "09h",
+        "nome": "Daily Performance",
+        "participantes": [
+          "Fernando",
+          "Luís"
+        ],
+        "duracao": 15,
+        "pauta": "ROAS, pedidos, CAC do dia anterior"
+      },
+      {
+        "horario": "10h",
+        "nome": "Reunião Estratégica Semanal",
+        "participantes": [
+          "Alan",
+          "Fernando",
+          "Miller",
+          "Igor",
+          "Ian"
+        ],
+        "duracao": 60,
+        "pauta": "OKRs, resultados da semana, próximas ações"
+      }
+    ],
+    "terca": [
+      {
+        "horario": "09h",
+        "nome": "Daily Performance",
+        "participantes": [
+          "Fernando",
+          "Luís"
+        ],
+        "duracao": 15
+      },
+      {
+        "horario": "14h",
+        "nome": "Sprint Campanhas",
+        "participantes": [
+          "Fernando",
+          "Luís",
+          "Vanessa",
+          "Ana Júlia"
+        ],
+        "duracao": 45,
+        "pauta": "Briefings, criativos, otimizações da semana"
+      }
+    ],
+    "quarta": [
+      {
+        "horario": "09h",
+        "nome": "Daily Performance",
+        "participantes": [
+          "Fernando",
+          "Luís"
+        ],
+        "duracao": 15
+      },
+      {
+        "horario": "15h",
+        "nome": "Revisão CRM",
+        "participantes": [
+          "Ian",
+          "Julian",
+          "Léo Maia"
+        ],
+        "duracao": 30,
+        "pauta": "Retenção, recompra, WPP"
+      }
+    ],
+    "quinta": [
+      {
+        "horario": "09h",
+        "nome": "Daily Performance",
+        "participantes": [
+          "Fernando",
+          "Luís"
+        ],
+        "duracao": 15
+      },
+      {
+        "horario": "14h",
+        "nome": "Alinhamento B2B x Growth",
+        "participantes": [
+          "Igor",
+          "Fernando"
+        ],
+        "duracao": 30,
+        "pauta": "Pipeline B2B, suporte criativo, canais"
+      }
+    ],
+    "sexta": [
+      {
+        "horario": "09h",
+        "nome": "Daily Performance",
+        "participantes": [
+          "Fernando",
+          "Luís"
+        ],
+        "duracao": 15
+      },
+      {
+        "horario": "15h",
+        "nome": "Review Semanal de Resultados",
+        "participantes": [
+          "Alan",
+          "Fernando",
+          "Igor",
+          "Ian"
+        ],
+        "duracao": 45,
+        "pauta": "Fechamento da semana, ajustes para próxima"
+      }
+    ]
+  }
+}
