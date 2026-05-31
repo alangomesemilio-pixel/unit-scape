@@ -1141,6 +1141,104 @@ export function SomaForecasting() {
     toast.success("Forecast exportado (JSON + CSV com dados da tela)");
   };
 
+  // ============ IMPORTAR ARQUIVO ============
+  // Aceita:
+  //  - JSON exportado (com chave `inputs` = SomaState completo) → restaura o cenário inteiro
+  //  - JSON cru do SomaState (premises/realized/...) → restaura
+  //  - CSV mês a mês com colunas como o export (usa "Receita Realizada", "Pedidos Realizados", etc.)
+  const importFile = async (file: File) => {
+    const text = await file.text();
+    const isJson = file.name.toLowerCase().endsWith(".json") || text.trim().startsWith("{");
+
+    const monthAliases: Record<string, string> = {
+      jun: "Jun", junho: "Jun",
+      jul: "Jul", julho: "Jul",
+      ago: "Ago", agosto: "Ago",
+      set: "Set", setembro: "Set",
+      out: "Out", outubro: "Out",
+      nov: "Nov", novembro: "Nov",
+      dez: "Dez", dezembro: "Dez",
+    };
+    const normMonth = (s: string) => {
+      const k = s.trim().toLowerCase().replace(/\./g, "").slice(0, 8);
+      return monthAliases[k] ?? monthAliases[k.slice(0, 3)] ?? null;
+    };
+    const parseNum = (v: string) => {
+      if (v === undefined || v === null || v === "") return undefined;
+      const cleaned = String(v).replace(/[R$\s"]/g, "").replace(/\./g, "").replace(",", ".");
+      const n = Number(cleaned);
+      return Number.isFinite(n) ? n : undefined;
+    };
+
+    try {
+      if (isJson) {
+        const parsed = JSON.parse(text);
+        const candidate = parsed?.inputs ?? parsed?.state ?? parsed;
+        if (!candidate?.premises) throw new Error("JSON sem `premises` válido");
+        const merged: SomaState = {
+          ...DEFAULT_STATE,
+          ...candidate,
+          premises: { ...DEFAULT_PREMISES, ...(candidate.premises || {}) },
+          realized: candidate.realized || {},
+          channelReal: candidate.channelReal || {},
+          channelPremises: { ...DEFAULT_CHANNEL_PREMISES, ...(candidate.channelPremises || {}) },
+          b2bSubChannels: Array.isArray(candidate.b2bSubChannels) && candidate.b2bSubChannels.length > 0 ? candidate.b2bSubChannels : DEFAULT_B2B_SUBS,
+          okrs: Array.isArray(candidate.okrs) && candidate.okrs.length > 0 ? candidate.okrs : DEFAULT_OKRS,
+          scenarioMults: { ...DEFAULT_STATE.scenarioMults, ...(candidate.scenarioMults || {}) },
+        };
+        setState(merged);
+        toast.success("Cenário importado do JSON");
+        return;
+      }
+
+      // CSV — detecta separador
+      const sep = text.includes(";") ? ";" : ",";
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length < 2) throw new Error("CSV vazio");
+      const splitRow = (l: string) =>
+        l.split(sep).map((c) => c.replace(/^"|"$/g, "").replace(/""/g, '"').trim());
+      const headers = splitRow(lines[0]).map((h) => h.toLowerCase());
+      const col = (...names: string[]) => {
+        for (const n of names) {
+          const idx = headers.findIndex((h) => h.includes(n));
+          if (idx >= 0) return idx;
+        }
+        return -1;
+      };
+      const idxMes = col("mês", "mes", "month");
+      const idxRec = col("receita realizada", "receita real");
+      const idxPed = col("pedidos realizados", "pedidos real");
+      const idxCac = col("cac realizado", "cac real");
+      const idxInv = col("investimento realizado", "invest realizado");
+      const idxTk  = col("ticket realizado", "ticket real");
+      const idxLuc = col("lucro realizado", "lucro real");
+      if (idxMes < 0) throw new Error("CSV sem coluna de Mês");
+
+      const newRealized: Record<string, RealizedMonth> = { ...state.realized };
+      let count = 0;
+      for (let i = 1; i < lines.length; i++) {
+        const row = splitRow(lines[i]);
+        const mLabel = normMonth(row[idxMes] || "");
+        if (!mLabel) continue;
+        const r: RealizedMonth = { ...(newRealized[mLabel] || {}) };
+        if (idxRec >= 0) r.receita = parseNum(row[idxRec]) ?? r.receita;
+        if (idxPed >= 0) r.pedidos = parseNum(row[idxPed]) ?? r.pedidos;
+        if (idxCac >= 0) r.cac = parseNum(row[idxCac]) ?? r.cac;
+        if (idxInv >= 0) r.invest = parseNum(row[idxInv]) ?? r.invest;
+        if (idxTk  >= 0) r.ticket = parseNum(row[idxTk])  ?? r.ticket;
+        if (idxLuc >= 0) r.lucro  = parseNum(row[idxLuc]) ?? r.lucro;
+        newRealized[mLabel] = r;
+        count++;
+      }
+      if (count === 0) throw new Error("Nenhuma linha de mês reconhecida");
+      setState((p) => ({ ...p, realized: newRealized }));
+      toast.success(`Realizado importado · ${count} mês(es) atualizados`);
+    } catch (e: any) {
+      console.error(e);
+      toast.error(`Falha ao importar: ${e?.message ?? "arquivo inválido"}`);
+    }
+  };
+
   const saveSnapshot = async () => {
     try {
       const ts = new Date().toISOString();
