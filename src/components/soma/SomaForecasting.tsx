@@ -2414,6 +2414,7 @@ function Header({
   onScenarioMults,
   onRecalibrate,
   onExport,
+  onImport,
   onReset,
   onSave,
   onRestore,
@@ -2425,11 +2426,13 @@ function Header({
   onScenarioMults: (m: Record<ScenarioKey, { rev: number; cac: number }>) => void;
   onRecalibrate: () => void;
   onExport: () => void;
+  onImport: (file: File) => void | Promise<void>;
   onReset: () => void;
   onSave: () => void;
   onRestore: () => void;
   savedAt: string | null;
 }) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const updateMult = (key: ScenarioKey, field: "rev" | "cac", deltaPct: number) => {
     onScenarioMults({
       ...scenarioMults,
