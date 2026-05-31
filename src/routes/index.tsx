@@ -50,6 +50,9 @@ function Index() {
         <NavBtn active={view === "soma"} onClick={() => setView("soma")} icon={Heart}>
           Forecasting Estratégico – Soma
         </NavBtn>
+        <NavBtn active={view === "novo"} onClick={() => setView("novo")} icon={Rocket}>
+          Novo Forecast Estratégico – teste
+        </NavBtn>
         <NavBtn active={view === "org"} onClick={() => setView("org")} icon={Network}>
           Organograma
         </NavBtn>
