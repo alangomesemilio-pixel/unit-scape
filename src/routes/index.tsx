@@ -71,6 +71,8 @@ function Index() {
           <ForecastingDashboard />
         ) : view === "soma" ? (
           <SomaForecasting />
+        ) : view === "novo" ? (
+          <NovoForecast />
         ) : view === "org" ? (
           <OrgChart />
         ) : view === "meetings" ? (
