@@ -81,6 +81,8 @@ function Index() {
           <SomaForecasting />
         ) : view === "novo" ? (
           <NovoForecast />
+        ) : view === "dinamico" ? (
+          <ForecastDinamico />
         ) : view === "okrs" ? (
           <NovoOkrs />
         ) : view === "org" ? (
