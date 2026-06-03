@@ -8,9 +8,10 @@ import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard
 import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { NovoForecast } from "@/components/soma/NovoForecast";
 import { NovoOkrs } from "@/components/soma/NovoOkrs";
+import { ForecastDinamico } from "@/components/soma/ForecastDinamico";
 import { Toaster } from "@/components/ui/sonner";
 import { PasswordGate } from "@/components/auth/PasswordGate";
-import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart, Rocket, Target } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart, Rocket, Target, Gauge } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
