@@ -1647,18 +1647,39 @@ export function SomaForecasting() {
         <Section title="Comparação Visual" subtitle="Projetado vs Realizado em série temporal">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <Panel title="Receita · Projetada vs Real">
-              <div className="h-64">
-                <ResponsiveContainer>
-                  <BarChart data={chartData}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
-                    <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
-                    <YAxis stroke="#8f7bc4" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                    <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                    <Bar dataKey="Projetado" fill={SOMA_PALETTE.gold} radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="Realizado" fill={SOMA_PALETTE.rose} radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="space-y-2">
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: SOMA_PALETTE.gold }}>
+                    Projetado
+                  </div>
+                  <div className="h-28">
+                    <ResponsiveContainer>
+                      <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
+                        <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
+                        <YAxis stroke="#8f7bc4" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                        <Bar dataKey="Projetado" fill={SOMA_PALETTE.gold} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+                <div>
+                  <div className="text-[10px] uppercase tracking-wider mb-1" style={{ color: SOMA_PALETTE.rose }}>
+                    Realizado
+                  </div>
+                  <div className="h-28">
+                    <ResponsiveContainer>
+                      <BarChart data={chartData} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f28572" strokeOpacity={0.15} />
+                        <XAxis dataKey="month" stroke="#8f7bc4" fontSize={11} />
+                        <YAxis stroke="#8f7bc4" fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                        <Tooltip contentStyle={{ background: "#1b1426", border: `1px solid ${SOMA_PALETTE.rose}40`, borderRadius: 8 }} formatter={(v: number) => brl(v)} />
+                        <Bar dataKey="Realizado" fill={SOMA_PALETTE.rose} radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
               </div>
             </Panel>
             <Panel title="Crescimento Acumulado">
