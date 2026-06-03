@@ -8,6 +8,7 @@ import { Users, Target, Loader2, Save, Lightbulb } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getSomaKv, setSomaKv } from "@/lib/soma-store.functions";
 import { toast } from "sonner";
+import { SomaOkrPanel } from "./SomaOkrPanel";
 
 type PDCA = {
   plan?: string;
