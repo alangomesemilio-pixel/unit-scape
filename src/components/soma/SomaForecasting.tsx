@@ -1559,7 +1559,23 @@ export function SomaForecasting() {
                   <MetricRow label="Margem Líquida" data={projection.map((p) => p.receita ? `${((p.lucro / p.receita) * 100).toFixed(1)}%` : "—")} />
 
                   <Separator label="Canais (Projetado)" />
-                  <MetricRow label="Receita B2B" data={projection.map((p) => brl(p.receitaB2B))} />
+                  <MetricRow
+                    label="Receita B2B (Total)"
+                    data={projection.map((p) => brl(p.receitaB2B))}
+                    total={brl(projection.reduce((a, p) => a + p.receitaB2B, 0))}
+                    highlight
+                  />
+                  {state.b2bSubChannels.map((sub) => {
+                    const series = b2bSubProjections[sub.id] || [];
+                    return (
+                      <MetricRow
+                        key={sub.id}
+                        label={`↳ ${sub.name}`}
+                        data={MONTHS.map((_, i) => brl(series[i]?.receita || 0))}
+                        total={brl(series.reduce((a, c) => a + (c?.receita || 0), 0))}
+                      />
+                    );
+                  })}
                   <MetricRow label="Receita Influenciadora" data={projection.map((p) => brl(p.receitaInfluenciadora))} />
                   <MetricRow label="Receita WhatsApp" data={projection.map((p) => brl(p.receitaWhatsApp))} />
                   <MetricRow label="Receita TikTok Shop" data={projection.map((p) => brl(p.receitaTikTokShop))} />
