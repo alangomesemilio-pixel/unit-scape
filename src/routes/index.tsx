@@ -52,7 +52,10 @@ function Index() {
           Forecasting Estratégico – Soma
         </NavBtn>
         <NavBtn active={view === "novo"} onClick={() => setView("novo")} icon={Rocket}>
-          Novo Forecast Estratégico – teste
+          Novo Forecast Estratégico
+        </NavBtn>
+        <NavBtn active={view === "okrs"} onClick={() => setView("okrs")} icon={Target}>
+          OKRs &amp; PDCA
         </NavBtn>
         <NavBtn active={view === "org"} onClick={() => setView("org")} icon={Network}>
           Organograma
