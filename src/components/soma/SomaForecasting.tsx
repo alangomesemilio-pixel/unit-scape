@@ -102,8 +102,23 @@ interface RealizedMonth {
   cac?: number;
   invest?: number;
   ticket?: number;
+  ticketB2B?: number;
   lucro?: number;
+  roas?: number;
+  conversao?: number;
+  cmv?: number;
+  opex?: number;
+  pessoas?: number;
+  imposto?: number;
+  ebitda?: number;
+  margem?: number;
+  recB2B?: number;
+  recInfluenciadora?: number;
+  recWhatsApp?: number;
+  recTikTokShop?: number;
+  recAssinatura?: number;
 }
+
 
 interface ChannelRealized {
   receita?: number;
