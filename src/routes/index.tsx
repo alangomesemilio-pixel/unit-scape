@@ -27,7 +27,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "exec" | "forecast" | "soma" | "novo" | "okrs" | "org" | "meetings" | "ai";
+type View = "exec" | "forecast" | "soma" | "novo" | "dinamico" | "okrs" | "org" | "meetings" | "ai";
 
 function Index() {
   const [view, setView] = useState<View>("exec");
