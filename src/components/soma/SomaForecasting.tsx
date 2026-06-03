@@ -888,10 +888,22 @@ export function SomaForecasting() {
     });
   }, [state.premises, mult, channelProjections]);
 
+  // Helper — Receita Realizada total inclui canais (B2B + demais)
+  const realizedReceita = (m: string) => {
+    const r = state.realized[m] || ({} as RealizedMonth);
+    const channels =
+      (r.recB2B || 0) +
+      (r.recInfluenciadora || 0) +
+      (r.recWhatsApp || 0) +
+      (r.recTikTokShop || 0) +
+      (r.recAssinatura || 0);
+    return (r.receita || 0) + channels;
+  };
+
   // Totais
   const totals = useMemo(() => {
     const proj = projection.reduce((a, m) => a + m.receita, 0);
-    const real = Object.values(state.realized).reduce((a, r) => a + (r.receita || 0), 0);
+    const real = MONTHS.reduce((a, m) => a + realizedReceita(m), 0);
     const ebitda = projection.reduce((a, m) => a + m.ebitda, 0);
     const pedidos = projection.reduce((a, m) => a + m.pedidos, 0);
     const investTotal = projection.reduce((a, m) => a + m.invest, 0);
