@@ -1,63 +1,70 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Flag, Plus, Trash2, Loader2, Save, Trophy } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Flag, Plus, Trash2, Loader2, Save, Trophy, Target } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { getSomaKv, setSomaKv } from "@/lib/soma-store.functions";
 import { toast } from "sonner";
+import seed from "@/data/okr-grax-model.json";
 
-type KrSource =
-  | "manual"
-  | "receitaSemestre"
-  | "ebitdaSemestre"
-  | "pedidosSemestre"
-  | "ticketMedio"
-  | "ltvCac"
-  | "recompra"
-  | "roas"
-  | "b2bRev"
-  | "investSemestre";
+type Unit = "#" | "R$" | "%" | "x";
 
-interface KeyResult {
+interface KR {
   id: string;
-  title: string;
-  owner: string;
-  unit: "R$" | "%" | "x" | "#";
-  baseline: number;
-  target: number;
-  source: KrSource;
-  current?: number;
+  codigo: string;
+  titulo: string;
+  nocaoSucesso: number;
+  alcancado: number;
+  unit: Unit;
+  concluido: boolean;
 }
 
-interface OkrObjective {
+interface Aspiration {
   id: string;
-  title: string;
-  why: string;
-  owner: string;
+  codigo: string;
+  titulo: string;
   accent: string;
-  krs: KeyResult[];
+  krs: KR[];
 }
 
-const ACCENTS = ["#f28572", "#d6b4ff", "#b78cff", "#ff9c8f", "#f5c97a", "#9ad7c5"];
+interface Period {
+  id: string;
+  label: string;
+  aspirations: Aspiration[];
+}
 
-const brl = (n: number) =>
-  n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+interface Model {
+  periods: Period[];
+}
 
-const fmt = (n: number, unit: KeyResult["unit"]) =>
-  unit === "R$"
-    ? brl(n)
-    : unit === "%"
-    ? `${n.toFixed(1)}%`
-    : unit === "x"
-    ? `${n.toFixed(2)}x`
-    : Math.round(n).toLocaleString("pt-BR");
+const ACCENTS = ["#f28572", "#b78cff", "#9ad7c5", "#f5c97a", "#d6b4ff", "#ff9c8f"];
+
+const fmtNum = (n: number, unit: Unit) => {
+  if (unit === "R$") return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+  if (unit === "%") return `${n.toFixed(1)}%`;
+  if (unit === "x") return `${n.toFixed(2)}x`;
+  return Math.round(n).toLocaleString("pt-BR");
+};
+
+const krProgress = (kr: KR) => {
+  if (kr.concluido) return 100;
+  if (kr.nocaoSucesso <= 0) return 0;
+  return Math.max(0, Math.min(100, (kr.alcancado / kr.nocaoSucesso) * 100));
+};
+
+const aspProgress = (a: Aspiration) =>
+  a.krs.length === 0 ? 0 : a.krs.reduce((s, k) => s + krProgress(k), 0) / a.krs.length;
+
+const concluidosCount = (a: Aspiration) => a.krs.filter((k) => k.concluido).length;
 
 export function SomaOkrPanel() {
   const getKv = useServerFn(getSomaKv);
   const setKv = useServerFn(setSomaKv);
-  const [okrs, setOkrs] = useState<OkrObjective[]>([]);
+  const [model, setModel] = useState<Model>(seed as Model);
   const [fullState, setFullState] = useState<any>(null);
+  const [periodId, setPeriodId] = useState<string>("anual");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -69,7 +76,7 @@ export function SomaOkrPanel() {
         if (!alive) return;
         const s = (r.value as any) ?? {};
         setFullState(s);
-        setOkrs(Array.isArray(s.okrs) ? s.okrs : []);
+        if (s.graxOkr?.periods) setModel(s.graxOkr as Model);
         setSavedAt(r.updatedAt ?? null);
       })
       .finally(() => alive && setLoading(false));
@@ -78,89 +85,96 @@ export function SomaOkrPanel() {
     };
   }, [getKv]);
 
+  const period = useMemo(
+    () => model.periods.find((p) => p.id === periodId) ?? model.periods[0],
+    [model, periodId],
+  );
+
+  const overall = useMemo(() => {
+    if (!period || period.aspirations.length === 0) return 0;
+    return period.aspirations.reduce((s, a) => s + aspProgress(a), 0) / period.aspirations.length;
+  }, [period]);
+
+  const updatePeriod = (next: Period) =>
+    setModel((m) => ({ ...m, periods: m.periods.map((p) => (p.id === next.id ? next : p)) }));
+
+  const setAspiration = (id: string, patch: Partial<Aspiration>) =>
+    updatePeriod({ ...period!, aspirations: period!.aspirations.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
+
+  const removeAspiration = (id: string) =>
+    updatePeriod({ ...period!, aspirations: period!.aspirations.filter((a) => a.id !== id) });
+
+  const addAspiration = () => {
+    const idx = period!.aspirations.length;
+    updatePeriod({
+      ...period!,
+      aspirations: [
+        ...period!.aspirations,
+        {
+          id: `asp-${Date.now()}`,
+          codigo: `A${idx + 1}`,
+          titulo: "NOVA ASPIRAÇÃO",
+          accent: ACCENTS[idx % ACCENTS.length],
+          krs: [],
+        },
+      ],
+    });
+  };
+
+  const setKr = (aspId: string, krId: string, patch: Partial<KR>) =>
+    updatePeriod({
+      ...period!,
+      aspirations: period!.aspirations.map((a) =>
+        a.id !== aspId ? a : { ...a, krs: a.krs.map((k) => (k.id === krId ? { ...k, ...patch } : k)) },
+      ),
+    });
+
+  const removeKr = (aspId: string, krId: string) =>
+    updatePeriod({
+      ...period!,
+      aspirations: period!.aspirations.map((a) =>
+        a.id !== aspId ? a : { ...a, krs: a.krs.filter((k) => k.id !== krId) },
+      ),
+    });
+
+  const addKr = (aspId: string) =>
+    updatePeriod({
+      ...period!,
+      aspirations: period!.aspirations.map((a) =>
+        a.id !== aspId
+          ? a
+          : {
+              ...a,
+              krs: [
+                ...a.krs,
+                {
+                  id: `kr-${Date.now()}`,
+                  codigo: `${a.krs.length + 1}.1`,
+                  titulo: "Novo Resultado-Chave",
+                  nocaoSucesso: 0,
+                  alcancado: 0,
+                  unit: "#",
+                  concluido: false,
+                },
+              ],
+            },
+      ),
+    });
+
   const save = async () => {
     setSaving(true);
     try {
-      const nextState = { ...(fullState ?? {}), okrs };
+      const nextState = { ...(fullState ?? {}), graxOkr: model };
       await setKv({ data: { key: "forecast.state", value: nextState } });
       setFullState(nextState);
       setSavedAt(new Date().toISOString());
-      toast.success("OKRs Soma salvos");
+      toast.success("OKRs Grax salvos");
     } catch (e: any) {
       toast.error(e?.message ?? "Erro ao salvar");
     } finally {
       setSaving(false);
     }
   };
-
-  const setObjective = (id: string, patch: Partial<OkrObjective>) =>
-    setOkrs((arr) => arr.map((o) => (o.id === id ? { ...o, ...patch } : o)));
-
-  const removeObjective = (id: string) =>
-    setOkrs((arr) => arr.filter((o) => o.id !== id));
-
-  const addObjective = () =>
-    setOkrs((arr) => [
-      ...arr,
-      {
-        id: `okr-${Date.now()}`,
-        title: "Novo objetivo",
-        why: "Por que importa…",
-        owner: "Responsável",
-        accent: ACCENTS[arr.length % ACCENTS.length],
-        krs: [],
-      },
-    ]);
-
-  const setKr = (objId: string, krId: string, patch: Partial<KeyResult>) =>
-    setOkrs((arr) =>
-      arr.map((o) =>
-        o.id !== objId ? o : { ...o, krs: o.krs.map((k) => (k.id === krId ? { ...k, ...patch } : k)) },
-      ),
-    );
-
-  const removeKr = (objId: string, krId: string) =>
-    setOkrs((arr) =>
-      arr.map((o) =>
-        o.id !== objId ? o : { ...o, krs: o.krs.filter((k) => k.id !== krId) },
-      ),
-    );
-
-  const addKr = (objId: string) =>
-    setOkrs((arr) =>
-      arr.map((o) =>
-        o.id !== objId
-          ? o
-          : {
-              ...o,
-              krs: [
-                ...o.krs,
-                {
-                  id: `kr-${Date.now()}`,
-                  title: "Novo Key Result",
-                  owner: "Dono",
-                  unit: "R$",
-                  baseline: 0,
-                  target: 0,
-                  source: "manual",
-                  current: 0,
-                },
-              ],
-            },
-      ),
-    );
-
-  const progressFor = (o: OkrObjective) => {
-    if (o.krs.length === 0) return 0;
-    const sum = o.krs.reduce((acc, kr) => {
-      const denom = kr.target - kr.baseline;
-      const cur = kr.current ?? kr.baseline;
-      const p = denom > 0 ? Math.max(0, Math.min(100, ((cur - kr.baseline) / denom) * 100)) : 0;
-      return acc + p;
-    }, 0);
-    return sum / o.krs.length;
-  };
-  const overall = okrs.length === 0 ? 0 : okrs.reduce((s, o) => s + progressFor(o), 0) / okrs.length;
 
   return (
     <Card className="p-5 space-y-4">
@@ -170,26 +184,46 @@ export function SomaOkrPanel() {
             <Trophy className="size-5" />
           </div>
           <div>
-            <h2 className="text-lg font-bold">OKRs Estratégicos · Soma</h2>
+            <h2 className="text-lg font-bold">OKR Grupo Grax</h2>
             <p className="text-xs text-muted-foreground">
-              Objetivos do semestre · Jun → Dez · {overall.toFixed(0)}% de atingimento médio
+              Modelo Aspirações → Resultados-Chave · {period?.label} · {overall.toFixed(1)}% atingimento médio
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {savedAt && (
             <span className="text-xs text-muted-foreground">
               Salvo · {new Date(savedAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
             </span>
           )}
-          <Button size="sm" variant="outline" onClick={addObjective} disabled={loading}>
-            <Plus className="size-3.5 mr-1" /> Objetivo
+          <Button size="sm" variant="outline" onClick={addAspiration} disabled={loading}>
+            <Plus className="size-3.5 mr-1" /> Aspiração
           </Button>
           <Button size="sm" onClick={save} disabled={saving || loading}>
             {saving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
             Salvar
           </Button>
         </div>
+      </div>
+
+      {/* Period tabs */}
+      <div className="flex items-center gap-1 flex-wrap border-b border-border">
+        {model.periods.map((p) => {
+          const active = p.id === periodId;
+          return (
+            <button
+              key={p.id}
+              onClick={() => setPeriodId(p.id)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-t-md transition-colors -mb-px border-b-2 ${
+                active
+                  ? "text-primary border-primary bg-primary/5"
+                  : "text-muted-foreground border-transparent hover:text-foreground"
+              }`}
+            >
+              {p.label}
+            </button>
+          );
+        })}
       </div>
 
       <div className="h-2 rounded-full overflow-hidden bg-primary/10">
@@ -201,63 +235,60 @@ export function SomaOkrPanel() {
 
       {loading ? (
         <div className="flex items-center justify-center py-10 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin mr-2" /> Carregando OKRs Soma…
+          <Loader2 className="size-5 animate-spin mr-2" /> Carregando OKRs…
         </div>
-      ) : okrs.length === 0 ? (
+      ) : !period || period.aspirations.length === 0 ? (
         <div className="text-center py-10 text-sm text-muted-foreground">
-          Nenhum OKR ainda. Clique em "+ Objetivo" para criar o primeiro.
+          Nenhuma aspiração neste período. Clique em "+ Aspiração" para criar.
         </div>
       ) : (
         <div className="space-y-4">
-          {okrs.map((obj) => {
-            const objProg = progressFor(obj);
+          {period.aspirations.map((asp) => {
+            const prog = aspProgress(asp);
+            const concl = concluidosCount(asp);
             return (
               <div
-                key={obj.id}
+                key={asp.id}
                 className="rounded-xl border p-4"
                 style={{
-                  borderColor: `${obj.accent}40`,
-                  background: `linear-gradient(135deg, ${obj.accent}08, transparent)`,
+                  borderColor: `${asp.accent}40`,
+                  background: `linear-gradient(135deg, ${asp.accent}10, transparent)`,
                 }}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-start gap-3 flex-1">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div
-                      className="size-9 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: `${obj.accent}25`, color: obj.accent }}
+                      className="size-10 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm"
+                      style={{ background: `${asp.accent}25`, color: asp.accent }}
                     >
-                      <Flag className="size-4" />
+                      {asp.codigo}
                     </div>
                     <div className="flex-1 min-w-0">
                       <input
-                        value={obj.title}
-                        onChange={(e) => setObjective(obj.id, { title: e.target.value })}
-                        className="bg-transparent font-medium text-sm w-full focus:outline-none border-b border-transparent focus:border-primary/30"
+                        value={asp.titulo}
+                        onChange={(e) => setAspiration(asp.id, { titulo: e.target.value })}
+                        className="bg-transparent font-bold text-base w-full focus:outline-none border-b border-transparent focus:border-primary/30 uppercase tracking-wide"
                       />
-                      <input
-                        value={obj.why}
-                        onChange={(e) => setObjective(obj.id, { why: e.target.value })}
-                        className="bg-transparent text-xs text-muted-foreground italic w-full mt-0.5 focus:outline-none"
-                      />
-                      <input
-                        value={obj.owner}
-                        onChange={(e) => setObjective(obj.id, { owner: e.target.value })}
-                        className="bg-transparent text-[10px] uppercase tracking-wider mt-1 focus:outline-none"
-                        style={{ color: obj.accent }}
-                      />
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Target className="size-3" /> {asp.krs.length} KRs
+                        </span>
+                        <span>
+                          Concluídos: <strong>{concl}/{asp.krs.length}</strong>
+                        </span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="text-right">
-                      <div className="text-2xl font-light tabular-nums" style={{ color: obj.accent }}>
-                        {objProg.toFixed(0)}%
+                      <div className="text-2xl font-light tabular-nums" style={{ color: asp.accent }}>
+                        {prog.toFixed(1)}%
                       </div>
-                      <div className="text-[10px] text-muted-foreground">{obj.krs.length} KRs</div>
                     </div>
                     <button
-                      onClick={() => removeObjective(obj.id)}
+                      onClick={() => removeAspiration(asp.id)}
                       className="text-muted-foreground hover:text-destructive p-1"
-                      title="Remover objetivo"
+                      title="Remover aspiração"
                     >
                       <Trash2 className="size-3.5" />
                     </button>
@@ -268,103 +299,90 @@ export function SomaOkrPanel() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="text-[10px] uppercase tracking-wider text-muted-foreground border-b border-border">
-                        <th className="py-1.5 px-2 text-left min-w-[180px]">Key Result</th>
-                        <th className="py-1.5 px-2 text-left">Dono</th>
-                        <th className="py-1.5 px-2 text-right">Baseline</th>
-                        <th className="py-1.5 px-2 text-right">Meta</th>
-                        <th className="py-1.5 px-2 text-right">Atual</th>
-                        <th className="py-1.5 px-2 text-right w-[140px]">Atingimento</th>
-                        <th className="py-1.5 px-1"></th>
+                        <th className="py-1.5 px-2 text-left w-12">#</th>
+                        <th className="py-1.5 px-2 text-left min-w-[260px]">Resultado-Chave</th>
+                        <th className="py-1.5 px-2 text-left w-16">Unid.</th>
+                        <th className="py-1.5 px-2 text-right w-28">Noção de Sucesso</th>
+                        <th className="py-1.5 px-2 text-right w-24">Alcançado</th>
+                        <th className="py-1.5 px-2 text-right w-[160px]">%</th>
+                        <th className="py-1.5 px-2 text-center w-16">OK</th>
+                        <th className="py-1.5 px-1 w-6"></th>
                       </tr>
                     </thead>
                     <tbody>
-                      {obj.krs.map((kr) => {
-                        const denom = kr.target - kr.baseline;
-                        const cur = kr.current ?? kr.baseline;
-                        const prog =
-                          denom > 0
-                            ? Math.max(0, Math.min(100, ((cur - kr.baseline) / denom) * 100))
-                            : 0;
-                        const progColor =
-                          prog >= 90 ? "#9ad7c5" : prog >= 60 ? "#f5c97a" : "#f28572";
+                      {asp.krs.map((kr) => {
+                        const p = krProgress(kr);
+                        const color = p >= 90 ? "#9ad7c5" : p >= 60 ? "#f5c97a" : "#f28572";
                         return (
                           <tr key={kr.id} className="border-b border-border/60 hover:bg-secondary/30">
                             <td className="py-2 px-2">
                               <input
-                                value={kr.title}
-                                onChange={(e) => setKr(obj.id, kr.id, { title: e.target.value })}
-                                className="bg-transparent w-full focus:outline-none"
+                                value={kr.codigo}
+                                onChange={(e) => setKr(asp.id, kr.id, { codigo: e.target.value })}
+                                className="bg-transparent w-10 focus:outline-none text-[11px] tabular-nums"
                               />
-                              <div className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-2">
-                                <select
-                                  value={kr.unit}
-                                  onChange={(e) =>
-                                    setKr(obj.id, kr.id, { unit: e.target.value as KeyResult["unit"] })
-                                  }
-                                  className="bg-transparent border-b border-border focus:outline-none text-[10px]"
-                                >
-                                  <option value="R$">R$</option>
-                                  <option value="%">%</option>
-                                  <option value="x">x</option>
-                                  <option value="#">#</option>
-                                </select>
-                              </div>
                             </td>
                             <td className="py-2 px-2">
                               <input
-                                value={kr.owner}
-                                onChange={(e) => setKr(obj.id, kr.id, { owner: e.target.value })}
-                                className="bg-transparent w-20 focus:outline-none text-[11px]"
+                                value={kr.titulo}
+                                onChange={(e) => setKr(asp.id, kr.id, { titulo: e.target.value })}
+                                className="bg-transparent w-full focus:outline-none"
                               />
+                            </td>
+                            <td className="py-2 px-2">
+                              <select
+                                value={kr.unit}
+                                onChange={(e) => setKr(asp.id, kr.id, { unit: e.target.value as Unit })}
+                                className="bg-transparent border-b border-border focus:outline-none text-[11px]"
+                              >
+                                <option value="#">#</option>
+                                <option value="R$">R$</option>
+                                <option value="%">%</option>
+                                <option value="x">x</option>
+                              </select>
                             </td>
                             <td className="py-2 px-2 text-right">
                               <input
                                 type="number"
-                                value={kr.baseline}
+                                value={kr.nocaoSucesso}
                                 onChange={(e) =>
-                                  setKr(obj.id, kr.id, { baseline: parseFloat(e.target.value) || 0 })
-                                }
-                                className="bg-transparent w-20 text-right focus:outline-none tabular-nums"
-                              />
-                            </td>
-                            <td className="py-2 px-2 text-right">
-                              <input
-                                type="number"
-                                value={kr.target}
-                                onChange={(e) =>
-                                  setKr(obj.id, kr.id, { target: parseFloat(e.target.value) || 0 })
+                                  setKr(asp.id, kr.id, { nocaoSucesso: parseFloat(e.target.value) || 0 })
                                 }
                                 className="bg-transparent w-24 text-right focus:outline-none tabular-nums font-medium"
-                                style={{ color: obj.accent }}
+                                style={{ color: asp.accent }}
                               />
+                              <div className="text-[10px] text-muted-foreground">{fmtNum(kr.nocaoSucesso, kr.unit)}</div>
                             </td>
-                            <td className="py-2 px-2 text-right tabular-nums">
+                            <td className="py-2 px-2 text-right">
                               <input
                                 type="number"
-                                value={kr.current ?? 0}
+                                value={kr.alcancado}
                                 onChange={(e) =>
-                                  setKr(obj.id, kr.id, { current: parseFloat(e.target.value) || 0 })
+                                  setKr(asp.id, kr.id, { alcancado: parseFloat(e.target.value) || 0 })
                                 }
                                 className="bg-transparent w-20 text-right focus:outline-none tabular-nums"
                               />
-                              <div className="text-[10px] text-muted-foreground">{fmt(cur, kr.unit)}</div>
+                              <div className="text-[10px] text-muted-foreground">{fmtNum(kr.alcancado, kr.unit)}</div>
                             </td>
                             <td className="py-2 px-2">
                               <div className="flex items-center gap-2 justify-end">
-                                <div className="h-1.5 w-16 rounded-full overflow-hidden bg-primary/10">
-                                  <div
-                                    className="h-full"
-                                    style={{ width: `${prog}%`, background: progColor }}
-                                  />
+                                <div className="h-1.5 w-20 rounded-full overflow-hidden bg-primary/10">
+                                  <div className="h-full" style={{ width: `${p}%`, background: color }} />
                                 </div>
-                                <span className="tabular-nums w-10 text-right" style={{ color: progColor }}>
-                                  {prog.toFixed(0)}%
+                                <span className="tabular-nums w-10 text-right" style={{ color }}>
+                                  {p.toFixed(0)}%
                                 </span>
                               </div>
                             </td>
+                            <td className="py-2 px-2 text-center">
+                              <Checkbox
+                                checked={kr.concluido}
+                                onCheckedChange={(v) => setKr(asp.id, kr.id, { concluido: !!v })}
+                              />
+                            </td>
                             <td className="py-2 px-1 text-right">
                               <button
-                                onClick={() => removeKr(obj.id, kr.id)}
+                                onClick={() => removeKr(asp.id, kr.id)}
                                 className="text-muted-foreground opacity-50 hover:opacity-100"
                                 title="Remover KR"
                               >
@@ -375,13 +393,13 @@ export function SomaOkrPanel() {
                         );
                       })}
                       <tr>
-                        <td colSpan={7} className="pt-2">
+                        <td colSpan={8} className="pt-2">
                           <button
-                            onClick={() => addKr(obj.id)}
+                            onClick={() => addKr(asp.id)}
                             className="text-[11px] flex items-center gap-1"
-                            style={{ color: obj.accent }}
+                            style={{ color: asp.accent }}
                           >
-                            <Plus className="size-3" /> adicionar Key Result
+                            <Plus className="size-3" /> adicionar Resultado-Chave
                           </button>
                         </td>
                       </tr>
@@ -395,8 +413,8 @@ export function SomaOkrPanel() {
       )}
 
       <div className="text-[11px] text-muted-foreground italic border-t border-border pt-3">
-        <Badge variant="outline" className="text-[10px] mr-1">Dica</Badge>
-        Editado aqui · sincroniza com o cenário compartilhado <code>forecast.state</code>. Lembre-se de clicar em <strong>Salvar</strong> ao terminar.
+        <Badge variant="outline" className="text-[10px] mr-1">Modelo Grax</Badge>
+        Aspirações Anuais + Trimestres · sincroniza com cenário compartilhado <code>forecast.state.graxOkr</code>.
       </div>
     </Card>
   );

@@ -1,0 +1,89 @@
+{
+  "periods": [
+    {
+      "id": "anual",
+      "label": "Anual",
+      "aspirations": [
+        {
+          "id": "a1",
+          "codigo": "A1",
+          "titulo": "FATURAR 66 MILHÕES",
+          "accent": "#f28572",
+          "krs": [
+            { "id": "a1-1", "codigo": "2.1", "titulo": "Fechar 500 mil pedidos na Ecommerce", "nocaoSucesso": 500000, "alcancado": 199900, "unit": "#", "concluido": false },
+            { "id": "a1-2", "codigo": "2.1", "titulo": "3315 alunos no Grupo (educação)", "nocaoSucesso": 3315, "alcancado": 268, "unit": "#", "concluido": false }
+          ]
+        },
+        {
+          "id": "a2",
+          "codigo": "A2",
+          "titulo": "RELEVÂNCIA NA AMÉRICA",
+          "accent": "#b78cff",
+          "krs": [
+            { "id": "a2-1", "codigo": "2.1", "titulo": "Ter clientes em 3 países da américa", "nocaoSucesso": 3, "alcancado": 1, "unit": "#", "concluido": false },
+            { "id": "a2-2", "codigo": "2.2", "titulo": "Patrocinar ou produzir 2 eventos no mercado de contra entrega", "nocaoSucesso": 2, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "a2-3", "codigo": "2.3", "titulo": "Ter 20 episódios de podcast do grupo no youtube", "nocaoSucesso": 20, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "a2-4", "codigo": "2.4", "titulo": "Ter 403 mil de seguidores nas redes sociais das empresas e sócios (5.681 mil novos seguidores/semana)", "nocaoSucesso": 507000, "alcancado": 120900, "unit": "#", "concluido": false },
+            { "id": "a2-5", "codigo": "2.4", "titulo": "Ter NPS na zona de excelência em todas as empresas do grupo", "nocaoSucesso": 12, "alcancado": 0, "unit": "#", "concluido": false }
+          ]
+        },
+        {
+          "id": "a3",
+          "codigo": "A3",
+          "titulo": "TER UM TIME DE ALTA PERFORMANCE",
+          "accent": "#9ad7c5",
+          "krs": [
+            { "id": "a3-1", "codigo": "3.1", "titulo": "Ter 80 colaboradores no grupo Grax", "nocaoSucesso": 80, "alcancado": 36, "unit": "#", "concluido": false },
+            { "id": "a3-2", "codigo": "3.2", "titulo": "Ter 8 setores estruturados com pessoas dedicadas", "nocaoSucesso": 8, "alcancado": 3, "unit": "#", "concluido": false },
+            { "id": "a3-3", "codigo": "3.3", "titulo": "Ter 3 AVD's rodando no grupo/ano", "nocaoSucesso": 3, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "a3-4", "codigo": "3.4", "titulo": "Ter e-NPS na zona de excelência", "nocaoSucesso": 6, "alcancado": 0, "unit": "#", "concluido": false }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "t1",
+      "label": "1º Trimestre",
+      "aspirations": [
+        {
+          "id": "t1-a1",
+          "codigo": "A1",
+          "titulo": "FATURAR 16,5 MILHÕES",
+          "accent": "#f28572",
+          "krs": [
+            { "id": "t1-a1-1", "codigo": "2.1", "titulo": "Fechar 125 mil pedidos na Rosa Latina", "nocaoSucesso": 125000, "alcancado": 37771, "unit": "#", "concluido": false },
+            { "id": "t1-a1-2", "codigo": "2.1", "titulo": "829 alunos no Grupo (educação)", "nocaoSucesso": 829, "alcancado": 56, "unit": "#", "concluido": false }
+          ]
+        },
+        {
+          "id": "t1-a2",
+          "codigo": "A2",
+          "titulo": "RELEVÂNCIA NA AMÉRICA",
+          "accent": "#b78cff",
+          "krs": [
+            { "id": "t1-a2-1", "codigo": "2.1", "titulo": "Ter clientes em 3 países da américa", "nocaoSucesso": 1, "alcancado": 1, "unit": "#", "concluido": true },
+            { "id": "t1-a2-2", "codigo": "2.2", "titulo": "Patrocinar ou produzir 2 eventos no mercado de contra entrega", "nocaoSucesso": 1, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "t1-a2-3", "codigo": "2.3", "titulo": "Ter 20 episódios de podcast do grupo no youtube", "nocaoSucesso": 20, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "t1-a2-4", "codigo": "2.4", "titulo": "Ter 403 mil de seguidores nas redes sociais das empresas e sócios", "nocaoSucesso": 126750, "alcancado": 12500, "unit": "#", "concluido": false },
+            { "id": "t1-a2-5", "codigo": "2.4", "titulo": "Ter NPS na zona de excelência em todas as empresas do grupo", "nocaoSucesso": 12, "alcancado": 0, "unit": "#", "concluido": false }
+          ]
+        },
+        {
+          "id": "t1-a3",
+          "codigo": "A3",
+          "titulo": "TER UM TIME DE ALTA PERFORMANCE",
+          "accent": "#9ad7c5",
+          "krs": [
+            { "id": "t1-a3-1", "codigo": "3.1", "titulo": "Ter 80 colaboradores no grupo Grax", "nocaoSucesso": 80, "alcancado": 36, "unit": "#", "concluido": false },
+            { "id": "t1-a3-2", "codigo": "3.2", "titulo": "Ter 8 setores estruturados com pessoas dedicadas", "nocaoSucesso": 8, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "t1-a3-3", "codigo": "3.3", "titulo": "Ter 3 AVD's rodando no grupo/ano", "nocaoSucesso": 3, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "t1-a3-4", "codigo": "3.4", "titulo": "Ter e-NPS na zona de excelência", "nocaoSucesso": 6, "alcancado": 0, "unit": "#", "concluido": false }
+          ]
+        }
+      ]
+    },
+    { "id": "t2", "label": "2º Trimestre", "aspirations": [] },
+    { "id": "t3", "label": "3º Trimestre", "aspirations": [] },
+    { "id": "t4", "label": "4º Trimestre", "aspirations": [] }
+  ]
+}
