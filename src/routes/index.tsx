@@ -8,9 +8,10 @@ import { ForecastingDashboard } from "@/components/forecast/ForecastingDashboard
 import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { NovoForecast } from "@/components/soma/NovoForecast";
 import { NovoOkrs } from "@/components/soma/NovoOkrs";
+import { ForecastDinamico } from "@/components/soma/ForecastDinamico";
 import { Toaster } from "@/components/ui/sonner";
 import { PasswordGate } from "@/components/auth/PasswordGate";
-import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart, Rocket, Target } from "lucide-react";
+import { Network, CalendarCheck, LayoutDashboard, Sparkles, LineChart, Heart, Rocket, Target, Gauge } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-type View = "exec" | "forecast" | "soma" | "novo" | "okrs" | "org" | "meetings" | "ai";
+type View = "exec" | "forecast" | "soma" | "novo" | "dinamico" | "okrs" | "org" | "meetings" | "ai";
 
 function Index() {
   const [view, setView] = useState<View>("exec");
@@ -54,6 +55,9 @@ function Index() {
         <NavBtn active={view === "novo"} onClick={() => setView("novo")} icon={Rocket}>
           Novo Forecast Estratégico
         </NavBtn>
+        <NavBtn active={view === "dinamico"} onClick={() => setView("dinamico")} icon={Gauge}>
+          Forecast Dinâmico
+        </NavBtn>
         <NavBtn active={view === "okrs"} onClick={() => setView("okrs")} icon={Target}>
           OKRs &amp; PDCA
         </NavBtn>
@@ -77,6 +81,8 @@ function Index() {
           <SomaForecasting />
         ) : view === "novo" ? (
           <NovoForecast />
+        ) : view === "dinamico" ? (
+          <ForecastDinamico />
         ) : view === "okrs" ? (
           <NovoOkrs />
         ) : view === "org" ? (
