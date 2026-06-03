@@ -55,6 +55,9 @@ function Index() {
         <NavBtn active={view === "novo"} onClick={() => setView("novo")} icon={Rocket}>
           Novo Forecast Estratégico
         </NavBtn>
+        <NavBtn active={view === "dinamico"} onClick={() => setView("dinamico")} icon={Gauge}>
+          Forecast Dinâmico
+        </NavBtn>
         <NavBtn active={view === "okrs"} onClick={() => setView("okrs")} icon={Target}>
           OKRs &amp; PDCA
         </NavBtn>
