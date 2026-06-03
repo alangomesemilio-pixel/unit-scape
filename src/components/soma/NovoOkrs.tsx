@@ -94,6 +94,11 @@ export function NovoOkrs() {
           </div>
         </div>
 
+        {/* Painel de OKRs Estratégicos · Soma (vindo do Forecasting) */}
+        <SomaOkrPanel />
+
+
+
         {loading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <Loader2 className="size-5 animate-spin mr-2" /> Carregando…
