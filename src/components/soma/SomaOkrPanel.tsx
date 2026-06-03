@@ -76,7 +76,7 @@ export function SomaOkrPanel() {
         if (!alive) return;
         const s = (r.value as any) ?? {};
         setFullState(s);
-        if (s.graxOkr?.periods) setModel(s.graxOkr as Model);
+        if (s.somaOkrV2?.periods) setModel(s.somaOkrV2 as Model);
         setSavedAt(r.updatedAt ?? null);
       })
       .finally(() => alive && setLoading(false));
@@ -164,7 +164,7 @@ export function SomaOkrPanel() {
   const save = async () => {
     setSaving(true);
     try {
-      const nextState = { ...(fullState ?? {}), graxOkr: model };
+      const nextState = { ...(fullState ?? {}), somaOkrV2: model };
       await setKv({ data: { key: "forecast.state", value: nextState } });
       setFullState(nextState);
       setSavedAt(new Date().toISOString());
@@ -414,7 +414,7 @@ export function SomaOkrPanel() {
 
       <div className="text-[11px] text-muted-foreground italic border-t border-border pt-3">
         <Badge variant="outline" className="text-[10px] mr-1">Modelo Grax</Badge>
-        Aspirações Anuais + Trimestres · sincroniza com cenário compartilhado <code>forecast.state.graxOkr</code>.
+        Aspirações Soma · sincroniza com cenário compartilhado <code>forecast.state.somaOkrV2</code>.
       </div>
     </Card>
   );

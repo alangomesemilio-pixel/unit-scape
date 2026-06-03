@@ -2,86 +2,68 @@
   "periods": [
     {
       "id": "anual",
-      "label": "Anual",
+      "label": "Semestre Jun→Dez",
       "aspirations": [
         {
           "id": "a1",
           "codigo": "A1",
-          "titulo": "FATURAR 66 MILHÕES",
+          "titulo": "ESCALAR SOMA COM SAÚDE FINANCEIRA",
           "accent": "#f28572",
           "krs": [
-            { "id": "a1-1", "codigo": "2.1", "titulo": "Fechar 500 mil pedidos na Ecommerce", "nocaoSucesso": 500000, "alcancado": 199900, "unit": "#", "concluido": false },
-            { "id": "a1-2", "codigo": "2.1", "titulo": "3315 alunos no Grupo (educação)", "nocaoSucesso": 3315, "alcancado": 268, "unit": "#", "concluido": false }
+            { "id": "a1-1", "codigo": "1.1", "titulo": "Receita semestre (Jun→Dez)", "nocaoSucesso": 3500000, "alcancado": 0, "unit": "R$", "concluido": false },
+            { "id": "a1-2", "codigo": "1.2", "titulo": "EBITDA semestre", "nocaoSucesso": 700000, "alcancado": 0, "unit": "R$", "concluido": false },
+            { "id": "a1-3", "codigo": "1.3", "titulo": "ROAS médio", "nocaoSucesso": 4.0, "alcancado": 3.5, "unit": "x", "concluido": false },
+            { "id": "a1-4", "codigo": "1.4", "titulo": "Investimento dentro do plano", "nocaoSucesso": 480000, "alcancado": 0, "unit": "R$", "concluido": false }
           ]
         },
         {
           "id": "a2",
           "codigo": "A2",
-          "titulo": "RELEVÂNCIA NA AMÉRICA",
-          "accent": "#b78cff",
+          "titulo": "CONSTRUIR BASE RECORRENTE E FIEL",
+          "accent": "#d6b4ff",
           "krs": [
-            { "id": "a2-1", "codigo": "2.1", "titulo": "Ter clientes em 3 países da américa", "nocaoSucesso": 3, "alcancado": 1, "unit": "#", "concluido": false },
-            { "id": "a2-2", "codigo": "2.2", "titulo": "Patrocinar ou produzir 2 eventos no mercado de contra entrega", "nocaoSucesso": 2, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "a2-3", "codigo": "2.3", "titulo": "Ter 20 episódios de podcast do grupo no youtube", "nocaoSucesso": 20, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "a2-4", "codigo": "2.4", "titulo": "Ter 403 mil de seguidores nas redes sociais das empresas e sócios (5.681 mil novos seguidores/semana)", "nocaoSucesso": 507000, "alcancado": 120900, "unit": "#", "concluido": false },
-            { "id": "a2-5", "codigo": "2.4", "titulo": "Ter NPS na zona de excelência em todas as empresas do grupo", "nocaoSucesso": 12, "alcancado": 0, "unit": "#", "concluido": false }
+            { "id": "a2-1", "codigo": "2.1", "titulo": "Taxa de recompra", "nocaoSucesso": 38, "alcancado": 32, "unit": "%", "concluido": false },
+            { "id": "a2-2", "codigo": "2.2", "titulo": "LTV / CAC", "nocaoSucesso": 6.0, "alcancado": 5.0, "unit": "x", "concluido": false },
+            { "id": "a2-3", "codigo": "2.3", "titulo": "Receita Assinatura semestre", "nocaoSucesso": 150000, "alcancado": 28000, "unit": "R$", "concluido": false },
+            { "id": "a2-4", "codigo": "2.4", "titulo": "NPS", "nocaoSucesso": 78, "alcancado": 72, "unit": "#", "concluido": false }
           ]
         },
         {
           "id": "a3",
           "codigo": "A3",
-          "titulo": "TER UM TIME DE ALTA PERFORMANCE",
-          "accent": "#9ad7c5",
-          "krs": [
-            { "id": "a3-1", "codigo": "3.1", "titulo": "Ter 80 colaboradores no grupo Grax", "nocaoSucesso": 80, "alcancado": 36, "unit": "#", "concluido": false },
-            { "id": "a3-2", "codigo": "3.2", "titulo": "Ter 8 setores estruturados com pessoas dedicadas", "nocaoSucesso": 8, "alcancado": 3, "unit": "#", "concluido": false },
-            { "id": "a3-3", "codigo": "3.3", "titulo": "Ter 3 AVD's rodando no grupo/ano", "nocaoSucesso": 3, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "a3-4", "codigo": "3.4", "titulo": "Ter e-NPS na zona de excelência", "nocaoSucesso": 6, "alcancado": 0, "unit": "#", "concluido": false }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "t1",
-      "label": "1º Trimestre",
-      "aspirations": [
-        {
-          "id": "t1-a1",
-          "codigo": "A1",
-          "titulo": "FATURAR 16,5 MILHÕES",
-          "accent": "#f28572",
-          "krs": [
-            { "id": "t1-a1-1", "codigo": "2.1", "titulo": "Fechar 125 mil pedidos na Rosa Latina", "nocaoSucesso": 125000, "alcancado": 37771, "unit": "#", "concluido": false },
-            { "id": "t1-a1-2", "codigo": "2.1", "titulo": "829 alunos no Grupo (educação)", "nocaoSucesso": 829, "alcancado": 56, "unit": "#", "concluido": false }
-          ]
-        },
-        {
-          "id": "t1-a2",
-          "codigo": "A2",
-          "titulo": "RELEVÂNCIA NA AMÉRICA",
+          "titulo": "TRANSFORMAR B2B EM MOTOR PREVISÍVEL",
           "accent": "#b78cff",
           "krs": [
-            { "id": "t1-a2-1", "codigo": "2.1", "titulo": "Ter clientes em 3 países da américa", "nocaoSucesso": 1, "alcancado": 1, "unit": "#", "concluido": true },
-            { "id": "t1-a2-2", "codigo": "2.2", "titulo": "Patrocinar ou produzir 2 eventos no mercado de contra entrega", "nocaoSucesso": 1, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "t1-a2-3", "codigo": "2.3", "titulo": "Ter 20 episódios de podcast do grupo no youtube", "nocaoSucesso": 20, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "t1-a2-4", "codigo": "2.4", "titulo": "Ter 403 mil de seguidores nas redes sociais das empresas e sócios", "nocaoSucesso": 126750, "alcancado": 12500, "unit": "#", "concluido": false },
-            { "id": "t1-a2-5", "codigo": "2.4", "titulo": "Ter NPS na zona de excelência em todas as empresas do grupo", "nocaoSucesso": 12, "alcancado": 0, "unit": "#", "concluido": false }
+            { "id": "a3-1", "codigo": "3.1", "titulo": "Receita B2B semestre", "nocaoSucesso": 700000, "alcancado": 0, "unit": "R$", "concluido": false },
+            { "id": "a3-2", "codigo": "3.2", "titulo": "Sub-canais B2B ativos", "nocaoSucesso": 5, "alcancado": 4, "unit": "#", "concluido": false },
+            { "id": "a3-3", "codigo": "3.3", "titulo": "Ticket médio B2B", "nocaoSucesso": 3500, "alcancado": 2800, "unit": "R$", "concluido": false }
           ]
         },
         {
-          "id": "t1-a3",
-          "codigo": "A3",
-          "titulo": "TER UM TIME DE ALTA PERFORMANCE",
+          "id": "a4",
+          "codigo": "A4",
+          "titulo": "GROWTH CREATOR-LED COM PREVISIBILIDADE",
+          "accent": "#ff9c8f",
+          "krs": [
+            { "id": "a4-1", "codigo": "4.1", "titulo": "Pedidos semestre", "nocaoSucesso": 12000, "alcancado": 0, "unit": "#", "concluido": false },
+            { "id": "a4-2", "codigo": "4.2", "titulo": "Ticket médio", "nocaoSucesso": 265, "alcancado": 245, "unit": "R$", "concluido": false },
+            { "id": "a4-3", "codigo": "4.3", "titulo": "Receita Influenciadora semestre", "nocaoSucesso": 400000, "alcancado": 95000, "unit": "R$", "concluido": false }
+          ]
+        },
+        {
+          "id": "a5",
+          "codigo": "A5",
+          "titulo": "MARGEM E OPERAÇÃO SAUDÁVEIS",
           "accent": "#9ad7c5",
           "krs": [
-            { "id": "t1-a3-1", "codigo": "3.1", "titulo": "Ter 80 colaboradores no grupo Grax", "nocaoSucesso": 80, "alcancado": 36, "unit": "#", "concluido": false },
-            { "id": "t1-a3-2", "codigo": "3.2", "titulo": "Ter 8 setores estruturados com pessoas dedicadas", "nocaoSucesso": 8, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "t1-a3-3", "codigo": "3.3", "titulo": "Ter 3 AVD's rodando no grupo/ano", "nocaoSucesso": 3, "alcancado": 0, "unit": "#", "concluido": false },
-            { "id": "t1-a3-4", "codigo": "3.4", "titulo": "Ter e-NPS na zona de excelência", "nocaoSucesso": 6, "alcancado": 0, "unit": "#", "concluido": false }
+            { "id": "a5-1", "codigo": "5.1", "titulo": "Margem bruta", "nocaoSucesso": 55, "alcancado": 0, "unit": "%", "concluido": false },
+            { "id": "a5-2", "codigo": "5.2", "titulo": "SLA de entrega", "nocaoSucesso": 98, "alcancado": 0, "unit": "%", "concluido": false },
+            { "id": "a5-3", "codigo": "5.3", "titulo": "CAC médio", "nocaoSucesso": 65, "alcancado": 70, "unit": "R$", "concluido": false }
           ]
         }
       ]
     },
+    { "id": "t1", "label": "1º Trimestre", "aspirations": [] },
     { "id": "t2", "label": "2º Trimestre", "aspirations": [] },
     { "id": "t3", "label": "3º Trimestre", "aspirations": [] },
     { "id": "t4", "label": "4º Trimestre", "aspirations": [] }
