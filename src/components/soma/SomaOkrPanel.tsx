@@ -414,7 +414,7 @@ export function SomaOkrPanel() {
 
       <div className="text-[11px] text-muted-foreground italic border-t border-border pt-3">
         <Badge variant="outline" className="text-[10px] mr-1">Modelo Grax</Badge>
-        Aspirações Anuais + Trimestres · sincroniza com cenário compartilhado <code>forecast.state.graxOkr</code>.
+        Aspirações Soma · sincroniza com cenário compartilhado <code>forecast.state.somaOkrV2</code>.
       </div>
     </Card>
   );
