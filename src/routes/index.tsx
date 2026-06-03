@@ -77,6 +77,8 @@ function Index() {
           <SomaForecasting />
         ) : view === "novo" ? (
           <NovoForecast />
+        ) : view === "okrs" ? (
+          <NovoOkrs />
         ) : view === "org" ? (
           <OrgChart />
         ) : view === "meetings" ? (
