@@ -1,0 +1,407 @@
+{
+  "meta": {
+    "empresa": "SOMA",
+    "metodologia": "G4 / Alfredo Soares — 4 Camadas",
+    "periodo": "Jun → Dez 2026",
+    "versao": "3.0",
+    "geradoEm": "2026-05-31",
+    "revisar": "Todo último dia útil do mês"
+  },
+
+  "camada1_unitEconomics": {
+    "descricao": "Valida saúde do negócio na unidade mínima antes de projetar crescimento",
+    "atual": {
+      "ticketMedio": 245,
+      "cac": 65,
+      "ltv": 720,
+      "ltvCac": 11.1,
+      "margemBruta": 55,
+      "taxaRecompra": 40,
+      "paybackMeses": 1.4,
+      "churnMensal": 5
+    },
+    "benchmarks": {
+      "ltvCacMinimo": 3,
+      "ltvCacSaudavel": 5,
+      "ltvCacExcelente": 10,
+      "margemBrutaMinima": 45,
+      "paybackMaximoMeses": 6
+    },
+    "diagnostico": {
+      "ltvCac": "EXCELENTE — 11x está acima do benchmark de 5x",
+      "margemBruta": "SAUDÁVEL — 55% acima do mínimo de 45%",
+      "payback": "EXCELENTE — 1,4 meses muito abaixo do limite de 6 meses",
+      "alerta": "CAC de R$65 precisa ser monitorado — dependência do canal Influenciadora pode elevar CAC se sócia reduzir atividade"
+    },
+    "formulasReferencia": {
+      "ltv": "Ticket médio × Frequência anual × Anos de retenção",
+      "cac": "Investimento total em aquisição ÷ Novos clientes no período",
+      "payback": "CAC ÷ (Ticket médio × Margem bruta)",
+      "ltvCac": "LTV ÷ CAC — mínimo 3x para operação saudável"
+    }
+  },
+
+  "camada2_canais": {
+    "descricao": "Projeção canal a canal com drivers independentes",
+    "canais": [
+      {
+        "id": "influenciadora",
+        "nome": "Influenciadora",
+        "ativo": true,
+        "ativaDesde": "Jun",
+        "responsavel": "Fernando / Vanessa",
+        "driverPrincipal": "Alcance × CVR × Ticket",
+        "receitaJun": 864000,
+        "crescimentoMensal": 15,
+        "margemBruta": 50,
+        "cac": 0,
+        "paybackDias": 0,
+        "premissas": {
+          "visitasMes": 100000,
+          "cvr": 1.5,
+          "ticketMedio": 240,
+          "crescimentoVisitas": 15,
+          "crescimentoCvr": 0.1
+        },
+        "gatilhoQueda": "Se receita cair 20% vs projetado → revisar briefing de creators e ativar 3 creators secundários emergenciais",
+        "riscos": ["Dependência da sócia — 67% da receita em 1 pessoa", "Saúde ou contrato da sócia pode paralisar canal"],
+        "mitigacao": "Desenvolver 30 creators secundários até Dezembro — Vanessa responsável"
+      },
+      {
+        "id": "dtc",
+        "nome": "DTC (Direct to Consumer)",
+        "ativo": true,
+        "ativaDesde": "Jun",
+        "responsavel": "Luís / Fernando",
+        "driverPrincipal": "Investimento × ROAS",
+        "receitaJun": 238000,
+        "crescimentoMensal": 15,
+        "margemBruta": 56,
+        "cac": 65,
+        "paybackDias": 42,
+        "premissas": {
+          "investimentoMes": 10000,
+          "roas": 3.8,
+          "ticketMedio": 220,
+          "cvrLp": 3.5,
+          "crescimentoInvest": 10,
+          "crescimentoRoas": 0.1
+        },
+        "fases": {
+          "Jun": "Remarketing e ativação — NÃO aquisição fria. LP separada para lançamento.",
+          "Jul": "Aquisição fria entra. HPI + público frio + remarketing.",
+          "Ago+": "Escala com otimização contínua de CRO"
+        },
+        "gatilhoQueda": "Se ROAS cair abaixo de 3x → pausar escala, revisar criativos e LP antes de reinvestir",
+        "riscos": ["CVR de LP abaixo do esperado", "CPM elevado em períodos competitivos"],
+        "mitigacao": "Testes A/B semanais de criativos e LP — Rafael Web responsável"
+      },
+      {
+        "id": "b2b",
+        "nome": "B2B",
+        "ativo": true,
+        "ativaDesde": "Jun",
+        "responsavel": "Igor / Otávio",
+        "driverPrincipal": "Pipeline × Taxa de fechamento × Ticket",
+        "receitaJun": 300000,
+        "crescimentoMensal": 15,
+        "margemBruta": 45,
+        "cac": 380,
+        "paybackDias": 90,
+        "premissas": {
+          "leadsAtivos": 300,
+          "taxaFechamento": 20,
+          "ticketMedio": 2200,
+          "crescimentoLeads": 10,
+          "crescimentoTicket": 5,
+          "subCanaisAtivos": 1,
+          "metaSubCanais": 5
+        },
+        "subCanais": [
+          { "id": "distribuidores", "nome": "Distribuidores", "ativo": true, "receita": 300000, "ticket": 5000 },
+          { "id": "cadeias-pdv", "nome": "Cadeias PDV", "ativo": false, "ativaEm": "Jul", "ticket": 8000 },
+          { "id": "key-accounts", "nome": "Key Accounts", "ativo": false, "ativaEm": "Ago", "ticket": 15000 }
+        ],
+        "gatilhoQueda": "Se pipeline cair abaixo de R$200k → Igor ativa prospecção ativa intensiva com Otávio + suporte de tráfego de Fernando",
+        "riscos": ["CAC alto de R$380 exige ticket e recorrência para justificar", "Sub-canais novos demoram para maturar"],
+        "mitigacao": "Foco em distribuidores com recorrência mensal — garantem previsibilidade"
+      },
+      {
+        "id": "whatsapp",
+        "nome": "WhatsApp CRM",
+        "ativo": false,
+        "ativaDesde": "Jul",
+        "responsavel": "Ian / Léo Maia",
+        "driverPrincipal": "Base ativa × Taxa recompra × Ticket",
+        "receitaJun": 0,
+        "crescimentoMensal": 20,
+        "margemBruta": 64,
+        "cac": 0,
+        "paybackDias": 0,
+        "premissas": {
+          "baseContatos": 40000,
+          "taxaAbertura": 60,
+          "taxaConversao": 3,
+          "ticketMedio": 245,
+          "crescimentoBase": 10
+        },
+        "operacao": {
+          "aquisicao": "Luís captura leads novos para WPP via tráfego pago",
+          "retencao": "Léo Maia opera fluxos de recompra e pós-venda",
+          "regra": "Léo Maia foca EXCLUSIVAMENTE em retenção — NÃO em aquisição"
+        },
+        "gatilhoQueda": "Se taxa de abertura cair abaixo de 40% → revisar frequência de disparo e segmentação da base",
+        "riscos": ["Fadiga da base com excesso de mensagens", "Dependência de plataforma WPP"],
+        "mitigacao": "Máximo 3 disparos/semana — qualidade acima de volume"
+      },
+      {
+        "id": "tiktok-shop",
+        "nome": "TikTok Shop",
+        "ativo": false,
+        "ativaDesde": "Ago",
+        "responsavel": "Fernando / Breno",
+        "driverPrincipal": "Visitas orgânicas × CVR × Ticket",
+        "receitaJun": 0,
+        "crescimentoMensal": 25,
+        "margemBruta": 40,
+        "cac": 0,
+        "premissas": {
+          "crescimentoVisitas": 25,
+          "cvr": 1.2,
+          "ticketMedio": 180
+        },
+        "gatilhoQueda": "Se CVR abaixo de 0.8% após 30 dias → revisar ficha de produto e conteúdo nativo antes de investir mídia",
+        "riscos": ["Canal novo — sem histórico de conversão", "Algoritmo TikTok imprevisível"],
+        "mitigacao": "Validar com conteúdo orgânico antes de investir tráfego pago"
+      },
+      {
+        "id": "assinatura",
+        "nome": "Assinatura",
+        "ativo": false,
+        "ativaDesde": "Set",
+        "responsavel": "Ian",
+        "driverPrincipal": "Assinantes × (1 − churn) × Mensalidade",
+        "receitaJun": 0,
+        "crescimentoMensal": 10,
+        "margemBruta": 70,
+        "cac": 0,
+        "premissas": {
+          "ticketMensalidade": 89,
+          "churnMensal": 5,
+          "metaAssinantesSet": 500
+        },
+        "gatilhoQueda": "Se churn acima de 8% → ativar sequência de retenção via WPP com oferta de pausa antes do cancelamento",
+        "riscos": ["Churn elevado nos primeiros meses", "Produto de assinatura precisa ter valor recorrente claro"],
+        "mitigacao": "Validar proposta de valor com base WPP antes do lançamento — pesquisar com 100 clientes"
+      },
+      {
+        "id": "marketplace",
+        "nome": "Marketplace",
+        "ativo": false,
+        "ativaDesde": "Out",
+        "responsavel": "Fernando",
+        "driverPrincipal": "GMV × Taxa de conversão plataforma",
+        "receitaJun": 0,
+        "crescimentoMensal": 15,
+        "margemBruta": 35,
+        "cac": 0,
+        "premissas": {
+          "cvr": 0.8,
+          "ticketMedio": 200
+        },
+        "gatilhoQueda": "Se margem cair abaixo de 30% → renegociar comissão ou descontinuar canal",
+        "riscos": ["Margem mais baixa de todos os canais", "Dependência de algoritmo de marketplace"],
+        "mitigacao": "Canal complementar — nunca principal. Máximo 10% da receita total"
+      }
+    ]
+  },
+
+  "camada3_cenarios": {
+    "descricao": "3 cenários obrigatórios — base vira OKR, conservador vira caixa mínimo",
+    "conservador": {
+      "multiplicadorReceita": 0.7,
+      "multiplicadorCac": 1.15,
+      "label": "Piso de segurança",
+      "descricao": "O mínimo que precisa acontecer para a operação ser saudável",
+      "projecaoSemestral": 8533000,
+      "ebitdaSemestral": 3921000,
+      "uso": "Define caixa mínimo e decisões de corte de custo"
+    },
+    "base": {
+      "multiplicadorReceita": 1.0,
+      "multiplicadorCac": 1.0,
+      "label": "Compromisso de entrega",
+      "descricao": "O que o time se compromete a entregar — vira OKR",
+      "projecaoSemestral": 12190000,
+      "ebitdaSemestral": 5601000,
+      "uso": "Base dos OKRs e metas de cada responsável"
+    },
+    "agressivo": {
+      "multiplicadorReceita": 1.3,
+      "multiplicadorCac": 0.85,
+      "label": "Teto possível",
+      "descricao": "Se tudo der certo — canais novos performam acima do esperado",
+      "projecaoSemestral": 15847000,
+      "ebitdaSemestral": 7281000,
+      "uso": "Define potencial de upside e decisions de reinvestimento"
+    }
+  },
+
+  "camada4_gestao": {
+    "descricao": "Forecasting como ferramenta viva de gestão — não estática",
+    "realizados": {
+      "Jun": {
+        "receitaProjetada": 1402000,
+        "receitaRealizada": null,
+        "ebitdaProjetado": 687000,
+        "ebitdaRealizado": null,
+        "desvio": null,
+        "acoes": null
+      }
+    },
+    "rituaisDeRevisao": [
+      {
+        "frequencia": "Semanal — Sexta",
+        "participantes": ["Alan", "Fernando", "Igor", "Ian"],
+        "pauta": "Realizado vs projetado da semana. Desvios acima de 10% geram ação imediata.",
+        "duracao": "30min"
+      },
+      {
+        "frequencia": "Mensal — Último dia útil",
+        "participantes": ["Alan", "Miller", "Fernando"],
+        "pauta": "Revisão completa de premissas. Atualização do forecasting para o mês seguinte.",
+        "duracao": "60min"
+      }
+    ],
+    "gatilhosDeAcao": [
+      {
+        "condicao": "Receita total cai 15% abaixo do projetado em qualquer semana",
+        "acao": "Alan convoca reunião emergencial com todos os heads em 24h",
+        "responsavel": "Alan"
+      },
+      {
+        "condicao": "ROAS cai abaixo de 3x por 3 dias consecutivos",
+        "acao": "Fernando pausa escala de mídia e Luís revisa criativos",
+        "responsavel": "Fernando"
+      },
+      {
+        "condicao": "Canal Influenciadora cai 20% abaixo do projetado",
+        "acao": "Vanessa ativa creators secundários emergenciais e Fernando revisa briefing",
+        "responsavel": "Vanessa"
+      },
+      {
+        "condicao": "Margem bruta cai abaixo de 50%",
+        "acao": "Miller revisa CMV e Rafael Compras renegocia fornecedores",
+        "responsavel": "Miller"
+      },
+      {
+        "condicao": "CAC sobe acima de R$100 em qualquer canal",
+        "acao": "Luís pausa investimento no canal e Fernando avalia descontinuação",
+        "responsavel": "Luís"
+      }
+    ],
+    "projecaoMesAMes": [
+      {
+        "mes": "Jun",
+        "fase": "Lançamento",
+        "receitaBase": 1402000,
+        "ebitdaBase": 687000,
+        "canaisAtivos": ["Influenciadora", "DTC", "B2B"],
+        "eventos": ["Lançamento Dia 03 — 50% da meta", "Lançamento Dia 15 — 50% da meta"],
+        "restricao": "Limitado pelo estoque disponível — não escala além desse valor no mês"
+      },
+      {
+        "mes": "Jul",
+        "fase": "Diversificação",
+        "receitaBase": 1612300,
+        "ebitdaBase": 790000,
+        "crescimento": 15,
+        "canaisAtivos": ["Influenciadora", "DTC", "B2B", "WhatsApp"],
+        "novidades": ["DTC entra com aquisição fria", "WhatsApp CRM inicia com Léo Maia"]
+      },
+      {
+        "mes": "Ago",
+        "fase": "Escala",
+        "receitaBase": 1854145,
+        "ebitdaBase": 908731,
+        "crescimento": 15,
+        "canaisAtivos": ["Influenciadora", "DTC", "B2B", "WhatsApp", "TikTok Shop"],
+        "novidades": ["TikTok Shop entra em teste orgânico", "B2B: Cadeias PDV em piloto"]
+      },
+      {
+        "mes": "Set",
+        "fase": "Recorrência",
+        "receitaBase": 2132267,
+        "ebitdaBase": 1044811,
+        "crescimento": 15,
+        "canaisAtivos": ["Influenciadora", "DTC", "B2B", "WhatsApp", "TikTok Shop", "Assinatura"],
+        "novidades": ["Assinatura ativada — meta 500 assinantes", "B2B: Key Accounts em piloto"]
+      },
+      {
+        "mes": "Out",
+        "fase": "Consolidação",
+        "receitaBase": 2452107,
+        "ebitdaBase": 1201532,
+        "crescimento": 15,
+        "canaisAtivos": ["Influenciadora", "DTC", "B2B", "WhatsApp", "TikTok Shop", "Assinatura", "Marketplace"],
+        "novidades": ["Marketplace entra como canal complementar"]
+      },
+      {
+        "mes": "Dez",
+        "fase": "Liderança",
+        "receitaBase": 2819923,
+        "ebitdaBase": 1381762,
+        "crescimento": 15,
+        "canaisAtivos": ["Influenciadora", "DTC", "B2B", "WhatsApp", "TikTok Shop", "Assinatura", "Marketplace"],
+        "novidades": ["Influenciadora não é mais dependência única — B2B e retenção sustentam base"]
+      }
+    ],
+    "okrs": [
+      {
+        "id": "okr-escala",
+        "titulo": "Escalar SOMA com saúde financeira",
+        "dono": "Alan",
+        "cenario": "base",
+        "krs": [
+          { "id": "kr-receita", "titulo": "Receita semestral", "meta": 12190000, "baseline": 1402000, "unidade": "R$", "dono": "Alan", "fonte": "projecaoSemestral" },
+          { "id": "kr-ebitda", "titulo": "EBITDA semestral", "meta": 5601000, "baseline": 687000, "unidade": "R$", "dono": "Miller", "fonte": "ebitdaSemestral" },
+          { "id": "kr-margem", "titulo": "Margem bruta mínima", "meta": 55, "baseline": 55, "unidade": "%", "dono": "Miller", "fonte": "margemBruta" }
+        ]
+      },
+      {
+        "id": "okr-influenciadora",
+        "titulo": "Canal Influenciadora como motor e reduzir concentração",
+        "dono": "Fernando",
+        "krs": [
+          { "id": "kr-infl", "titulo": "Receita Influenciadora semestre", "meta": 8000000, "baseline": 864000, "unidade": "R$", "dono": "Fernando" },
+          { "id": "kr-creators", "titulo": "Creators secundários ativos gerando receita", "meta": 30, "baseline": 0, "unidade": "#", "dono": "Vanessa" },
+          { "id": "kr-roas", "titulo": "ROAS médio", "meta": 4, "baseline": 3.8, "unidade": "x", "dono": "Luís" },
+          { "id": "kr-concentracao", "titulo": "% receita do canal Influenciadora", "meta": 50, "baseline": 67, "unidade": "%", "dono": "Fernando", "direcao": "reduzir" }
+        ]
+      },
+      {
+        "id": "okr-retencao",
+        "titulo": "Construir base recorrente e blindar LTV",
+        "dono": "Ian",
+        "krs": [
+          { "id": "kr-recompra", "titulo": "Taxa de recompra", "meta": 38, "baseline": 32, "unidade": "%", "dono": "Ian" },
+          { "id": "kr-ltvcac", "titulo": "LTV/CAC", "meta": 11, "baseline": 11, "unidade": "x", "dono": "Ian", "direcao": "manter" },
+          { "id": "kr-wpp", "titulo": "Receita WhatsApp CRM semestre", "meta": 150000, "baseline": 0, "unidade": "R$", "dono": "Ian" },
+          { "id": "kr-assinatura", "titulo": "Receita Assinatura semestre", "meta": 150000, "baseline": 0, "unidade": "R$", "dono": "Ian" },
+          { "id": "kr-nps", "titulo": "NPS", "meta": 78, "baseline": 72, "unidade": "#", "dono": "Julian" }
+        ]
+      },
+      {
+        "id": "okr-b2b",
+        "titulo": "Transformar B2B em motor previsível",
+        "dono": "Igor",
+        "krs": [
+          { "id": "kr-b2b-rev", "titulo": "Receita B2B semestre", "meta": 2100000, "baseline": 300000, "unidade": "R$", "dono": "Igor" },
+          { "id": "kr-b2b-ticket", "titulo": "Ticket médio B2B", "meta": 3500, "baseline": 2200, "unidade": "R$", "dono": "Igor" },
+          { "id": "kr-b2b-canais", "titulo": "Sub-canais B2B ativos", "meta": 5, "baseline": 1, "unidade": "#", "dono": "Igor" },
+          { "id": "kr-pipeline", "titulo": "Pipeline B2B ativo", "meta": 500000, "baseline": 0, "unidade": "R$", "dono": "Igor" }
+        ]
+      }
+    ]
+  }
+}
