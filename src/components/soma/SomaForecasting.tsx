@@ -1500,9 +1500,60 @@ export function SomaForecasting() {
                   </tr>
                 </thead>
                 <tbody>
-                  {/* Receita Projetada */}
+                  {/* ===================== BLOCO PROJETADO (TOPO) ===================== */}
+                  <Separator label="📊 Projetado" />
+
                   <MetricRow label="Receita Projetada" data={projection.map((p) => brl(p.receita))} total={brl(totals.proj)} highlight />
-                  {/* Receita Realizada (editável) */}
+                  <MetricRow label="Pedidos Projetados" data={projection.map((p) => Math.round(p.pedidos).toLocaleString("pt-BR"))} total={Math.round(totals.pedidos).toLocaleString("pt-BR")} />
+                  {(() => {
+                    const b2bSeries = channelProjections["B2B"] || [];
+                    const ticketB2B = MONTHS.map((_, i) => {
+                      const c = b2bSeries[i];
+                      return c && c.pedidos > 0 ? c.receita / c.pedidos : 0;
+                    });
+                    const ticketNonB2B = MONTHS.map((_, i) => {
+                      let rec = 0, ped = 0;
+                      CHANNEL_KEYS.forEach(({ name }) => {
+                        if (name === "B2B") return;
+                        const c = channelProjections[name]?.[i];
+                        if (c) { rec += c.receita; ped += c.pedidos; }
+                      });
+                      return ped > 0 ? rec / ped : 0;
+                    });
+                    return (
+                      <>
+                        <MetricRow label="Ticket Médio (ex-B2B)" data={ticketNonB2B.map((v) => brl(v))} />
+                        <MetricRow label="Ticket Médio B2B" data={ticketB2B.map((v) => brl(v))} />
+                      </>
+                    );
+                  })()}
+                  <MetricRow label="CAC Projetado" data={projection.map((p) => brl(p.cac))} inverted />
+                  <MetricRow label="Investimento" data={projection.map((p) => brl(p.invest))} />
+                  <MetricRow label="ROAS" data={projection.map((p) => `${p.roas.toFixed(2)}x`)} />
+                  <MetricRow label="Conversão" data={projection.map((p) => `${p.conversao.toFixed(1)}%`)} />
+
+                  <Separator label="Custos & Despesas (Projetado)" />
+                  <MetricRow label={`CMV (${state.premises.cmv.toFixed(1)}%)`} data={projection.map((p) => brl(p.cmvCost))} inverted total={brl(projection.reduce((a, p) => a + p.cmvCost, 0))} />
+                  <MetricRow label={`OPEX (${state.premises.opexPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.opexCost))} inverted total={brl(projection.reduce((a, p) => a + p.opexCost, 0))} />
+                  <MetricRow label={`Time / Pessoas (${state.premises.pessoasPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.pessoasCost))} inverted total={brl(projection.reduce((a, p) => a + p.pessoasCost, 0))} />
+                  <MetricRow label={`Imposto (${state.premises.impostoPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.impostoCost))} inverted total={brl(projection.reduce((a, p) => a + p.impostoCost, 0))} />
+
+                  <Separator label="Resultado (Projetado)" />
+                  <MetricRow label="EBITDA" data={projection.map((p) => brl(p.ebitda))} total={brl(projection.reduce((a, p) => a + p.ebitda, 0))} />
+                  <MetricRow label="Lucro Líquido" data={projection.map((p) => brl(p.lucro))} total={brl(projection.reduce((a, p) => a + p.lucro, 0))} highlight />
+                  <MetricRow label="Margem Líquida" data={projection.map((p) => p.receita ? `${((p.lucro / p.receita) * 100).toFixed(1)}%` : "—")} />
+
+                  <Separator label="Canais (Projetado)" />
+                  <MetricRow label="Receita B2B" data={projection.map((p) => brl(p.receitaB2B))} />
+                  <MetricRow label="Receita Influenciadora" data={projection.map((p) => brl(p.receitaInfluenciadora))} />
+                  <MetricRow label="Receita WhatsApp" data={projection.map((p) => brl(p.receitaWhatsApp))} />
+                  <MetricRow label="Receita TikTok Shop" data={projection.map((p) => brl(p.receitaTikTokShop))} />
+                  <MetricRow label="Receita Assinatura" data={projection.map((p) => brl(p.receitaAssinatura))} />
+
+                  {/* ===================== BLOCO REALIZADO (BASE) ===================== */}
+                  <Separator label="✅ Realizado (editável)" />
+
+                  {/* Receita Realizada */}
                   <tr className="border-b border-[#f28572]/10 bg-[#f28572]/5">
                     <td className="py-2 px-2 font-medium sticky left-0 bg-[#1b1426]/80 z-10" style={{ color: SOMA_PALETTE.rose }}>
                       Receita Realizada
@@ -1556,9 +1607,6 @@ export function SomaForecasting() {
                     </td>
                   </tr>
 
-                  <Separator label="Operação" />
-
-                  <MetricRow label="Pedidos Projetados" data={projection.map((p) => Math.round(p.pedidos).toLocaleString("pt-BR"))} total={Math.round(totals.pedidos).toLocaleString("pt-BR")} />
                   <RealizedRow
                     label="Pedidos Realizados"
                     months={MONTHS}
@@ -1566,29 +1614,6 @@ export function SomaForecasting() {
                     realized={MONTHS.map((m) => state.realized[m]?.pedidos)}
                     onEdit={(m, v) => setRealized(m, { pedidos: v })}
                   />
-                  {(() => {
-                    const b2bSeries = channelProjections["B2B"] || [];
-                    const ticketB2B = MONTHS.map((_, i) => {
-                      const c = b2bSeries[i];
-                      return c && c.pedidos > 0 ? c.receita / c.pedidos : 0;
-                    });
-                    const ticketNonB2B = MONTHS.map((_, i) => {
-                      let rec = 0, ped = 0;
-                      CHANNEL_KEYS.forEach(({ name }) => {
-                        if (name === "B2B") return;
-                        const c = channelProjections[name]?.[i];
-                        if (c) { rec += c.receita; ped += c.pedidos; }
-                      });
-                      return ped > 0 ? rec / ped : 0;
-                    });
-                    return (
-                      <>
-                        <MetricRow label="Ticket Médio (ex-B2B)" data={ticketNonB2B.map((v) => brl(v))} />
-                        <MetricRow label="Ticket Médio B2B" data={ticketB2B.map((v) => brl(v))} />
-                      </>
-                    );
-                  })()}
-                  <MetricRow label="CAC Projetado" data={projection.map((p) => brl(p.cac))} inverted />
                   <RealizedRow
                     label="CAC Realizado"
                     months={MONTHS}
@@ -1598,7 +1623,6 @@ export function SomaForecasting() {
                     inverted
                     prefix="R$"
                   />
-                  <MetricRow label="Investimento" data={projection.map((p) => brl(p.invest))} />
                   <RealizedRow
                     label="Invest. Real"
                     months={MONTHS}
@@ -1607,30 +1631,8 @@ export function SomaForecasting() {
                     onEdit={(m, v) => setRealized(m, { invest: v })}
                     prefix="R$"
                   />
-                  <MetricRow label="ROAS" data={projection.map((p) => `${p.roas.toFixed(2)}x`)} />
-                  <MetricRow label="Conversão" data={projection.map((p) => `${p.conversao.toFixed(1)}%`)} />
-
-                  <Separator label="Custos & Despesas" />
-
-                  <MetricRow label={`CMV (${state.premises.cmv.toFixed(1)}%)`} data={projection.map((p) => brl(p.cmvCost))} inverted total={brl(projection.reduce((a, p) => a + p.cmvCost, 0))} />
-                  <MetricRow label={`OPEX (${state.premises.opexPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.opexCost))} inverted total={brl(projection.reduce((a, p) => a + p.opexCost, 0))} />
-                  <MetricRow label={`Time / Pessoas (${state.premises.pessoasPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.pessoasCost))} inverted total={brl(projection.reduce((a, p) => a + p.pessoasCost, 0))} />
-                  <MetricRow label={`Imposto (${state.premises.impostoPct.toFixed(1)}%)`} data={projection.map((p) => brl(p.impostoCost))} inverted total={brl(projection.reduce((a, p) => a + p.impostoCost, 0))} />
-
-                  <Separator label="Resultado" />
-
-                  <MetricRow label="EBITDA" data={projection.map((p) => brl(p.ebitda))} total={brl(projection.reduce((a, p) => a + p.ebitda, 0))} />
-                  <MetricRow label="Lucro Líquido" data={projection.map((p) => brl(p.lucro))} total={brl(projection.reduce((a, p) => a + p.lucro, 0))} highlight />
-                  <MetricRow label="Margem Líquida" data={projection.map((p) => p.receita ? `${((p.lucro / p.receita) * 100).toFixed(1)}%` : "—")} />
-
-                  <Separator label="Canais" />
-
-                  <MetricRow label="Receita B2B" data={projection.map((p) => brl(p.receitaB2B))} />
-                  <MetricRow label="Receita Influenciadora" data={projection.map((p) => brl(p.receitaInfluenciadora))} />
-                  <MetricRow label="Receita WhatsApp" data={projection.map((p) => brl(p.receitaWhatsApp))} />
-                  <MetricRow label="Receita TikTok Shop" data={projection.map((p) => brl(p.receitaTikTokShop))} />
-                  <MetricRow label="Receita Assinatura" data={projection.map((p) => brl(p.receitaAssinatura))} />
                 </tbody>
+
               </table>
             </div>
 
