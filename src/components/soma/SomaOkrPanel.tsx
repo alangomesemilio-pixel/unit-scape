@@ -76,7 +76,7 @@ export function SomaOkrPanel() {
         if (!alive) return;
         const s = (r.value as any) ?? {};
         setFullState(s);
-        if (s.graxOkr?.periods) setModel(s.graxOkr as Model);
+        if (s.somaOkrV2?.periods) setModel(s.somaOkrV2 as Model);
         setSavedAt(r.updatedAt ?? null);
       })
       .finally(() => alive && setLoading(false));
