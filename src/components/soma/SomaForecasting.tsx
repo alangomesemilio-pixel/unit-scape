@@ -888,10 +888,22 @@ export function SomaForecasting() {
     });
   }, [state.premises, mult, channelProjections]);
 
+  // Helper — Receita Realizada total inclui canais (B2B + demais)
+  const realizedReceita = (m: string) => {
+    const r = state.realized[m] || ({} as RealizedMonth);
+    const channels =
+      (r.recB2B || 0) +
+      (r.recInfluenciadora || 0) +
+      (r.recWhatsApp || 0) +
+      (r.recTikTokShop || 0) +
+      (r.recAssinatura || 0);
+    return (r.receita || 0) + channels;
+  };
+
   // Totais
   const totals = useMemo(() => {
     const proj = projection.reduce((a, m) => a + m.receita, 0);
-    const real = Object.values(state.realized).reduce((a, r) => a + (r.receita || 0), 0);
+    const real = MONTHS.reduce((a, m) => a + realizedReceita(m), 0);
     const ebitda = projection.reduce((a, m) => a + m.ebitda, 0);
     const pedidos = projection.reduce((a, m) => a + m.pedidos, 0);
     const investTotal = projection.reduce((a, m) => a + m.invest, 0);
@@ -1584,21 +1596,26 @@ export function SomaForecasting() {
                   {/* ===================== BLOCO REALIZADO (BASE) ===================== */}
                   <Separator label="✅ Realizado (editável)" />
 
-                  {/* Receita Realizada */}
+                  {/* Receita Realizada (Total = receita + canais B2B/Influ/WPP/TikTok/Assinatura) */}
                   <tr className="border-b border-[#f28572]/10 bg-[#f28572]/5">
                     <td className="py-2 px-2 font-medium sticky left-0 bg-[#1b1426]/80 z-10" style={{ color: SOMA_PALETTE.rose }}>
-                      Receita Realizada
+                      Receita Realizada <span className="text-[10px] text-muted-foreground font-normal">(inclui B2B)</span>
                     </td>
                     {MONTHS.map((m) => {
                       const proj = projection.find((p) => p.month === m)!.receita;
-                      const r = state.realized[m]?.receita;
-                      const s = statusOf(r, proj);
+                      const r = realizedReceita(m);
+                      const s = statusOf(r || undefined, proj);
                       return (
                         <td key={m} className="py-2 px-3">
                           <div className="flex items-center justify-end gap-1.5">
                             <span className="size-2 rounded-full" style={{ background: STATUS_COLOR[s] }} />
-                            <EditNum value={r} onChange={(v) => setRealized(m, { receita: v })} prefix="R$" />
+                            <EditNum value={state.realized[m]?.receita} onChange={(v) => setRealized(m, { receita: v })} prefix="R$" />
                           </div>
+                          {r > 0 && (
+                            <div className="text-[10px] text-right text-muted-foreground tabular-nums mt-0.5">
+                              Σ {brl(r)}
+                            </div>
+                          )}
                         </td>
                       );
                     })}
@@ -1608,9 +1625,9 @@ export function SomaForecasting() {
                   <tr className="border-b border-[#f28572]/10">
                     <td className="py-2 px-2 sticky left-0 bg-[#1b1426]/60 z-10 text-muted-foreground">% Atingimento</td>
                     {projection.map((p) => {
-                      const r = state.realized[p.month]?.receita || 0;
+                      const r = realizedReceita(p.month);
                       const a = p.receita ? (r / p.receita) * 100 : 0;
-                      const s = statusOf(r, p.receita);
+                      const s = statusOf(r || undefined, p.receita);
                       return (
                         <td key={p.month} className="py-2 px-3 text-right tabular-nums font-semibold" style={{ color: STATUS_COLOR[s] }}>
                           {r ? `${a.toFixed(0)}%` : "—"}
@@ -1625,7 +1642,7 @@ export function SomaForecasting() {
                   <tr className="border-b border-[#f28572]/10">
                     <td className="py-2 px-2 sticky left-0 bg-[#1b1426]/60 z-10 text-muted-foreground">Δ (Real − Proj)</td>
                     {projection.map((p) => {
-                      const r = state.realized[p.month]?.receita || 0;
+                      const r = realizedReceita(p.month);
                       const d = r ? r - p.receita : 0;
                       return (
                         <td key={p.month} className="py-2 px-3 text-right tabular-nums text-xs" style={{ color: d >= 0 ? SOMA_PALETTE.sage : SOMA_PALETTE.alert }}>
@@ -1637,6 +1654,8 @@ export function SomaForecasting() {
                       {totals.real ? `${totals.real - totals.proj >= 0 ? "+" : ""}${brl(totals.real - totals.proj)}` : "—"}
                     </td>
                   </tr>
+
+
 
                   <RealizedRow
                     label="Pedidos Realizados"
