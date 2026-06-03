@@ -164,7 +164,7 @@ export function SomaOkrPanel() {
   const save = async () => {
     setSaving(true);
     try {
-      const nextState = { ...(fullState ?? {}), graxOkr: model };
+      const nextState = { ...(fullState ?? {}), somaOkrV2: model };
       await setKv({ data: { key: "forecast.state", value: nextState } });
       setFullState(nextState);
       setSavedAt(new Date().toISOString());
