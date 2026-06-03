@@ -1629,6 +1629,42 @@ export function SomaForecasting() {
                     realized={MONTHS.map((m) => state.realized[m]?.pedidos)}
                     onEdit={(m, v) => setRealized(m, { pedidos: v })}
                   />
+                  {(() => {
+                    const b2bSeries = channelProjections["B2B"] || [];
+                    const ticketB2BProj = MONTHS.map((_, i) => {
+                      const c = b2bSeries[i];
+                      return c && c.pedidos > 0 ? c.receita / c.pedidos : 0;
+                    });
+                    const ticketNonB2BProj = MONTHS.map((_, i) => {
+                      let rec = 0, ped = 0;
+                      CHANNEL_KEYS.forEach(({ name }) => {
+                        if (name === "B2B") return;
+                        const c = channelProjections[name]?.[i];
+                        if (c) { rec += c.receita; ped += c.pedidos; }
+                      });
+                      return ped > 0 ? rec / ped : 0;
+                    });
+                    return (
+                      <>
+                        <RealizedRow
+                          label="Ticket Médio Realizado (ex-B2B)"
+                          months={MONTHS}
+                          projection={ticketNonB2BProj}
+                          realized={MONTHS.map((m) => state.realized[m]?.ticket)}
+                          onEdit={(m, v) => setRealized(m, { ticket: v })}
+                          prefix="R$"
+                        />
+                        <RealizedRow
+                          label="Ticket Médio B2B Realizado"
+                          months={MONTHS}
+                          projection={ticketB2BProj}
+                          realized={MONTHS.map((m) => state.realized[m]?.ticketB2B)}
+                          onEdit={(m, v) => setRealized(m, { ticketB2B: v })}
+                          prefix="R$"
+                        />
+                      </>
+                    );
+                  })()}
                   <RealizedRow
                     label="CAC Realizado"
                     months={MONTHS}
@@ -1646,6 +1682,126 @@ export function SomaForecasting() {
                     onEdit={(m, v) => setRealized(m, { invest: v })}
                     prefix="R$"
                   />
+                  <RealizedRow
+                    label="ROAS Realizado"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.roas)}
+                    realized={MONTHS.map((m) => state.realized[m]?.roas)}
+                    onEdit={(m, v) => setRealized(m, { roas: v })}
+                  />
+                  <RealizedRow
+                    label="Conversão Realizada"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.conversao)}
+                    realized={MONTHS.map((m) => state.realized[m]?.conversao)}
+                    onEdit={(m, v) => setRealized(m, { conversao: v })}
+                  />
+
+                  <Separator label="Custos & Despesas (Realizado)" />
+                  <RealizedRow
+                    label="CMV Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.cmvCost)}
+                    realized={MONTHS.map((m) => state.realized[m]?.cmv)}
+                    onEdit={(m, v) => setRealized(m, { cmv: v })}
+                    inverted
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="OPEX Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.opexCost)}
+                    realized={MONTHS.map((m) => state.realized[m]?.opex)}
+                    onEdit={(m, v) => setRealized(m, { opex: v })}
+                    inverted
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Time / Pessoas Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.pessoasCost)}
+                    realized={MONTHS.map((m) => state.realized[m]?.pessoas)}
+                    onEdit={(m, v) => setRealized(m, { pessoas: v })}
+                    inverted
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Imposto Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.impostoCost)}
+                    realized={MONTHS.map((m) => state.realized[m]?.imposto)}
+                    onEdit={(m, v) => setRealized(m, { imposto: v })}
+                    inverted
+                    prefix="R$"
+                  />
+
+                  <Separator label="Resultado (Realizado)" />
+                  <RealizedRow
+                    label="EBITDA Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.ebitda)}
+                    realized={MONTHS.map((m) => state.realized[m]?.ebitda)}
+                    onEdit={(m, v) => setRealized(m, { ebitda: v })}
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Lucro Líquido Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.lucro)}
+                    realized={MONTHS.map((m) => state.realized[m]?.lucro)}
+                    onEdit={(m, v) => setRealized(m, { lucro: v })}
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Margem Líquida Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.receita ? (p.lucro / p.receita) * 100 : 0)}
+                    realized={MONTHS.map((m) => state.realized[m]?.margem)}
+                    onEdit={(m, v) => setRealized(m, { margem: v })}
+                  />
+
+                  <Separator label="Canais (Realizado)" />
+                  <RealizedRow
+                    label="Receita B2B Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.receitaB2B)}
+                    realized={MONTHS.map((m) => state.realized[m]?.recB2B)}
+                    onEdit={(m, v) => setRealized(m, { recB2B: v })}
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Receita Influenciadora Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.receitaInfluenciadora)}
+                    realized={MONTHS.map((m) => state.realized[m]?.recInfluenciadora)}
+                    onEdit={(m, v) => setRealized(m, { recInfluenciadora: v })}
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Receita WhatsApp Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.receitaWhatsApp)}
+                    realized={MONTHS.map((m) => state.realized[m]?.recWhatsApp)}
+                    onEdit={(m, v) => setRealized(m, { recWhatsApp: v })}
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Receita TikTok Shop Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.receitaTikTokShop)}
+                    realized={MONTHS.map((m) => state.realized[m]?.recTikTokShop)}
+                    onEdit={(m, v) => setRealized(m, { recTikTokShop: v })}
+                    prefix="R$"
+                  />
+                  <RealizedRow
+                    label="Receita Assinatura Real"
+                    months={MONTHS}
+                    projection={projection.map((p) => p.receitaAssinatura)}
+                    realized={MONTHS.map((m) => state.realized[m]?.recAssinatura)}
+                    onEdit={(m, v) => setRealized(m, { recAssinatura: v })}
+                    prefix="R$"
+                  />
+
                 </tbody>
 
               </table>
