@@ -57,6 +57,8 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { saveWeekSnapshot } from "@/lib/snapshots.functions";
 import { logWeekClose, loadAuditLog, type AuditEntry, type AuditChange } from "@/lib/audit.functions";
+import { MeetingKpiPanel } from "./MeetingKpiPanel";
+
 
 const ACTOR_KEY = "grax.meetings.actor";
 
@@ -460,6 +462,7 @@ export function MeetingsDashboard() {
         <MeetingPanel
           meeting={meeting}
           ms={ms}
+          weekKey={weekKey}
           completion={completion}
           groupedKpis={groupedKpis}
           onToggleAttend={toggleAttendance}
@@ -474,6 +477,7 @@ export function MeetingsDashboard() {
           }}
         />
       </div>
+
 
       <AuditPanel
         open={auditOpen}
@@ -504,6 +508,7 @@ function Stat({ icon: Icon, label, value }: { icon: typeof CheckCircle2; label: 
 interface PanelProps {
   meeting: MeetingDef;
   ms: MeetingState;
+  weekKey: string;
   completion: number;
   groupedKpis: Record<string, ExecKpi[]>;
   onToggleAttend: (p: string) => void;
@@ -518,6 +523,7 @@ interface PanelProps {
 function MeetingPanel({
   meeting,
   ms,
+  weekKey,
   completion,
   groupedKpis,
   onToggleAttend,
@@ -528,6 +534,7 @@ function MeetingPanel({
   onRemoveAction,
   onMarkDone,
 }: PanelProps) {
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
@@ -570,7 +577,11 @@ function MeetingPanel({
         </div>
       </div>
 
+      {/* Painel novo de KPIs específicos da reunião → grava em kpis_executivos */}
+      <MeetingKpiPanel day={meeting.id} weekKey={weekKey} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         <Section title="Participantes" icon={Users}>
           <div className="space-y-2">
             {meeting.participants.map((p) => (
