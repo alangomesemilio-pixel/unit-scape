@@ -57,6 +57,8 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { saveWeekSnapshot } from "@/lib/snapshots.functions";
 import { logWeekClose, loadAuditLog, type AuditEntry, type AuditChange } from "@/lib/audit.functions";
+import { MeetingKpiPanel } from "./MeetingKpiPanel";
+
 
 const ACTOR_KEY = "grax.meetings.actor";
 
