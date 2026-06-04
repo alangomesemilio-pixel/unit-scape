@@ -460,6 +460,7 @@ export function MeetingsDashboard() {
         <MeetingPanel
           meeting={meeting}
           ms={ms}
+          weekKey={weekKey}
           completion={completion}
           groupedKpis={groupedKpis}
           onToggleAttend={toggleAttendance}
@@ -474,6 +475,7 @@ export function MeetingsDashboard() {
           }}
         />
       </div>
+
 
       <AuditPanel
         open={auditOpen}
