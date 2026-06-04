@@ -575,7 +575,11 @@ function MeetingPanel({
         </div>
       </div>
 
+      {/* Painel novo de KPIs específicos da reunião → grava em kpis_executivos */}
+      <MeetingKpiPanel day={meeting.id} weekKey={weekKey} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
         <Section title="Participantes" icon={Users}>
           <div className="space-y-2">
             {meeting.participants.map((p) => (
