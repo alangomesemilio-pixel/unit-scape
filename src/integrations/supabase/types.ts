@@ -136,6 +136,57 @@ export type Database = {
         }
         Relationships: []
       }
+      kpis_executivos: {
+        Row: {
+          accent: string | null
+          created_at: string
+          direction: string
+          dono: string | null
+          icon: string | null
+          id: string
+          kpi_id: string
+          mes: string
+          meta: number
+          nome: string
+          ordem: number
+          realizado: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          accent?: string | null
+          created_at?: string
+          direction?: string
+          dono?: string | null
+          icon?: string | null
+          id?: string
+          kpi_id: string
+          mes: string
+          meta?: number
+          nome: string
+          ordem?: number
+          realizado?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          accent?: string | null
+          created_at?: string
+          direction?: string
+          dono?: string | null
+          icon?: string | null
+          id?: string
+          kpi_id?: string
+          mes?: string
+          meta?: number
+          nome?: string
+          ordem?: number
+          realizado?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       soma_kv: {
         Row: {
           key: string
