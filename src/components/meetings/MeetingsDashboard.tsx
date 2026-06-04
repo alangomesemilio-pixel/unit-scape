@@ -506,6 +506,7 @@ function Stat({ icon: Icon, label, value }: { icon: typeof CheckCircle2; label: 
 interface PanelProps {
   meeting: MeetingDef;
   ms: MeetingState;
+  weekKey: string;
   completion: number;
   groupedKpis: Record<string, ExecKpi[]>;
   onToggleAttend: (p: string) => void;
@@ -520,6 +521,7 @@ interface PanelProps {
 function MeetingPanel({
   meeting,
   ms,
+  weekKey,
   completion,
   groupedKpis,
   onToggleAttend,
@@ -530,6 +532,7 @@ function MeetingPanel({
   onRemoveAction,
   onMarkDone,
 }: PanelProps) {
+
   return (
     <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
