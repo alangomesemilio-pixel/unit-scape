@@ -187,6 +187,42 @@ export type Database = {
         }
         Relationships: []
       }
+      reports_heads: {
+        Row: {
+          criado_em: string
+          gargalos: string | null
+          head_id: string
+          id: string
+          kpis: Json
+          mes: string
+          proxima_acao: string | null
+          semana: string
+          vitorias: string | null
+        }
+        Insert: {
+          criado_em?: string
+          gargalos?: string | null
+          head_id: string
+          id?: string
+          kpis?: Json
+          mes: string
+          proxima_acao?: string | null
+          semana: string
+          vitorias?: string | null
+        }
+        Update: {
+          criado_em?: string
+          gargalos?: string | null
+          head_id?: string
+          id?: string
+          kpis?: Json
+          mes?: string
+          proxima_acao?: string | null
+          semana?: string
+          vitorias?: string | null
+        }
+        Relationships: []
+      }
       soma_kv: {
         Row: {
           key: string
