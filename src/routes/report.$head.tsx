@@ -224,6 +224,10 @@ function ReportForm() {
             const raw = values[k.id] ?? "";
             const num = parseFloat(String(raw).replace(",", "."));
             const status = !isNaN(num) ? kpiStatus(num, k.target, k.dir) : "none";
+            const err = errors[k.id];
+            const minAttr = k.unit === "h" || k.unit === "R$" || k.unit === "#" || k.unit === "x" || k.unit === "%" ? 0 : undefined;
+            const maxAttr = k.unit === "%" ? 100 : undefined;
+            const stepAttr = k.unit === "#" ? 1 : "any";
             return (
               <div key={k.id} className="rounded-lg border border-border bg-card p-3">
                 <label className="flex items-center justify-between gap-3 mb-2">
@@ -237,11 +241,26 @@ function ReportForm() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground w-8">{k.unit}</span>
                   <input
+                    type="number"
                     inputMode="decimal"
+                    min={minAttr}
+                    max={maxAttr}
+                    step={stepAttr}
                     value={raw}
-                    onChange={(e) => setValues({ ...values, [k.id]: e.target.value })}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setValues({ ...values, [k.id]: v });
+                      if (errors[k.id]) {
+                        const next = { ...errors };
+                        delete next[k.id];
+                        setErrors(next);
+                      }
+                    }}
                     placeholder="0"
-                    className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    aria-invalid={!!err}
+                    className={`flex-1 bg-background border rounded-md px-3 py-2 text-base focus:outline-none focus:ring-2 ${
+                      err ? "border-destructive focus:ring-destructive/40" : "border-border focus:ring-primary/40"
+                    }`}
                   />
                   {k.target != null && (
                     <span className="text-[11px] text-muted-foreground whitespace-nowrap">
@@ -249,6 +268,7 @@ function ReportForm() {
                     </span>
                   )}
                 </div>
+                {err && <p className="mt-1.5 text-xs text-destructive">{err}</p>}
               </div>
             );
           })}
@@ -261,9 +281,14 @@ function ReportForm() {
               value={vitorias}
               onChange={(e) => setVitorias(e.target.value)}
               rows={3}
+              maxLength={MAX_TEXT}
               className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm"
               placeholder="O que rolou de melhor essa semana?"
             />
+            <div className="flex justify-between mt-1">
+              {errors.vitorias ? <p className="text-xs text-destructive">{errors.vitorias}</p> : <span />}
+              <p className="text-[11px] text-muted-foreground ml-auto">{vitorias.length}/{MAX_TEXT}</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">🚧 Principal gargalo da semana</label>
@@ -271,9 +296,14 @@ function ReportForm() {
               value={gargalos}
               onChange={(e) => setGargalos(e.target.value)}
               rows={3}
+              maxLength={MAX_TEXT}
               className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm"
               placeholder="Qual o principal bloqueio?"
             />
+            <div className="flex justify-between mt-1">
+              {errors.gargalos ? <p className="text-xs text-destructive">{errors.gargalos}</p> : <span />}
+              <p className="text-[11px] text-muted-foreground ml-auto">{gargalos.length}/{MAX_TEXT}</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">🎯 Próxima ação prioritária</label>
