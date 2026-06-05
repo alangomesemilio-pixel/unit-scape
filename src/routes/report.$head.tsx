@@ -96,23 +96,46 @@ function ReportForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação completa
+    const newErrors: Record<string, string> = {};
+    const kpis: Record<string, number> = {};
+    head.kpis.forEach((k) => {
+      const raw = values[k.id];
+      if (raw == null || String(raw).trim() === "") return;
+      const n = parseFloat(String(raw).replace(",", "."));
+      const err = validateKpi(k.unit, n);
+      if (err) {
+        newErrors[k.id] = err;
+      } else {
+        kpis[k.id] = n;
+      }
+    });
+
+    if (vitorias.length > MAX_TEXT) newErrors.vitorias = `Máx ${MAX_TEXT} caracteres`;
+    if (gargalos.length > MAX_TEXT) newErrors.gargalos = `Máx ${MAX_TEXT} caracteres`;
+    if (proximaAcao.length > MAX_TEXT) newErrors.proximaAcao = `Máx ${MAX_TEXT} caracteres`;
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Corrija os campos destacados antes de enviar.");
+      return;
+    }
+    if (Object.keys(kpis).length === 0) {
+      toast.error("Preencha ao menos um KPI.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const kpis: Record<string, number> = {};
-      head.kpis.forEach((k) => {
-        const raw = values[k.id];
-        const n = parseFloat(String(raw).replace(",", "."));
-        if (!isNaN(n)) kpis[k.id] = n;
-      });
-
       const { error } = await supabase.from("reports_heads").insert({
         head_id: slug,
         semana: weekKey,
         mes: monthKey,
         kpis,
-        vitorias,
-        gargalos,
-        proxima_acao: proximaAcao,
+        vitorias: vitorias.trim(),
+        gargalos: gargalos.trim(),
+        proxima_acao: proximaAcao.trim(),
       });
       if (error) throw error;
 
