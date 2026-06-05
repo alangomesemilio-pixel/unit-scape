@@ -40,11 +40,36 @@ function ReportForm() {
   );
 
   const [values, setValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [vitorias, setVitorias] = useState("");
   const [gargalos, setGargalos] = useState("");
   const [proximaAcao, setProximaAcao] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+
+  const MAX_TEXT = 1000;
+
+  const validateKpi = (unit: string, n: number): string | null => {
+    if (isNaN(n)) return "Valor inválido";
+    if (!isFinite(n)) return "Valor inválido";
+    if (unit === "%") {
+      if (n < 0 || n > 100) return "Percentual deve estar entre 0 e 100";
+    } else if (unit === "R$") {
+      if (n < 0) return "Valor monetário não pode ser negativo";
+      if (n > 1_000_000_000) return "Valor muito alto";
+    } else if (unit === "x") {
+      if (n < 0) return "Múltiplo não pode ser negativo";
+      if (n > 1000) return "Valor muito alto";
+    } else if (unit === "#") {
+      if (n < 0) return "Quantidade não pode ser negativa";
+      if (!Number.isInteger(n)) return "Use número inteiro";
+      if (n > 10_000_000) return "Valor muito alto";
+    } else if (unit === "h") {
+      if (n < 0) return "Horas não podem ser negativas";
+      if (n > 8760) return "Valor muito alto";
+    }
+    return null;
+  };
 
   useEffect(() => {
     // pre-fill if there's an existing report this week
