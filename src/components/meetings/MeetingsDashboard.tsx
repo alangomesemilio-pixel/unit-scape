@@ -580,6 +580,37 @@ function MeetingPanel({
       {/* Painel novo de KPIs específicos da reunião → grava em kpis_executivos */}
       <MeetingKpiPanel day={meeting.id} weekKey={weekKey} />
 
+      {(() => {
+        const map: Record<string, string[]> = {
+          mon: ["fernando", "ian", "igor", "miller", "vanessa", "ana-julia", "jack"],
+          tue: ["fernando", "vanessa", "ana-julia"],
+          wed: ["miller"],
+          thu: ["igor", "jack"],
+          fri: ["fernando", "ian", "igor", "miller", "vanessa", "ana-julia", "jack"],
+        };
+        const slugs = map[meeting.id] ?? [];
+        if (!slugs.length) return null;
+        return (
+          <div className="rounded-xl border border-border bg-card p-4 flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+              Formulários da reunião:
+            </span>
+            {slugs.map((s) => (
+              <a
+                key={s}
+                href={`/report/${s}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs px-3 py-1.5 rounded-md border border-border hover:bg-secondary capitalize"
+              >
+                Abrir {s.replace("-", " ")}
+              </a>
+            ))}
+          </div>
+        );
+      })()}
+
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <Section title="Participantes" icon={Users}>
