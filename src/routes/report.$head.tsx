@@ -40,11 +40,36 @@ function ReportForm() {
   );
 
   const [values, setValues] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [vitorias, setVitorias] = useState("");
   const [gargalos, setGargalos] = useState("");
   const [proximaAcao, setProximaAcao] = useState("");
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+
+  const MAX_TEXT = 1000;
+
+  const validateKpi = (unit: string, n: number): string | null => {
+    if (isNaN(n)) return "Valor inválido";
+    if (!isFinite(n)) return "Valor inválido";
+    if (unit === "%") {
+      if (n < 0 || n > 100) return "Percentual deve estar entre 0 e 100";
+    } else if (unit === "R$") {
+      if (n < 0) return "Valor monetário não pode ser negativo";
+      if (n > 1_000_000_000) return "Valor muito alto";
+    } else if (unit === "x") {
+      if (n < 0) return "Múltiplo não pode ser negativo";
+      if (n > 1000) return "Valor muito alto";
+    } else if (unit === "#") {
+      if (n < 0) return "Quantidade não pode ser negativa";
+      if (!Number.isInteger(n)) return "Use número inteiro";
+      if (n > 10_000_000) return "Valor muito alto";
+    } else if (unit === "h") {
+      if (n < 0) return "Horas não podem ser negativas";
+      if (n > 8760) return "Valor muito alto";
+    }
+    return null;
+  };
 
   useEffect(() => {
     // pre-fill if there's an existing report this week
@@ -71,23 +96,46 @@ function ReportForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validação completa
+    const newErrors: Record<string, string> = {};
+    const kpis: Record<string, number> = {};
+    head.kpis.forEach((k) => {
+      const raw = values[k.id];
+      if (raw == null || String(raw).trim() === "") return;
+      const n = parseFloat(String(raw).replace(",", "."));
+      const err = validateKpi(k.unit, n);
+      if (err) {
+        newErrors[k.id] = err;
+      } else {
+        kpis[k.id] = n;
+      }
+    });
+
+    if (vitorias.length > MAX_TEXT) newErrors.vitorias = `Máx ${MAX_TEXT} caracteres`;
+    if (gargalos.length > MAX_TEXT) newErrors.gargalos = `Máx ${MAX_TEXT} caracteres`;
+    if (proximaAcao.length > MAX_TEXT) newErrors.proximaAcao = `Máx ${MAX_TEXT} caracteres`;
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error("Corrija os campos destacados antes de enviar.");
+      return;
+    }
+    if (Object.keys(kpis).length === 0) {
+      toast.error("Preencha ao menos um KPI.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const kpis: Record<string, number> = {};
-      head.kpis.forEach((k) => {
-        const raw = values[k.id];
-        const n = parseFloat(String(raw).replace(",", "."));
-        if (!isNaN(n)) kpis[k.id] = n;
-      });
-
       const { error } = await supabase.from("reports_heads").insert({
         head_id: slug,
         semana: weekKey,
         mes: monthKey,
         kpis,
-        vitorias,
-        gargalos,
-        proxima_acao: proximaAcao,
+        vitorias: vitorias.trim(),
+        gargalos: gargalos.trim(),
+        proxima_acao: proximaAcao.trim(),
       });
       if (error) throw error;
 
@@ -176,6 +224,10 @@ function ReportForm() {
             const raw = values[k.id] ?? "";
             const num = parseFloat(String(raw).replace(",", "."));
             const status = !isNaN(num) ? kpiStatus(num, k.target, k.dir) : "none";
+            const err = errors[k.id];
+            const minAttr = k.unit === "h" || k.unit === "R$" || k.unit === "#" || k.unit === "x" || k.unit === "%" ? 0 : undefined;
+            const maxAttr = k.unit === "%" ? 100 : undefined;
+            const stepAttr = k.unit === "#" ? 1 : "any";
             return (
               <div key={k.id} className="rounded-lg border border-border bg-card p-3">
                 <label className="flex items-center justify-between gap-3 mb-2">
@@ -189,11 +241,26 @@ function ReportForm() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground w-8">{k.unit}</span>
                   <input
+                    type="number"
                     inputMode="decimal"
+                    min={minAttr}
+                    max={maxAttr}
+                    step={stepAttr}
                     value={raw}
-                    onChange={(e) => setValues({ ...values, [k.id]: e.target.value })}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setValues({ ...values, [k.id]: v });
+                      if (errors[k.id]) {
+                        const next = { ...errors };
+                        delete next[k.id];
+                        setErrors(next);
+                      }
+                    }}
                     placeholder="0"
-                    className="flex-1 bg-background border border-border rounded-md px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    aria-invalid={!!err}
+                    className={`flex-1 bg-background border rounded-md px-3 py-2 text-base focus:outline-none focus:ring-2 ${
+                      err ? "border-destructive focus:ring-destructive/40" : "border-border focus:ring-primary/40"
+                    }`}
                   />
                   {k.target != null && (
                     <span className="text-[11px] text-muted-foreground whitespace-nowrap">
@@ -201,6 +268,7 @@ function ReportForm() {
                     </span>
                   )}
                 </div>
+                {err && <p className="mt-1.5 text-xs text-destructive">{err}</p>}
               </div>
             );
           })}
@@ -213,9 +281,14 @@ function ReportForm() {
               value={vitorias}
               onChange={(e) => setVitorias(e.target.value)}
               rows={3}
+              maxLength={MAX_TEXT}
               className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm"
               placeholder="O que rolou de melhor essa semana?"
             />
+            <div className="flex justify-between mt-1">
+              {errors.vitorias ? <p className="text-xs text-destructive">{errors.vitorias}</p> : <span />}
+              <p className="text-[11px] text-muted-foreground ml-auto">{vitorias.length}/{MAX_TEXT}</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">🚧 Principal gargalo da semana</label>
@@ -223,9 +296,14 @@ function ReportForm() {
               value={gargalos}
               onChange={(e) => setGargalos(e.target.value)}
               rows={3}
+              maxLength={MAX_TEXT}
               className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm"
               placeholder="Qual o principal bloqueio?"
             />
+            <div className="flex justify-between mt-1">
+              {errors.gargalos ? <p className="text-xs text-destructive">{errors.gargalos}</p> : <span />}
+              <p className="text-[11px] text-muted-foreground ml-auto">{gargalos.length}/{MAX_TEXT}</p>
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium block mb-1.5">🎯 Próxima ação prioritária</label>
@@ -233,9 +311,14 @@ function ReportForm() {
               value={proximaAcao}
               onChange={(e) => setProximaAcao(e.target.value)}
               rows={2}
+              maxLength={MAX_TEXT}
               className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm"
               placeholder="O que será feito nos próximos dias?"
             />
+            <div className="flex justify-between mt-1">
+              {errors.proximaAcao ? <p className="text-xs text-destructive">{errors.proximaAcao}</p> : <span />}
+              <p className="text-[11px] text-muted-foreground ml-auto">{proximaAcao.length}/{MAX_TEXT}</p>
+            </div>
           </div>
         </section>
 
