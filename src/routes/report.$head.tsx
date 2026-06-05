@@ -311,9 +311,14 @@ function ReportForm() {
               value={proximaAcao}
               onChange={(e) => setProximaAcao(e.target.value)}
               rows={2}
+              maxLength={MAX_TEXT}
               className="w-full bg-card border border-border rounded-md px-3 py-2 text-sm"
               placeholder="O que será feito nos próximos dias?"
             />
+            <div className="flex justify-between mt-1">
+              {errors.proximaAcao ? <p className="text-xs text-destructive">{errors.proximaAcao}</p> : <span />}
+              <p className="text-[11px] text-muted-foreground ml-auto">{proximaAcao.length}/{MAX_TEXT}</p>
+            </div>
           </div>
         </section>
 
