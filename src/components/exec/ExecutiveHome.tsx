@@ -351,6 +351,8 @@ export function ExecutiveHome() {
             </div>
           </section>
         </div>
+
+        <ReportsStatusPanel />
       </div>
     </div>
   );
