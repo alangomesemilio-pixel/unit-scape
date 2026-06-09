@@ -707,25 +707,42 @@ function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
     return Array.from(map.values());
   }, [orders]);
 
+  // Top produtos mais pedidos (a partir dos itens dos pedidos)
+  const topProdutos = useMemo(() => {
+    const map = new Map<string, { produto: string; qtd: number; pedidos: number }>();
+    orders.forEach((o) => {
+      (o.items ?? []).forEach((it) => {
+        const key = it.product || it.sku || "—";
+        const e = map.get(key) ?? { produto: key, qtd: 0, pedidos: 0 };
+        e.qtd += it.quantity || 0;
+        e.pedidos += 1;
+        map.set(key, e);
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => b.qtd - a.qtd).slice(0, 10);
+  }, [orders]);
+
   // Métricas calculadas
   const metricas = useMemo(() => {
     const total = orders.length;
     const delivered = orders.filter((o) => o.status === "delivered").length;
     const cancelled = orders.filter((o) => o.status === "cancelled").length;
+    const inProcess = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length;
     const b2b = orders.filter((o) => o.is_b2b).length;
     const last7Start = Date.now() - 7 * 86400000;
     const last7 = orders.filter((o) => o.creation_date && new Date(o.creation_date).getTime() >= last7Start).length;
     const media7 = last7 / 7;
-    const dayOfMonth = new Date().getDate();
     const projecao = Math.round(media7 * 30);
+    const totalItens = orders.reduce((s, o) => s + (o.item_count || 0), 0);
+    const itensEntregues = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + (o.item_count || 0), 0);
+    const mediaItens = total > 0 ? totalItens / total : 0;
     return {
+      total, delivered, cancelled, inProcess,
       sucessoPct: total > 0 ? (delivered / total) * 100 : 0,
       cancelPct: total > 0 ? (cancelled / total) * 100 : 0,
       b2bPct: total > 0 ? (b2b / total) * 100 : 0,
       d2cPct: total > 0 ? ((total - b2b) / total) * 100 : 0,
-      media7,
-      projecao,
-      dayOfMonth,
+      media7, projecao, totalItens, itensEntregues, mediaItens,
     };
   }, [orders]);
 
