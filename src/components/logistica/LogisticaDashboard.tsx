@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers,
+  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers, getMelonnOrderDelivery,
   getMelonnConfig, saveMelonnConfig, testMelonnEndpoint,
   melonnStatusLabel, MELONN_STATUSES, MELONN_WAREHOUSES,
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
@@ -143,6 +143,11 @@ export function LogisticaDashboard() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-2", "MED-3", "BOG-2", "BAQ-1", "CAL-2"]);
   const [loading, setLoading] = useState({ orders: true, inv: true, cou: true, mat: true });
+  // Hidratação em background: mapa orderId -> delivered_at (ISO) calculado via /sell-orders/{id}.
+  const [deliveryMap, setDeliveryMap] = useState<Record<string, string | null>>({});
+  const [deliveryProgress, setDeliveryProgress] = useState<{ done: number; total: number; running: boolean }>({ done: 0, total: 0, running: false });
+  const deliveryCacheRef = useRef<Map<string, string | null>>(new Map());
+  const deliveryAbortRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
   const [tab, setTab] = useState<TabId>("pedidos");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -272,37 +277,95 @@ export function LogisticaDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ============= ORDERS COM delivered_at HIDRATADO =============
+  const ordersHydrated = useMemo<MelonnOrder[]>(() => {
+    return orders.map((o) => {
+      if (o.delivered_at) return o;
+      const hydrated = deliveryMap[o.id];
+      return hydrated ? { ...o, delivered_at: hydrated } : o;
+    });
+  }, [orders, deliveryMap]);
 
+  // ============= BACKGROUND WORKER: busca detalhe dos entregues =============
+  useEffect(() => {
+    // Não rodar enquanto a lista ainda carrega.
+    if (loading.orders) return;
+    // Cancela worker anterior (ex.: refresh disparou nova lista).
+    deliveryAbortRef.current.cancelled = true;
+    const abort = { cancelled: false };
+    deliveryAbortRef.current = abort;
 
+    const pending = orders.filter(
+      (o) => o.status === "delivered" && !o.delivered_at && !deliveryCacheRef.current.has(o.id),
+    );
+    if (pending.length === 0) {
+      setDeliveryProgress((p) => ({ ...p, running: false }));
+      return;
+    }
+    setDeliveryProgress({ done: 0, total: pending.length, running: true });
+
+    (async () => {
+      let done = 0;
+      const batchUpdates: Record<string, string | null> = {};
+      let lastFlush = Date.now();
+      for (const o of pending) {
+        if (abort.cancelled) return;
+        try {
+          const r = await getMelonnOrderDelivery({ data: { id: o.id } });
+          deliveryCacheRef.current.set(o.id, r.delivered_at);
+          if (r.delivered_at) batchUpdates[o.id] = r.delivered_at;
+        } catch {
+          deliveryCacheRef.current.set(o.id, null);
+        }
+        done++;
+        // Flush a cada 5 itens ou 2s para não re-renderizar a cada call.
+        if (done % 5 === 0 || Date.now() - lastFlush > 2000) {
+          if (Object.keys(batchUpdates).length > 0) {
+            setDeliveryMap((m) => ({ ...m, ...batchUpdates }));
+            for (const k of Object.keys(batchUpdates)) delete batchUpdates[k];
+          }
+          setDeliveryProgress({ done, total: pending.length, running: true });
+          lastFlush = Date.now();
+        }
+      }
+      if (!abort.cancelled) {
+        if (Object.keys(batchUpdates).length > 0) setDeliveryMap((m) => ({ ...m, ...batchUpdates }));
+        setDeliveryProgress({ done, total: pending.length, running: false });
+      }
+    })();
+
+    return () => { abort.cancelled = true; };
+  }, [orders, loading.orders]);
 
   // ============= KPIs HEADER =============
   const kpis = useMemo(() => {
-    const total = orders.length;
-    const delivered = orders.filter((o) => o.status === "delivered");
-    const onTime = delivered.filter((o) => {
-      if (!o.creation_date || !o.delivered_at) return true; // sem dado, assume ok
-      return daysSince(o.creation_date) - daysSince(o.delivered_at) <= SLA_DAYS;
+    const total = ordersHydrated.length;
+    const delivered = ordersHydrated.filter((o) => o.status === "delivered");
+    const withDates = delivered.filter((o) => o.creation_date && o.delivered_at);
+    const onTime = withDates.filter((o) => {
+      const dias = (new Date(o.delivered_at!).getTime() - new Date(o.creation_date!).getTime()) / 86400000;
+      return dias <= SLA_DAYS;
     }).length;
-    const slaPct = delivered.length > 0 ? (onTime / delivered.length) * 100 : 0;
-    const avgDays = delivered.length > 0
-      ? delivered.reduce((sum, o) => {
-          if (!o.creation_date || !o.delivered_at) return sum;
-          return sum + Math.max(0, daysSince(o.creation_date) - daysSince(o.delivered_at));
-        }, 0) / delivered.length
+    const slaPct = withDates.length > 0 ? (onTime / withDates.length) * 100 : 0;
+    const avgDays = withDates.length > 0
+      ? withDates.reduce((sum, o) => {
+          const dias = (new Date(o.delivered_at!).getTime() - new Date(o.creation_date!).getTime()) / 86400000;
+          return sum + Math.max(0, dias);
+        }, 0) / withDates.length
       : 0;
-    const cancelled = orders.filter((o) => o.status === "cancelled").length;
+    const cancelled = ordersHydrated.filter((o) => o.status === "cancelled").length;
     const cancelPct = total > 0 ? (cancelled / total) * 100 : 0;
-    const atrasados = orders.filter(
+    const atrasados = ordersHydrated.filter(
       (o) => o.status_code === 20 || (o.status !== "delivered" && o.status !== "cancelled" && daysSince(o.creation_date) > SLA_DAYS),
     ).length;
     const ruptura = new Set(inventory.filter((i) => i.available === 0).map((i) => i.sku)).size;
     const todayStart = startOfPeriod("hoje");
-    const hoje = orders.filter((o) => o.creation_date && new Date(o.creation_date).getTime() >= todayStart).length;
-    return { slaPct, avgDays, cancelPct, atrasados, ruptura, hoje };
-  }, [orders, inventory]);
+    const hoje = ordersHydrated.filter((o) => o.creation_date && new Date(o.creation_date).getTime() >= todayStart).length;
+    return { slaPct, avgDays, cancelPct, atrasados, ruptura, hoje, slaSampleSize: withDates.length };
+  }, [ordersHydrated, inventory]);
 
   const ctx = {
-    orders, inventory, couriers, materials, activeWarehouses,
+    orders: ordersHydrated, inventory, couriers, materials, activeWarehouses,
     ordersErr, inventoryErr, couriersErr,
     loading, refreshMaterials, setMaterials,
     ordersTotal, ordersLoaded, daysBack, onDaysBackChange: handleDaysBackChange,
@@ -348,6 +411,18 @@ export function LogisticaDashboard() {
               >
                 Continuar carregando
               </button>
+            </div>
+          )}
+
+          {deliveryProgress.running && (
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+              <RefreshCw className="size-3 animate-spin" />
+              Hidratando datas de entrega em background: {deliveryProgress.done} / {deliveryProgress.total}
+            </div>
+          )}
+          {!deliveryProgress.running && deliveryProgress.total > 0 && (
+            <div className="mt-2 text-[11px] text-emerald-500">
+              ✅ Datas de entrega hidratadas ({deliveryProgress.done} pedidos)
             </div>
           )}
         </div>
