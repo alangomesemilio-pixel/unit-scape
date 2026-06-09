@@ -191,9 +191,12 @@ export function LogisticaDashboard() {
     const startedAt = Date.now();
     let fetchedAt = new Date().toISOString();
     let iter = 0;
+    let didTimeout = false;
+    let hadError = false;
     try {
       while (true) {
         if (Date.now() - startedAt > FETCH_TIMEOUT_MS) {
+          didTimeout = true;
           setTimedOut(true);
           setResumePage(page);
           break;
@@ -202,7 +205,7 @@ export function LogisticaDashboard() {
         iter++;
 
         const r = await melonnQueue(() => getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } }));
-        if (r.error) { setOrdersErr(r.error); break; }
+        if (r.error) { hadError = true; setOrdersErr(r.error); break; }
         acc.push(...r.orders);
         fetchedAt = r.fetched_at;
         // total_count da Melonn não é confiável (ela devolve o tamanho da página).
@@ -218,9 +221,10 @@ export function LogisticaDashboard() {
         if (page > 200) break; // safety
       }
     } catch (e: any) {
+      hadError = true;
       setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
     } finally {
-      const completed = !timedOut && acc.length > 0;
+      const completed = !didTimeout && !hadError && acc.length > 0;
       ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
       // Persiste em sessionStorage só quando completar uma janela "all" (cache de longo prazo).
       if (completed && days === "all") {
@@ -230,7 +234,7 @@ export function LogisticaDashboard() {
       setLoading((l) => ({ ...l, orders: false }));
     }
     // Workaround for opts.startPage default in condition above:
-  }, [timedOut]);
+  }, []);
 
   const refreshOrders = useCallback((days: DaysBack = daysBack, force = false) => {
     if (!force) {

@@ -178,15 +178,20 @@ async function melonnFetch(
   if (!rawKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "").trim();
   const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt < 4; attempt++) {
     await rateLimit();
     try {
       const res = await fetch(url, {
         headers: { "x-api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
       });
       const text = await res.text().catch(() => "");
-      if (res.status === 429 && attempt === 0) {
-        await new Promise((r) => setTimeout(r, 2000));
+      if (res.status === 429 && attempt < 3) {
+        const retryAfter = Number(res.headers.get("retry-after") ?? "");
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : 2500 * (attempt + 1);
+        console.warn(`[Melonn] 429 em ${path} | tentativa ${attempt + 1}/4 | aguardando ${waitMs}ms`);
+        await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
       if (!res.ok) return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
@@ -194,7 +199,7 @@ async function melonnFetch(
       try { data = text ? JSON.parse(text) : null; } catch { /* */ }
       return { ok: true, data, status: res.status };
     } catch (e: any) {
-      if (attempt === 0) continue;
+      if (attempt < 3) continue;
       return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
     }
   }
@@ -342,7 +347,10 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const sinceIso = data.sinceIso ?? null;
     const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, sinceIso, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
-    if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
+    if (!result.ok) {
+      console.warn(`[Melonn] erro ao buscar página ${page} (${perPage}/página): ${result.error}`);
+      return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
+    }
     const raw = extractList(result.data, "sell_orders", "orders");
     const orders = raw.map((o, i) => mapRawOrder(o, page * perPage + i));
     const total_count = Number(
