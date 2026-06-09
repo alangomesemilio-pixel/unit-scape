@@ -108,8 +108,14 @@ const DEFAULTS: MelonnConfig = {
   ordersPath: "/sell-orders",
   inventoryPath: "/stock",
   couriersPath: "/courier-companies",
-  warehouseCodes: ["MED-3", "BOG-2"],
+  warehouseCodes: ["MED-2", "MED-3", "BOG-2", "BAQ-1", "CAL-2"],
 };
+
+// Old default sets that should be auto-upgraded to the new 5-warehouse default.
+const LEGACY_WAREHOUSE_DEFAULTS: string[][] = [
+  ["MED-3", "BOG-2"],
+  ["BOG-2", "MED-3"],
+];
 
 const LEGACY_PATHS = new Set([
   "/orders", "/orders?limit=200", "/inventory", "/metrics/operational",
