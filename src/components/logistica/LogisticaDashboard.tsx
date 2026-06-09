@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import {
   Package, Truck, CheckCircle2, XCircle, RefreshCw, Boxes, AlertTriangle,
   Plus, Trash2, Gauge, Clock, Settings, X, PlugZap, ExternalLink, Pause,
@@ -130,6 +130,8 @@ export function LogisticaDashboard() {
   const [ordersTotal, setOrdersTotal] = useState<number>(0);
   const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
   const [daysBack, setDaysBack] = useState<DaysBack>(60);
+  const [resumePage, setResumePage] = useState<number | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   const [inventory, setInventory] = useState<MelonnInventoryItem[]>([]);
   const [inventoryErr, setInventoryErr] = useState<string>();
@@ -146,32 +148,88 @@ export function LogisticaDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const refreshOrders = useCallback(async (days: DaysBack = daysBack) => {
+  // Cache em memória por janela de dias.
+  type OrdersCacheEntry = { orders: MelonnOrder[]; total: number; fetched_at: string; completed: boolean };
+  const ordersCacheRef = useRef<Map<DaysBack, OrdersCacheEntry>>(new Map());
+  const FETCH_TIMEOUT_MS = 60_000;
+
+  const runOrdersFetch = useCallback(async (
+    days: DaysBack,
+    opts: { startPage?: number; initialAcc?: MelonnOrder[]; initialTotal?: number } = {},
+  ) => {
     setLoading((l) => ({ ...l, orders: true }));
-    setOrders([]); setOrdersLoaded(0); setOrdersTotal(0); setOrdersErr(undefined);
+    setOrdersErr(undefined);
+    setTimedOut(false);
+    setResumePage(null);
     const PER_PAGE = 100;
-    let page = 0;
-    const acc: MelonnOrder[] = [];
+    const acc: MelonnOrder[] = [...(opts.initialAcc ?? [])];
+    let page = opts.startPage ?? 0;
+    let total = opts.initialTotal ?? 0;
+    if (page === 0) {
+      setOrders([]); setOrdersLoaded(0); setOrdersTotal(0);
+    } else {
+      setOrders([...acc]); setOrdersLoaded(acc.length); setOrdersTotal(total || acc.length);
+    }
+    const startedAt = Date.now();
+    let fetchedAt = new Date().toISOString();
+    let iter = 0;
     try {
       while (true) {
-        if (page > 0) await new Promise((r) => setTimeout(r, 1100));
+        if (Date.now() - startedAt > FETCH_TIMEOUT_MS) {
+          setTimedOut(true);
+          setResumePage(page);
+          break;
+        }
+        if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
+        iter++;
+
         const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
+        fetchedAt = r.fetched_at;
+        if (page === 0 || total === 0) total = r.total_count || acc.length;
         setOrders([...acc]);
         setOrdersLoaded(acc.length);
-        if (page === 0) setOrdersTotal(r.total_count || acc.length);
-        setOrdersAt(r.fetched_at);
-        if (!r.has_more || r.orders.length === 0) break;
+        setOrdersTotal(total);
+        setOrdersAt(fetchedAt);
+        const done = acc.length >= total || r.orders.length < PER_PAGE || !r.has_more;
+        if (done) break;
         page++;
         if (page > 200) break; // safety
       }
     } catch (e: any) {
       setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
     } finally {
+      const completed = !timedOut && acc.length >= total && total > 0;
+      ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
       setLoading((l) => ({ ...l, orders: false }));
     }
-  }, [daysBack]);
+    // Workaround for opts.startPage default in condition above:
+  }, [timedOut]);
+
+  const refreshOrders = useCallback((days: DaysBack = daysBack, force = false) => {
+    if (!force) {
+      const cached = ordersCacheRef.current.get(days);
+      if (cached && cached.completed) {
+        setOrders(cached.orders);
+        setOrdersLoaded(cached.orders.length);
+        setOrdersTotal(cached.total);
+        setOrdersAt(cached.fetched_at);
+        setOrdersErr(undefined);
+        setTimedOut(false);
+        setResumePage(null);
+        setLoading((l) => ({ ...l, orders: false }));
+        return Promise.resolve();
+      }
+    }
+    return runOrdersFetch(days, { startPage: 0 });
+  }, [daysBack, runOrdersFetch]);
+
+  const continueLoading = useCallback(() => {
+    if (resumePage == null) return;
+    runOrdersFetch(daysBack, { startPage: resumePage, initialAcc: orders, initialTotal: ordersTotal });
+  }, [resumePage, daysBack, orders, ordersTotal, runOrdersFetch]);
+
   const refreshInventory = useCallback(async () => {
     setLoading((l) => ({ ...l, inv: true }));
     const r = await getMelonnInventory();
@@ -194,7 +252,8 @@ export function LogisticaDashboard() {
 
   async function refreshAll() {
     setRefreshing(true);
-    await Promise.all([refreshOrders(daysBack), refreshInventory(), refreshCouriers()]);
+    ordersCacheRef.current.clear();
+    await Promise.all([refreshOrders(daysBack, true), refreshInventory(), refreshCouriers()]);
     setRefreshing(false);
   }
 
@@ -205,11 +264,13 @@ export function LogisticaDashboard() {
 
   useEffect(() => {
     getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
-    refreshOrders(daysBack); refreshInventory(); refreshCouriers(); refreshMaterials();
+    refreshOrders(daysBack, true); refreshInventory(); refreshCouriers(); refreshMaterials();
     const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
 
 
   // ============= KPIs HEADER =============
@@ -243,14 +304,16 @@ export function LogisticaDashboard() {
     ordersErr, inventoryErr, couriersErr,
     loading, refreshMaterials, setMaterials,
     ordersTotal, ordersLoaded, daysBack, onDaysBackChange: handleDaysBackChange,
+    timedOut, resumePage, onContinueLoading: continueLoading,
   };
 
+  const progressPct = ordersTotal > 0 ? Math.min(100, Math.round((ordersLoaded / ordersTotal) * 100)) : 0;
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6 bg-background">
       {/* HEADER */}
       <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
+        <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-bold">Logística</h1>
           <p className="text-sm text-muted-foreground">
             Integração Melonn · análise operacional em tempo real
@@ -260,7 +323,32 @@ export function LogisticaDashboard() {
             <span className="flex items-center gap-1"><Clock className="size-3" />Última atualização: {fmtHHMM(ordersAt)}</span>
             <span className="text-muted-foreground/60">· Auto-refresh 5min</span>
           </p>
+          {loading.orders && (
+            <div className="mt-2 max-w-md">
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
+                <span className="flex items-center gap-1.5">
+                  <RefreshCw className="size-3 animate-spin" />
+                  Carregando pedidos: {ordersLoaded} / {ordersTotal || "…"} {ordersTotal > 0 && `(${progressPct}%)`}
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
+                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progressPct}%` }} />
+              </div>
+            </div>
+          )}
+          {timedOut && resumePage != null && (
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-amber-500">
+              ⏱️ Carregados {ordersLoaded} de {ordersTotal} pedidos.
+              <button
+                onClick={continueLoading}
+                className="px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 text-[11px] font-medium"
+              >
+                Continuar carregando
+              </button>
+            </div>
+          )}
         </div>
+
         <div className="flex items-center gap-2">
           <button onClick={() => setSettingsOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80">
             <Settings className="size-4" /> Configurações
@@ -328,9 +416,13 @@ type CtxBase = {
   ordersLoaded: number;
   daysBack: DaysBack;
   onDaysBackChange: (d: DaysBack) => void;
+  timedOut: boolean;
+  resumePage: number | null;
+  onContinueLoading: () => void;
 };
 
-function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal, ordersLoaded, daysBack, onDaysBackChange }: CtxBase) {
+function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal, ordersLoaded, daysBack, onDaysBackChange, timedOut, onContinueLoading }: CtxBase) {
+
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [bodega, setBodega] = useState<string>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -391,7 +483,9 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
           {isLoadingPages ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <RefreshCw className="size-3 animate-spin" />
-              Carregando pedidos… {ordersLoaded}{ordersTotal > 0 ? ` de ${ordersTotal}` : ""}
+              Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal || "…"}</strong>
+              <span>·</span>
+              Carregando: <strong className="text-foreground tabular-nums">{ordersLoaded}{ordersTotal > 0 ? `/${ordersTotal}` : ""}</strong>…
             </span>
           ) : (
             <>
@@ -402,14 +496,23 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
               <span className="text-muted-foreground">
                 Exibindo: <strong className="text-foreground tabular-nums">{orders.length}</strong> pedidos
               </span>
-              {mismatch && (
+              {!mismatch && !timedOut && ordersTotal > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500">✅</span>
+              )}
+              {mismatch && !timedOut && (
                 <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
                   ⚠️ {Math.max(0, ordersTotal - orders.length)} pedidos ainda carregando
                 </span>
               )}
+              {timedOut && (
+                <button onClick={onContinueLoading} className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25">
+                  Continuar carregando ({Math.max(0, ordersTotal - orders.length)} restantes)
+                </button>
+              )}
             </>
           )}
         </div>
+
       </Card>
 
 
