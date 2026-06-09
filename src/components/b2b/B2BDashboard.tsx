@@ -631,7 +631,9 @@ function ProdutosTab({ rows, allRows, onOpen }: { rows: B2BRow[]; allRows: B2BRo
         <MiniCard label="Mais vendido" value={maisVendido?.sku || "—"} sub={maisVendido ? `${NUM(maisVendido.unidades)} un` : ""} />
         <MiniCard label="Mais lucrativo" value={maisLucrativo?.sku || "—"} sub={maisLucrativo ? BRL(maisLucrativo.margemRS) : ""} />
         <MiniCard label="Maior margem %" value={maiorMargemPct?.sku || "—"} sub={maiorMargemPct ? PCT(maiorMargemPct.margemPct) : ""} />
-        <MiniCard label="Em queda (MoM)" value={emQueda?.sku || "—"} sub={emQueda ? `${emQueda.drop.toFixed(1)}%` : ""} tone={emQueda ? "r" : "g"} />
+        {(() => { const eq = emQueda as { sku: string; drop: number } | null; return (
+          <MiniCard label="Em queda (MoM)" value={eq?.sku || "—"} sub={eq ? `${eq.drop.toFixed(1)}%` : ""} tone={eq ? "r" : "g"} />
+        ); })()}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
