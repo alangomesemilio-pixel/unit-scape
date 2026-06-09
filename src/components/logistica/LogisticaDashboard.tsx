@@ -413,6 +413,18 @@ export function LogisticaDashboard() {
               </button>
             </div>
           )}
+
+          {deliveryProgress.running && (
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
+              <RefreshCw className="size-3 animate-spin" />
+              Hidratando datas de entrega em background: {deliveryProgress.done} / {deliveryProgress.total}
+            </div>
+          )}
+          {!deliveryProgress.running && deliveryProgress.total > 0 && (
+            <div className="mt-2 text-[11px] text-emerald-500">
+              ✅ Datas de entrega hidratadas ({deliveryProgress.done} pedidos)
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
