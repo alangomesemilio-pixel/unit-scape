@@ -416,9 +416,13 @@ type CtxBase = {
   ordersLoaded: number;
   daysBack: DaysBack;
   onDaysBackChange: (d: DaysBack) => void;
+  timedOut: boolean;
+  resumePage: number | null;
+  onContinueLoading: () => void;
 };
 
-function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal, ordersLoaded, daysBack, onDaysBackChange }: CtxBase) {
+function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal, ordersLoaded, daysBack, onDaysBackChange, timedOut, onContinueLoading }: CtxBase) {
+
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [bodega, setBodega] = useState<string>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
