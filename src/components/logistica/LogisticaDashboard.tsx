@@ -815,16 +815,40 @@ function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
         </Card>
       </div>
 
-      {/* MÉTRICAS CALCULADAS */}
+      {/* TOP PRODUTOS MAIS PEDIDOS */}
+      <Card>
+        <SectionTitle icon={ShoppingBag} title="Top produtos mais pedidos" subtitle={`${topProdutos.length} produtos · ranking por unidades`} />
+        {topProdutos.length === 0 ? (
+          <div className="text-xs text-muted-foreground py-6 text-center">Sem itens detalhados nos pedidos carregados.</div>
+        ) : (
+          <div style={{ height: Math.max(220, topProdutos.length * 36) }}>
+            <ResponsiveContainer>
+              <BarChart data={topProdutos} layout="vertical" margin={{ left: 140, right: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis type="category" dataKey="produto" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={140} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+                <Bar dataKey="qtd" fill="#10b981" radius={[0, 4, 4, 0]} name="Unidades" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
+      {/* MÉTRICAS REAIS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard icon={ShoppingBag} label="Total de pedidos" value={metricas.total.toLocaleString("pt-BR")} />
+        <KpiCard icon={CheckCircle2} label="Entregues" value={metricas.delivered.toLocaleString("pt-BR")} color="#10b981" />
+        <KpiCard icon={Cog} label="Em processo" value={metricas.inProcess.toLocaleString("pt-BR")} color="#3b82f6" />
+        <KpiCard icon={XCircle} label="Cancelados" value={metricas.cancelled.toLocaleString("pt-BR")} color="#ef4444" />
+        <KpiCard icon={Boxes} label="Itens entregues" value={metricas.itensEntregues.toLocaleString("pt-BR")} />
+        <KpiCard icon={Package} label="Média de itens/pedido" value={metricas.mediaItens.toFixed(2)} />
         <KpiCard icon={CheckCircle2} label="Taxa de sucesso" value={`${metricas.sucessoPct.toFixed(1)}%`} color="#10b981" />
         <KpiCard icon={XCircle} label="Taxa de cancelamento" value={`${metricas.cancelPct.toFixed(1)}%`} color={semaforo(metricas.cancelPct, 3, 5, true)} />
         <KpiCard icon={Activity} label="% B2B / D2C" value={`${metricas.b2bPct.toFixed(0)}% / ${metricas.d2cPct.toFixed(0)}%`} />
         <KpiCard icon={Calendar} label="Média de pedidos/dia (7d)" value={metricas.media7.toFixed(1)} />
         <KpiCard icon={TrendingUp} label="Projeção do mês" value={String(metricas.projecao)} sub="baseado no ritmo de 7 dias" />
         <KpiCard icon={Clock} label="Tempo criação → entrega" value="—" sub="depende de eventos da API" />
-        <KpiCard icon={Clock} label="Tempo picking → despacho" value="—" sub="depende de eventos da API" />
-        <KpiCard icon={Clock} label="Tempo despacho → entrega" value="—" sub="depende de eventos da API" />
       </div>
     </section>
   );
