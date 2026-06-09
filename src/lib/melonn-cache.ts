@@ -3,7 +3,7 @@
 
 import type { MelonnOrder, MelonnInventoryItem, MelonnCourier } from "@/lib/melonn.functions";
 
-const ORDERS_KEY = "melonn_orders_cache_v1";
+const ORDERS_KEY = "melonn_orders_cache_v2";
 const INVENTORY_KEY = "melonn_inventory_cache_v1";
 const COURIERS_KEY = "melonn_couriers_cache_v1";
 
