@@ -768,11 +768,20 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
                     <tr key={c.sku} className={`border-t border-border ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
                       <td className="px-3 py-2">{c.product}</td>
                       <td className="px-3 py-2 font-mono text-xs">{c.sku}</td>
-                      {activeWarehouses.map((wh) => (
-                        <td key={wh} className="px-3 py-2 text-right text-xs tabular-nums">
-                          {(c.byWh[wh]?.available ?? 0)} / <span className="text-muted-foreground">{c.byWh[wh]?.reserved ?? 0}</span>
-                        </td>
-                      ))}
+                      {activeWarehouses.map((wh) => {
+                        const av = c.byWh[wh]?.available ?? 0;
+                        const rs = c.byWh[wh]?.reserved ?? 0;
+                        return (
+                          <td key={wh} className="px-3 py-2 text-right text-xs tabular-nums">
+                            {av > 0 ? (
+                              <span className="text-emerald-500 font-semibold">{av}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                            {rs > 0 && <span className="text-muted-foreground"> / {rs}</span>}
+                          </td>
+                        );
+                      })}
                       <td className="px-3 py-2 text-right font-bold tabular-nums">{c.available}</td>
                       <td className="px-3 py-2 text-right">
                         <span className={`inline-flex items-center gap-1 text-xs ${cov.pulse ? "animate-pulse" : ""}`} style={{ color: cov.color }}>
