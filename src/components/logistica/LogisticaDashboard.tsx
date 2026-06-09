@@ -200,7 +200,7 @@ export function LogisticaDashboard() {
     } catch (e: any) {
       setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
     } finally {
-      const completed = !timedOut && acc.length >= total && total > 0;
+      const completed = !timedOut && acc.length > 0;
       ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
       setLoading((l) => ({ ...l, orders: false }));
     }
