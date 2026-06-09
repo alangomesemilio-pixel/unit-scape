@@ -19,6 +19,11 @@ import {
   type MelonnOrderStatus, type MelonnConfig,
 } from "@/lib/melonn.functions";
 import { melonnQueue } from "@/lib/melonn-queue";
+import {
+  loadOrdersCache, saveOrdersCache, clearOrdersCache, mergeOrders, fmtAge,
+  loadInventoryCache, saveInventoryCache, clearInventoryCache,
+  INVENTORY_TTL_MS, isExpired,
+} from "@/lib/melonn-cache";
 
 
 // ============================================================
