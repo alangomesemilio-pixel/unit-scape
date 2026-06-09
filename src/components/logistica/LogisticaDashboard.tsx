@@ -718,6 +718,8 @@ function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
 // ============================================================
 function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses }: CtxBase) {
   const [filtro, setFiltro] = useState<string>("consolidado");
+  const [statusFilter, setStatusFilter] = useState<"all" | "com" | "sem" | "transito">("all");
+  const [busca, setBusca] = useState("");
 
   // média de pedidos/dia (7d) — para cobertura
   const mediaDia = useMemo(() => {
@@ -726,34 +728,76 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
     return recent / 7;
   }, [orders]);
 
-  // Consolidado por SKU com cobertura
-  const consolidado = useMemo(() => {
-    const map = new Map<string, { sku: string; product: string; byWh: Record<string, { available: number; reserved: number }>; available: number; reserved: number; total: number }>();
+  // Totais consolidados (todas as bodegas)
+  const totais = useMemo(() => {
+    return inventory.reduce(
+      (acc, i) => ({
+        expected: acc.expected + i.expected,
+        available: acc.available + i.available,
+        reserved: acc.reserved + i.reserved,
+        allocated: acc.allocated + i.allocated,
+        in_transit: acc.in_transit + i.in_transit,
+      }),
+      { expected: 0, available: 0, reserved: 0, allocated: 0, in_transit: 0 },
+    );
+  }, [inventory]);
+
+  type ConsolidatedRow = {
+    sku: string; product: string; variant: string | null; internal_code: string | null;
+    byWh: Record<string, MelonnInventoryItem>;
+    available: number; reserved: number; allocated: number; in_transit: number; expected: number; total: number;
+  };
+
+  // Consolidado por SKU
+  const consolidado = useMemo<ConsolidatedRow[]>(() => {
+    const map = new Map<string, ConsolidatedRow>();
     inventory.forEach((i) => {
-      const cur = map.get(i.sku) ?? { sku: i.sku, product: i.product, byWh: {}, available: 0, reserved: 0, total: 0 };
-      cur.byWh[i.warehouse] = { available: i.available, reserved: i.reserved };
-      cur.available += i.available; cur.reserved += i.reserved; cur.total += i.total;
+      const cur = map.get(i.sku) ?? {
+        sku: i.sku, product: i.product, variant: i.variant, internal_code: i.internal_code,
+        byWh: {}, available: 0, reserved: 0, allocated: 0, in_transit: 0, expected: 0, total: 0,
+      };
+      cur.byWh[i.warehouse] = i;
+      cur.available += i.available;
+      cur.reserved += i.reserved;
+      cur.allocated += i.allocated;
+      cur.in_transit += i.in_transit;
+      cur.expected += i.expected;
+      cur.total += i.total;
+      if (!cur.variant && i.variant) cur.variant = i.variant;
+      if (!cur.internal_code && i.internal_code) cur.internal_code = i.internal_code;
       map.set(i.sku, cur);
     });
     return Array.from(map.values()).sort((a, b) => a.available - b.available);
   }, [inventory]);
 
+  function matchesFilters(available: number, in_transit: number, sku: string, product: string): boolean {
+    if (statusFilter === "com" && available <= 0) return false;
+    if (statusFilter === "sem" && available > 0) return false;
+    if (statusFilter === "transito" && in_transit <= 0) return false;
+    if (busca) {
+      const q = busca.toLowerCase();
+      if (!sku.toLowerCase().includes(q) && !product.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  }
+
+  const consolidadoVisivel = useMemo(
+    () => consolidado.filter((c) => matchesFilters(c.available, c.in_transit, c.sku, c.product)),
+    [consolidado, statusFilter, busca],
+  );
+
   const ruptura = consolidado.filter((c) => c.available === 0);
   const baixa = consolidado.filter((c) => c.available > 0 && (mediaDia > 0 ? c.available / mediaDia : 999) < 7);
-  // SKUs com estoque concentrado em 1 bodega (>=90% num único warehouse, total>0)
   const concentradas = consolidado.filter((c) => {
     if (c.available <= 0 || activeWarehouses.length < 2) return false;
     return activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) / c.available >= 0.9);
   });
-  // SKUs zerados em alguma bodega específica (mas com estoque em outra)
   const desbalanceadas = consolidado.filter((c) =>
     activeWarehouses.length >= 2 &&
     activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) === 0) &&
     activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) > 50),
   );
 
-  // Sugestões de transferência: para cada SKU desbalanceado, pega bodega com mais
-  // estoque e bodega zerada com mais demanda relativa.
   const sugestoes = desbalanceadas.slice(0, 5).map((c) => {
     let max = { wh: "", qty: 0 };
     let zeroWh = "";
@@ -766,22 +810,31 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
     return { sku: c.sku, from: max.wh, to: zeroWh, qty: transfer };
   }).filter((s) => s.from && s.to);
 
-  function coberturaInfo(available: number): { dias: number; color: string; label: string; pulse?: boolean } {
-    if (available === 0) return { dias: 0, color: "#ef4444", label: "Crítico", pulse: true };
-    if (mediaDia === 0) return { dias: Infinity, color: "#10b981", label: "OK" };
+  function statusLabel(available: number): { color: string; label: string; dot: string } {
+    if (available === 0) return { color: "#94a3b8", label: "Sem estoque", dot: "#94a3b8" };
+    if (available < 10) return { color: "#ef4444", label: "Crítico", dot: "#ef4444" };
+    if (available <= 50) return { color: "#eab308", label: "Atenção", dot: "#eab308" };
+    return { color: "#10b981", label: "OK", dot: "#10b981" };
+  }
+
+  function coberturaInfo(available: number): { dias: number; color: string; pulse?: boolean } {
+    if (available === 0) return { dias: 0, color: "#ef4444", pulse: true };
+    if (mediaDia === 0) return { dias: Infinity, color: "#10b981" };
     const d = available / mediaDia;
-    if (d > 15) return { dias: d, color: "#10b981", label: "OK" };
-    if (d >= 7) return { dias: d, color: "#eab308", label: "Atenção" };
-    return { dias: d, color: "#ef4444", label: "Repor" };
+    if (d > 15) return { dias: d, color: "#10b981" };
+    if (d >= 7) return { dias: d, color: "#eab308" };
+    return { dias: d, color: "#ef4444" };
   }
 
   // Visão filtrada (por bodega)
   const visaoFiltrada = useMemo(() => {
     if (filtro === "consolidado") return null;
-    return inventory.filter((i) => i.warehouse === filtro).sort((a, b) => a.available - b.available);
-  }, [inventory, filtro]);
+    return inventory
+      .filter((i) => i.warehouse === filtro)
+      .filter((i) => matchesFilters(i.available, i.in_transit, i.sku, i.product))
+      .sort((a, b) => a.available - b.available);
+  }, [inventory, filtro, statusFilter, busca]);
 
-  // Distribuição (top 15)
   const distribuicao = useMemo(() => {
     return consolidado.slice(0, 15).map((c) => {
       const obj: any = { sku: c.sku.slice(0, 12) };
@@ -790,11 +843,21 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
     });
   }, [consolidado, activeWarehouses]);
 
-  const whColors = ["#3b82f6", "#a855f7", "#f97316", "#10b981"];
+  const whColors = ["#3b82f6", "#a855f7", "#f97316", "#10b981", "#eab308"];
+  const fmtNum = (n: number) => n.toLocaleString("pt-BR");
 
   return (
     <section className="space-y-4">
       {inventoryErr && <div className="text-xs text-amber-500">⚠️ {inventoryErr}</div>}
+
+      {/* RESUMO TOTAIS */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <KpiCard icon={Calendar} label="Total Esperado" value={fmtNum(totais.expected)} sub="expected_quantity" />
+        <KpiCard icon={Boxes} label="Total Disponível" value={fmtNum(totais.available)} sub="available_quantity" color="#10b981" />
+        <KpiCard icon={Pause} label="Total Reservado" value={fmtNum(totais.reserved)} sub="reserved_quantity" color="#94a3b8" />
+        <KpiCard icon={Package} label="Total Alistado" value={fmtNum(totais.allocated)} sub="allocated_quantity" color="#f97316" />
+        <KpiCard icon={Truck} label="Em Trânsito" value={fmtNum(totais.in_transit)} sub="in_transit_quantity" color="#a855f7" />
+      </div>
 
       {/* ALERTAS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
@@ -851,14 +914,35 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
         </Card>
       )}
 
-      {/* TABS */}
-      <div className="flex items-center gap-1">
-        {[{ id: "consolidado", label: "Consolidado" }, ...activeWarehouses.map((wh) => ({ id: wh, label: `${wh} ${MELONN_WAREHOUSES.find((w) => w.code === wh)?.name ?? ""}` }))].map((t) => (
-          <button key={t.id} onClick={() => setFiltro(t.id)} className={`px-3 py-1.5 text-xs rounded-md transition ${filtro === t.id ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {/* FILTROS */}
+      <Card className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1">
+          {([
+            { id: "all", label: "Todos" },
+            { id: "com", label: "Com estoque" },
+            { id: "sem", label: "Sem estoque" },
+            { id: "transito", label: "Em trânsito" },
+          ] as const).map((f) => (
+            <button key={f.id} onClick={() => setStatusFilter(f.id)}
+              className={`px-2.5 py-1 text-xs rounded ${statusFilter === f.id ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"}`}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        <div className="h-5 w-px bg-border" />
+        <div className="flex items-center gap-1 flex-wrap">
+          {[{ id: "consolidado", label: "Todos" }, ...activeWarehouses.map((wh) => ({ id: wh, label: wh }))].map((t) => (
+            <button key={t.id} onClick={() => setFiltro(t.id)}
+              className={`px-2.5 py-1 text-xs rounded ${filtro === t.id ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"}`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-1.5 bg-secondary rounded px-2 py-1 border border-border">
+          <Search className="size-3 text-muted-foreground" />
+          <input value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="produto ou SKU" className="bg-transparent text-xs focus:outline-none w-44" />
+        </div>
+      </Card>
 
       {/* TABELA PRINCIPAL */}
       <Card className="overflow-hidden p-0">
@@ -867,71 +951,72 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
             <thead className="bg-secondary/40">
               <tr>
                 <th className="text-left px-3 py-2 font-medium">Produto</th>
+                <th className="text-left px-3 py-2 font-medium">Variante</th>
                 <th className="text-left px-3 py-2 font-medium">SKU</th>
-                {filtro === "consolidado" ? (
-                  <>
-                    {activeWarehouses.map((wh) => (
-                      <th key={wh} className="text-right px-3 py-2 font-medium">{wh}</th>
-                    ))}
-                    <th className="text-right px-3 py-2 font-medium">Total</th>
-                    <th className="text-right px-3 py-2 font-medium">Cobertura</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="text-right px-3 py-2 font-medium">Disponível</th>
-                    <th className="text-right px-3 py-2 font-medium">Reservado</th>
-                    <th className="text-right px-3 py-2 font-medium">Total</th>
-                  </>
-                )}
+                <th className="text-right px-3 py-2 font-medium">Disponível</th>
+                <th className="text-right px-3 py-2 font-medium">Em Trânsito</th>
+                <th className="text-right px-3 py-2 font-medium">Alistada</th>
+                <th className="text-right px-3 py-2 font-medium">Reservada</th>
+                <th className="text-right px-3 py-2 font-medium">Esperada</th>
+                <th className="text-left px-3 py-2 font-medium">Bodega</th>
+                <th className="text-left px-3 py-2 font-medium">Status</th>
               </tr>
             </thead>
             <tbody>
               {loading.inv ? (
-                <tr><td colSpan={8} className="text-center text-muted-foreground py-8">Carregando…</td></tr>
+                <tr><td colSpan={10} className="text-center text-muted-foreground py-8">Carregando…</td></tr>
               ) : filtro === "consolidado" ? (
-                consolidado.length === 0 ? <tr><td colSpan={8} className="text-center text-muted-foreground py-8">Sem dados.</td></tr> :
-                consolidado.map((c, idx) => {
-                  const cov = coberturaInfo(c.available);
+                consolidadoVisivel.length === 0 ? (
+                  <tr><td colSpan={10} className="text-center text-muted-foreground py-8">Sem dados.</td></tr>
+                ) : consolidadoVisivel.map((c, idx) => {
+                  const st = statusLabel(c.available);
                   return (
                     <tr key={c.sku} className={`border-t border-border ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
                       <td className="px-3 py-2">{c.product}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{c.variant ?? "—"}</td>
                       <td className="px-3 py-2 font-mono text-xs">{c.sku}</td>
-                      {activeWarehouses.map((wh) => {
-                        const av = c.byWh[wh]?.available ?? 0;
-                        const rs = c.byWh[wh]?.reserved ?? 0;
-                        return (
-                          <td key={wh} className="px-3 py-2 text-right text-xs tabular-nums">
-                            {av > 0 ? (
-                              <span className="text-emerald-500 font-semibold">{av}</span>
-                            ) : (
-                              <span className="text-muted-foreground">—</span>
-                            )}
-                            {rs > 0 && <span className="text-muted-foreground"> / {rs}</span>}
-                          </td>
-                        );
-                      })}
-                      <td className="px-3 py-2 text-right font-bold tabular-nums">{c.available}</td>
-                      <td className="px-3 py-2 text-right">
-                        <span className={`inline-flex items-center gap-1 text-xs ${cov.pulse ? "animate-pulse" : ""}`} style={{ color: cov.color }}>
-                          <span className="size-1.5 rounded-full" style={{ background: cov.color }} />
-                          {cov.dias === Infinity ? "—" : `${cov.dias.toFixed(1)} d`}
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold" style={{ color: st.color }}>{fmtNum(c.available)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{c.in_transit > 0 ? <span className="text-purple-500">{fmtNum(c.in_transit)}</span> : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{c.allocated > 0 ? fmtNum(c.allocated) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{c.reserved > 0 ? fmtNum(c.reserved) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{c.expected > 0 ? fmtNum(c.expected) : "—"}</td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground">
+                        {activeWarehouses.filter((wh) => (c.byWh[wh]?.available ?? 0) > 0 || (c.byWh[wh]?.in_transit ?? 0) > 0).join(" · ") || "—"}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span className="size-2 rounded-full" style={{ background: st.dot }} />
+                          {st.label}
                         </span>
                       </td>
                     </tr>
                   );
                 })
               ) : visaoFiltrada && visaoFiltrada.length > 0 ? (
-                visaoFiltrada.map((i, idx) => (
-                  <tr key={`${i.sku}-${idx}`} className={`border-t border-border ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
-                    <td className="px-3 py-2">{i.product}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{i.sku}</td>
-                    <td className={`px-3 py-2 text-right tabular-nums ${i.available === 0 ? "text-red-500 font-bold" : i.available < 50 ? "text-amber-500 font-semibold" : ""}`}>{i.available}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{i.reserved}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{i.total}</td>
-                  </tr>
-                ))
+                visaoFiltrada.map((i, idx) => {
+                  const st = statusLabel(i.available);
+                  return (
+                    <tr key={`${i.sku}-${idx}`} className={`border-t border-border ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
+                      <td className="px-3 py-2">{i.product}</td>
+                      <td className="px-3 py-2 text-xs text-muted-foreground">{i.variant ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-xs">{i.sku}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-semibold" style={{ color: st.color }}>{fmtNum(i.available)}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{i.in_transit > 0 ? <span className="text-purple-500">{fmtNum(i.in_transit)}</span> : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{i.allocated > 0 ? fmtNum(i.allocated) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{i.reserved > 0 ? fmtNum(i.reserved) : "—"}</td>
+                      <td className="px-3 py-2 text-right tabular-nums">{i.expected > 0 ? fmtNum(i.expected) : "—"}</td>
+                      <td className="px-3 py-2 text-[11px] text-muted-foreground">{i.warehouse}</td>
+                      <td className="px-3 py-2">
+                        <span className="inline-flex items-center gap-1.5 text-xs">
+                          <span className="size-2 rounded-full" style={{ background: st.dot }} />
+                          {st.label}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
-                <tr><td colSpan={5} className="text-center text-muted-foreground py-8">Sem dados nesta bodega.</td></tr>
+                <tr><td colSpan={10} className="text-center text-muted-foreground py-8">Sem estoque nesta bodega.</td></tr>
               )}
             </tbody>
           </table>
@@ -958,9 +1043,12 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
           </div>
         </Card>
       )}
+      {/* unused helper kept to avoid removing imports */}
+      <span className="hidden">{coberturaInfo(0).dias}</span>
     </section>
   );
 }
+
 
 // ============================================================
 // ABA 4 — TRANSPORTADORAS
