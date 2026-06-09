@@ -743,7 +743,7 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
                 {filtro === "consolidado" ? (
                   <>
                     {activeWarehouses.map((wh) => (
-                      <th key={wh} className="text-right px-3 py-2 font-medium">{wh} (disp/res)</th>
+                      <th key={wh} className="text-right px-3 py-2 font-medium">{wh}</th>
                     ))}
                     <th className="text-right px-3 py-2 font-medium">Total</th>
                     <th className="text-right px-3 py-2 font-medium">Cobertura</th>
