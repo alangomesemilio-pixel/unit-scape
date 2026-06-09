@@ -384,12 +384,46 @@ function extractDeliveredAt(detail: any): string | null {
 
 export const getMelonnOrderDelivery = createServerFn({ method: "POST" })
   .inputValidator((d: { id: string }) => d)
-  .handler(async ({ data }): Promise<{ id: string; delivered_at: string | null; error?: string }> => {
+  .handler(async ({ data }): Promise<{ id: string; delivered_at: string | null; error?: string; cached?: boolean }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // 1) Cache persistente
+    const { data: cached } = await supabaseAdmin
+      .from("melonn_order_deliveries")
+      .select("delivered_at")
+      .eq("order_id", data.id)
+      .maybeSingle();
+    if (cached) return { id: data.id, delivered_at: (cached.delivered_at as string | null) ?? null, cached: true };
+
+    // 2) Fetch da Melonn
     const cfg = await loadConfig();
     const result = await melonnFetch(`${cfg.ordersPath}/${encodeURIComponent(data.id)}`, cfg);
     if (!result.ok) return { id: data.id, delivered_at: null, error: result.error };
     const detail = result.data?.sell_order ?? result.data?.data ?? result.data;
-    return { id: data.id, delivered_at: extractDeliveredAt(detail) };
+    const delivered_at = extractDeliveredAt(detail);
+
+    // 3) Persiste no cache (upsert)
+    await supabaseAdmin
+      .from("melonn_order_deliveries")
+      .upsert({ order_id: data.id, delivered_at, fetched_at: new Date().toISOString() }, { onConflict: "order_id" });
+
+    return { id: data.id, delivered_at };
+  });
+
+export const getMelonnDeliveriesCache = createServerFn({ method: "POST" })
+  .inputValidator((d: { ids: string[] }) => d)
+  .handler(async ({ data }): Promise<{ map: Record<string, string | null> }> => {
+    if (!data.ids?.length) return { map: {} };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const map: Record<string, string | null> = {};
+    for (let i = 0; i < data.ids.length; i += 500) {
+      const chunk = data.ids.slice(i, i + 500);
+      const { data: rows } = await supabaseAdmin
+        .from("melonn_order_deliveries")
+        .select("order_id, delivered_at")
+        .in("order_id", chunk);
+      for (const r of rows ?? []) map[r.order_id as string] = (r.delivered_at as string | null) ?? null;
+    }
+    return { map };
   });
 
 
