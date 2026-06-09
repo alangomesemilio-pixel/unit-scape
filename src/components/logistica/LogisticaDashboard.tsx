@@ -18,6 +18,7 @@ import {
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
   type MelonnOrderStatus, type MelonnConfig,
 } from "@/lib/melonn.functions";
+import { melonnQueue } from "@/lib/melonn-queue";
 
 
 // ============================================================
