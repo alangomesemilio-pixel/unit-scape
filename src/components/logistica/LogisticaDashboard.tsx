@@ -130,6 +130,8 @@ export function LogisticaDashboard() {
   const [ordersTotal, setOrdersTotal] = useState<number>(0);
   const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
   const [daysBack, setDaysBack] = useState<DaysBack>(60);
+  const [resumePage, setResumePage] = useState<number | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
 
   const [inventory, setInventory] = useState<MelonnInventoryItem[]>([]);
   const [inventoryErr, setInventoryErr] = useState<string>();
@@ -146,32 +148,85 @@ export function LogisticaDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const refreshOrders = useCallback(async (days: DaysBack = daysBack) => {
+  // Cache em memória por janela de dias.
+  type OrdersCacheEntry = { orders: MelonnOrder[]; total: number; fetched_at: string; completed: boolean };
+  const ordersCacheRef = useRef<Map<DaysBack, OrdersCacheEntry>>(new Map());
+  const FETCH_TIMEOUT_MS = 60_000;
+
+  const runOrdersFetch = useCallback(async (
+    days: DaysBack,
+    opts: { startPage?: number; initialAcc?: MelonnOrder[]; initialTotal?: number } = {},
+  ) => {
     setLoading((l) => ({ ...l, orders: true }));
-    setOrders([]); setOrdersLoaded(0); setOrdersTotal(0); setOrdersErr(undefined);
+    setOrdersErr(undefined);
+    setTimedOut(false);
+    setResumePage(null);
     const PER_PAGE = 100;
-    let page = 0;
-    const acc: MelonnOrder[] = [];
+    const acc: MelonnOrder[] = [...(opts.initialAcc ?? [])];
+    let page = opts.startPage ?? 0;
+    let total = opts.initialTotal ?? 0;
+    if (page === 0) {
+      setOrders([]); setOrdersLoaded(0); setOrdersTotal(0);
+    } else {
+      setOrders([...acc]); setOrdersLoaded(acc.length); setOrdersTotal(total || acc.length);
+    }
+    const startedAt = Date.now();
+    let fetchedAt = new Date().toISOString();
     try {
       while (true) {
-        if (page > 0) await new Promise((r) => setTimeout(r, 1100));
+        if (Date.now() - startedAt > FETCH_TIMEOUT_MS) {
+          setTimedOut(true);
+          setResumePage(page);
+          break;
+        }
+        if (page > opts.startPage!) await new Promise((r) => setTimeout(r, 1100));
         const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
+        fetchedAt = r.fetched_at;
+        if (page === 0 || total === 0) total = r.total_count || acc.length;
         setOrders([...acc]);
         setOrdersLoaded(acc.length);
-        if (page === 0) setOrdersTotal(r.total_count || acc.length);
-        setOrdersAt(r.fetched_at);
-        if (!r.has_more || r.orders.length === 0) break;
+        setOrdersTotal(total);
+        setOrdersAt(fetchedAt);
+        const done = acc.length >= total || r.orders.length < PER_PAGE || !r.has_more;
+        if (done) break;
         page++;
         if (page > 200) break; // safety
       }
     } catch (e: any) {
       setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
     } finally {
+      const completed = !timedOut && acc.length >= total && total > 0;
+      ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
       setLoading((l) => ({ ...l, orders: false }));
     }
-  }, [daysBack]);
+    // Workaround for opts.startPage default in condition above:
+  }, [timedOut]);
+
+  const refreshOrders = useCallback((days: DaysBack = daysBack, force = false) => {
+    if (!force) {
+      const cached = ordersCacheRef.current.get(days);
+      if (cached && cached.completed) {
+        setOrders(cached.orders);
+        setOrdersLoaded(cached.orders.length);
+        setOrdersTotal(cached.total);
+        setOrdersAt(cached.fetched_at);
+        setOrdersErr(undefined);
+        setTimedOut(false);
+        setResumePage(null);
+        setLoading((l) => ({ ...l, orders: false }));
+        return Promise.resolve();
+      }
+    }
+    return runOrdersFetch(days, { startPage: 0 });
+  }, [daysBack, runOrdersFetch]);
+
+  const continueLoading = useCallback(() => {
+    if (resumePage == null) return;
+    runOrdersFetch(daysBack, { startPage: resumePage, initialAcc: orders, initialTotal: ordersTotal });
+  }, [resumePage, daysBack, orders, ordersTotal, runOrdersFetch]);
+
   const refreshInventory = useCallback(async () => {
     setLoading((l) => ({ ...l, inv: true }));
     const r = await getMelonnInventory();
@@ -194,7 +249,8 @@ export function LogisticaDashboard() {
 
   async function refreshAll() {
     setRefreshing(true);
-    await Promise.all([refreshOrders(daysBack), refreshInventory(), refreshCouriers()]);
+    ordersCacheRef.current.clear();
+    await Promise.all([refreshOrders(daysBack, true), refreshInventory(), refreshCouriers()]);
     setRefreshing(false);
   }
 
@@ -205,11 +261,13 @@ export function LogisticaDashboard() {
 
   useEffect(() => {
     getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
-    refreshOrders(daysBack); refreshInventory(); refreshCouriers(); refreshMaterials();
+    refreshOrders(daysBack, true); refreshInventory(); refreshCouriers(); refreshMaterials();
     const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+
 
 
   // ============= KPIs HEADER =============
