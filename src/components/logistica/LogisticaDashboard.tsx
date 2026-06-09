@@ -246,7 +246,7 @@ export function LogisticaDashboard() {
   }, []);
   const refreshCouriers = useCallback(async () => {
     setLoading((l) => ({ ...l, cou: true }));
-    const r = await getMelonnCouriers();
+    const r = await melonnQueue(() => getMelonnCouriers());
     setCouriers(r.couriers); setCouriersErr(r.error);
     setLoading((l) => ({ ...l, cou: false }));
   }, []);
