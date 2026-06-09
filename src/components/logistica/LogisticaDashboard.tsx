@@ -35,7 +35,7 @@ type Material = {
 
 type TabId = "pedidos" | "performance" | "estoque" | "transportadoras" | "embalagens";
 type Periodo = "hoje" | "7d" | "30d";
-type DaysBack = 7 | 30 | 60 | 90;
+type DaysBack = 7 | 30 | 90 | 365 | "all";
 type StatusFilter = "all" | MelonnOrderStatus;
 
 type TipoFilter = "all" | "b2b" | "d2c";
