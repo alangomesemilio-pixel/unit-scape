@@ -512,7 +512,7 @@ export function LogisticaDashboard() {
             {!cacheInfo.checking && cacheInfo.ageMs != null && cacheInfo.ageMs > 30_000 && !cacheInfo.lastDelta && (
               <span className="text-muted-foreground/70">Cache de {fmtAge(cacheInfo.ageMs)}</span>
             )}
-            <span className="text-muted-foreground/60">· Auto-refresh 5min</span>
+            <span className="text-muted-foreground/60">· Atualização manual</span>
           </p>
           {loading.orders && (
             <div className="mt-2 max-w-md">
