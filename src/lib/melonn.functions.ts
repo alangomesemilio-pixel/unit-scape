@@ -215,11 +215,14 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string, opts: { daysBack?: number | null; page?: number; perPage?: number } = {}): string {
-  const { daysBack = 365, page = 0, perPage = 100 } = opts;
+function buildOrdersPath(basePath: string, opts: { daysBack?: number | null; sinceIso?: string | null; page?: number; perPage?: number } = {}): string {
+  const { daysBack = 365, sinceIso = null, page = 0, perPage = 100 } = opts;
   const sep = basePath.includes("?") ? "&" : "?";
   let path = `${basePath}${sep}page=${page}&per_page=${perPage}`;
-  if (daysBack != null) {
+  // sinceIso tem prioridade sobre daysBack (filtro fino para busca incremental).
+  if (sinceIso) {
+    path += `&initial_creation_date=${encodeURIComponent(sinceIso)}`;
+  } else if (daysBack != null) {
     const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
     path += `&initial_creation_date=${since}`;
   }
