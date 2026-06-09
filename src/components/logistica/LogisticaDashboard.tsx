@@ -135,7 +135,7 @@ export function LogisticaDashboard() {
   const [ordersAt, setOrdersAt] = useState<string>();
   const [ordersTotal, setOrdersTotal] = useState<number>(0);
   const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
-  const [daysBack, setDaysBack] = useState<DaysBack>("all");
+  const [daysBack, setDaysBack] = useState<DaysBack>(30);
   const [resumePage, setResumePage] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
 
