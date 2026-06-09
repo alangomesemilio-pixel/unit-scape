@@ -352,7 +352,7 @@ export function LogisticaDashboard() {
       setActiveWarehouses(cfg.config.warehouseCodes);
       refreshMaterials(); // Supabase, não conta no rate limit Melonn.
 
-      // 1) Cache de pedidos: mostra instantaneamente se existir.
+      // 1) Cache de pedidos: usa como base. Só busca se não existir cache.
       const cached = loadOrdersCache();
       if (cached) {
         setOrders(cached.data);
@@ -361,10 +361,9 @@ export function LogisticaDashboard() {
         setOrdersAt(cached.fetched_at);
         setLoading((l) => ({ ...l, orders: false }));
         setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
-        // Busca incremental em background (últimas 2h).
-        incrementalRefresh(2);
+        // Sem fetch automático — usuário aciona via "Atualizar agora".
       } else {
-        // Sem cache: busca completa.
+        // Sem cache: busca completa inicial.
         await refreshOrders(daysBack, true);
       }
 
@@ -373,9 +372,7 @@ export function LogisticaDashboard() {
       // 3) Transportadoras: peso baixo, sempre atualiza.
       await refreshCouriers();
     })();
-    // Auto-refresh leve: só incremental últimas 2h.
-    const t = setInterval(() => { incrementalRefresh(2); }, REFRESH_MS);
-    return () => clearInterval(t);
+    // Sem auto-refresh: atualização é manual via botão.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
