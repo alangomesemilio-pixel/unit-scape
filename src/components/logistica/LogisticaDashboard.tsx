@@ -172,6 +172,7 @@ export function LogisticaDashboard() {
     }
     const startedAt = Date.now();
     let fetchedAt = new Date().toISOString();
+    let iter = 0;
     try {
       while (true) {
         if (Date.now() - startedAt > FETCH_TIMEOUT_MS) {
@@ -179,7 +180,9 @@ export function LogisticaDashboard() {
           setResumePage(page);
           break;
         }
-        if (page > opts.startPage!) await new Promise((r) => setTimeout(r, 1100));
+        if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
+        iter++;
+
         const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
