@@ -242,7 +242,9 @@ export function LogisticaDashboard() {
     orders, inventory, couriers, materials, activeWarehouses,
     ordersErr, inventoryErr, couriersErr,
     loading, refreshMaterials, setMaterials,
+    ordersTotal, ordersLoaded, daysBack, onDaysBackChange: handleDaysBackChange,
   };
+
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6 bg-background">
