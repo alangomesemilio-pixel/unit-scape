@@ -557,6 +557,9 @@ export function LogisticaDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button onClick={reloadEverything} disabled={refreshing} title="Limpa o cache e refaz a busca completa" className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50">
+            Recarregar tudo
+          </button>
           <button onClick={() => setSettingsOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80">
             <Settings className="size-4" /> Configurações
           </button>
