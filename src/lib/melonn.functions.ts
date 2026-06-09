@@ -162,7 +162,7 @@ async function loadConfig(): Promise<MelonnConfig> {
 
 // ---------- Rate limit (1 req/s) ----------
 let lastCallAt = 0;
-const MIN_INTERVAL_MS = 1050;
+const MIN_INTERVAL_MS = 1200;
 async function rateLimit() {
   const now = Date.now();
   const wait = lastCallAt + MIN_INTERVAL_MS - now;
