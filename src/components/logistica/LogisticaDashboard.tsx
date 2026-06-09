@@ -171,6 +171,14 @@ export function LogisticaDashboard() {
   });
   const initialMountRef = useRef(false);
 
+  // Progresso da busca paginada (página atual + pedidos carregados).
+  const [fetchProgress, setFetchProgress] = useState<{
+    currentPage: number;     // página atualmente sendo buscada (1-indexed)
+    completedPages: number;  // páginas já concluídas
+    ordersLoaded: number;    // pedidos acumulados
+    isLastPageReached: boolean;
+  }>({ currentPage: 0, completedPages: 0, ordersLoaded: 0, isLastPageReached: false });
+
   const runOrdersFetch = useCallback(async (
     days: DaysBack,
     opts: { startPage?: number; initialAcc?: MelonnOrder[]; initialTotal?: number } = {},
@@ -193,6 +201,7 @@ export function LogisticaDashboard() {
     let iter = 0;
     let didTimeout = false;
     let hadError = false;
+    setFetchProgress({ currentPage: (opts.startPage ?? 0) + 1, completedPages: opts.startPage ?? 0, ordersLoaded: acc.length, isLastPageReached: false });
     try {
       while (true) {
         if (Date.now() - startedAt > FETCH_TIMEOUT_MS) {
@@ -203,6 +212,7 @@ export function LogisticaDashboard() {
         }
         if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
         iter++;
+        setFetchProgress((p) => ({ ...p, currentPage: page + 1 }));
 
         const r = await melonnQueue(() => getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } }));
         if (r.error) { hadError = true; setOrdersErr(r.error); break; }
@@ -215,6 +225,7 @@ export function LogisticaDashboard() {
         setOrdersLoaded(acc.length);
         setOrdersTotal(total);
         setOrdersAt(fetchedAt);
+        setFetchProgress({ currentPage: page + 1, completedPages: page + 1, ordersLoaded: acc.length, isLastPageReached: r.orders.length < PER_PAGE });
         // Única condição de parada: página veio incompleta = fim real.
         if (r.orders.length < PER_PAGE) break;
         page++;
@@ -535,11 +546,22 @@ export function LogisticaDashboard() {
               <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                 <span className="flex items-center gap-1.5">
                   <RefreshCw className="size-3 animate-spin" />
-                  Carregando… {ordersLoaded.toLocaleString("pt-BR")} pedidos encontrados
+                  Buscando página {fetchProgress.currentPage}
+                  {fetchProgress.completedPages > 0 && ` · ${fetchProgress.completedPages} concluída${fetchProgress.completedPages > 1 ? "s" : ""}`}
+                </span>
+                <span className="tabular-nums font-medium text-foreground">
+                  {fetchProgress.ordersLoaded.toLocaleString("pt-BR")} pedidos
                 </span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                <div className="h-full w-1/3 bg-primary animate-pulse" />
+                {/* Sem total real: barra determinística baseada nas páginas concluídas (cada página ≈ 1%, cap 95%) */}
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${Math.min(95, Math.max(5, fetchProgress.completedPages * 5 + (fetchProgress.currentPage > fetchProgress.completedPages ? 2 : 0)))}%` }}
+                />
+              </div>
+              <div className="text-[10px] text-muted-foreground/70 mt-1">
+                ~100 pedidos por página · busca contínua até a Melonn devolver página incompleta
               </div>
             </div>
           )}
