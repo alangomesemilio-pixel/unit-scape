@@ -14,6 +14,9 @@ import {
   Clock,
   Undo2,
   DollarSign,
+  Settings,
+  X,
+  PlugZap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,12 +24,16 @@ import {
   getMelonnOrders,
   getMelonnInventory,
   getMelonnMetrics,
+  getMelonnConfig,
+  saveMelonnConfig,
+  testMelonnEndpoint,
   melonnStatusLabel,
   MELONN_STATUSES,
   type MelonnOrder,
   type MelonnInventoryItem,
   type MelonnMetrics,
   type MelonnOrderStatus,
+  type MelonnConfig,
 } from "@/lib/melonn.functions";
 
 type Material = {
