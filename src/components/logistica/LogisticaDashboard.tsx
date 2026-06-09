@@ -171,6 +171,14 @@ export function LogisticaDashboard() {
   });
   const initialMountRef = useRef(false);
 
+  // Progresso da busca paginada (página atual + pedidos carregados).
+  const [fetchProgress, setFetchProgress] = useState<{
+    currentPage: number;     // página atualmente sendo buscada (1-indexed)
+    completedPages: number;  // páginas já concluídas
+    ordersLoaded: number;    // pedidos acumulados
+    isLastPageReached: boolean;
+  }>({ currentPage: 0, completedPages: 0, ordersLoaded: 0, isLastPageReached: false });
+
   const runOrdersFetch = useCallback(async (
     days: DaysBack,
     opts: { startPage?: number; initialAcc?: MelonnOrder[]; initialTotal?: number } = {},
