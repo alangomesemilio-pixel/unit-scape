@@ -207,12 +207,17 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string, opts: { daysBack?: number; page?: number; perPage?: number } = {}): string {
-  const { daysBack = 60, page = 0, perPage = 100 } = opts;
-  const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+function buildOrdersPath(basePath: string, opts: { daysBack?: number | null; page?: number; perPage?: number } = {}): string {
+  const { daysBack = 365, page = 0, perPage = 100 } = opts;
   const sep = basePath.includes("?") ? "&" : "?";
-  return `${basePath}${sep}page=${page}&per_page=${perPage}&initial_creation_date=${since}`;
+  let path = `${basePath}${sep}page=${page}&per_page=${perPage}`;
+  if (daysBack != null) {
+    const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+    path += `&initial_creation_date=${since}`;
+  }
+  return path;
 }
+
 
 function mapRawOrder(o: any, idx: number): MelonnOrder {
   const state = o.sell_order_state ?? {};
