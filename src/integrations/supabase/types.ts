@@ -187,6 +187,24 @@ export type Database = {
         }
         Relationships: []
       }
+      melonn_order_deliveries: {
+        Row: {
+          delivered_at: string | null
+          fetched_at: string
+          order_id: string
+        }
+        Insert: {
+          delivered_at?: string | null
+          fetched_at?: string
+          order_id: string
+        }
+        Update: {
+          delivered_at?: string | null
+          fetched_at?: string
+          order_id?: string
+        }
+        Relationships: []
+      }
       packaging_materials: {
         Row: {
           created_at: string
