@@ -334,7 +334,8 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const page = data.page ?? 0;
     const perPage = data.perPage ?? 100;
-    const daysBack = data.daysBack === undefined ? 365 : data.daysBack; // null = sem filtro
+    // Padrão: sem filtro de data (traz histórico completo). Passe daysBack=N para limitar.
+    const daysBack = data.daysBack === undefined ? null : data.daysBack;
     const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
@@ -347,6 +348,9 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
       result.data?.total ??
       orders.length,
     );
+    if (page === 0) {
+      console.log("[Melonn] /sell-orders page=0 → total_count:", total_count, "| data.length:", orders.length, "| daysBack:", daysBack);
+    }
     // Critério de parada robusto: pára quando a página vier com menos itens que perPage.
     const has_more = orders.length >= perPage;
     return { orders, page, per_page: perPage, total_count, has_more, fetched_at };
