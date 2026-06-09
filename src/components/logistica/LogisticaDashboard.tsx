@@ -483,7 +483,9 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
           {isLoadingPages ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <RefreshCw className="size-3 animate-spin" />
-              Carregando pedidos… {ordersLoaded}{ordersTotal > 0 ? ` de ${ordersTotal}` : ""}
+              Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal || "…"}</strong>
+              <span>·</span>
+              Carregando: <strong className="text-foreground tabular-nums">{ordersLoaded}{ordersTotal > 0 ? `/${ordersTotal}` : ""}</strong>…
             </span>
           ) : (
             <>
@@ -494,14 +496,23 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
               <span className="text-muted-foreground">
                 Exibindo: <strong className="text-foreground tabular-nums">{orders.length}</strong> pedidos
               </span>
-              {mismatch && (
+              {!mismatch && !timedOut && ordersTotal > 0 && (
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500">✅</span>
+              )}
+              {mismatch && !timedOut && (
                 <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
                   ⚠️ {Math.max(0, ordersTotal - orders.length)} pedidos ainda carregando
                 </span>
               )}
+              {timedOut && (
+                <button onClick={onContinueLoading} className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25">
+                  Continuar carregando ({Math.max(0, ordersTotal - orders.length)} restantes)
+                </button>
+              )}
             </>
           )}
         </div>
+
       </Card>
 
 
