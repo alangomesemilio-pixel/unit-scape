@@ -96,6 +96,9 @@ export function LogisticaDashboard() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loadingMat, setLoadingMat] = useState(true);
 
+  // ===== Settings =====
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
   async function refreshOrders() {
     setLoadingOrders(true);
     const r = await getMelonnOrders();
@@ -205,14 +208,22 @@ export function LogisticaDashboard() {
             Integração Melonn · pedidos, estoque, materiais e métricas operacionais.
           </p>
         </div>
-        <button
-          onClick={() => {
-            refreshOrders();
-            refreshInventory();
-            refreshMetrics();
-          }}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
-        >
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
+          >
+            <Settings className="size-4" />
+            Configurações
+          </button>
+          <button
+            onClick={() => {
+              refreshOrders();
+              refreshInventory();
+              refreshMetrics();
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
+          >
           <RefreshCw className="size-4" />
           Atualizar Melonn
         </button>
