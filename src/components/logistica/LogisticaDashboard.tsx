@@ -133,7 +133,7 @@ export function LogisticaDashboard() {
   const [couriersErr, setCouriersErr] = useState<string>();
 
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-3", "BOG-2"]);
+  const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-2", "MED-3", "BOG-2", "BAQ-1", "CAL-2"]);
   const [loading, setLoading] = useState({ orders: true, inv: true, cou: true, mat: true });
 
   const [tab, setTab] = useState<TabId>("pedidos");
