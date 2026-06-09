@@ -271,10 +271,19 @@ export function LogisticaDashboard() {
     if (!r.error && r.items.length > 0) saveInventoryCache(r.items, r.fetched_at);
     setLoading((l) => ({ ...l, inv: false }));
   }, []);
-  const refreshCouriers = useCallback(async () => {
+  const refreshCouriers = useCallback(async (opts: { force?: boolean } = {}) => {
+    if (!opts.force) {
+      const blob = loadCouriersCache();
+      if (blob) {
+        setCouriers(blob.data);
+        setLoading((l) => ({ ...l, cou: false }));
+        return;
+      }
+    }
     setLoading((l) => ({ ...l, cou: true }));
     const r = await melonnQueue(() => getMelonnCouriers());
     setCouriers(r.couriers); setCouriersErr(r.error);
+    if (!r.error && r.couriers.length > 0) saveCouriersCache(r.couriers, r.fetched_at);
     setLoading((l) => ({ ...l, cou: false }));
   }, []);
   const refreshMaterials = useCallback(async () => {
