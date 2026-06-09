@@ -8,28 +8,28 @@ import { createServerFn } from "@tanstack/react-start";
  * Rate limit: 1 req/s — throttle global de 1100ms.
  *
  * Endpoints:
- *   - GET /sell-orders?page=0&per_page=50&initial_creation_date=<ISO>
+ *   - GET /sell-orders?page=0&per_page=100&initial_creation_date=<ISO>
  *   - GET /stock?warehouse_code=<code>
  *   - GET /courier-companies?warehouse_code=<code>
  */
 
 export type MelonnOrderStatus =
-  | "picking"        // 1,2,9,10,12
+  | "picking"        // 1,2,9,10,12,26
   | "processing"     // 3,4,22,25,27,28
-  | "ready"          // 5,24,26
+  | "ready"          // 5,24
   | "in_transit"     // 6,7,19
   | "delivered"      // 8
   | "cancelled"      // 15,17,18
-  | "on_hold";       // 13,20,21
+  | "on_hold";       // 13,20,21,29,30,31
 
 const STATUS_CODE_MAP: Record<number, MelonnOrderStatus> = {
-  1: "picking", 2: "picking", 9: "picking", 10: "picking", 12: "picking",
+  1: "picking", 2: "picking", 9: "picking", 10: "picking", 12: "picking", 26: "picking",
   3: "processing", 4: "processing", 22: "processing", 25: "processing", 27: "processing", 28: "processing",
-  5: "ready", 24: "ready", 26: "ready",
+  5: "ready", 24: "ready",
   6: "in_transit", 7: "in_transit", 19: "in_transit",
   8: "delivered",
   15: "cancelled", 17: "cancelled", 18: "cancelled",
-  13: "on_hold", 20: "on_hold", 21: "on_hold",
+  13: "on_hold", 20: "on_hold", 21: "on_hold", 29: "on_hold", 30: "on_hold", 31: "on_hold",
 };
 
 const STATUS_LABELS: Record<MelonnOrderStatus, string> = {
@@ -62,17 +62,22 @@ export const MELONN_WAREHOUSES = [
 
 export interface MelonnOrder {
   id: string;
-  number: string;              // external_order_number
-  internal_number: string | null; // internal_order_number (tracking Melonn)
+  number: string;
+  internal_number: string | null;
   customer: string;
   status: MelonnOrderStatus;
   status_code: number | null;
   status_name: string | null;
   carrier: string | null;
+  carrier_code: string | null;
   warehouse: string | null;
+  warehouse_code: string | null;
   creation_date: string | null;
+  delivered_at: string | null;
+  last_status_update: string | null;
   is_b2b: boolean;
   tracking_link: string | null;
+  destination_city: string | null;
 }
 
 export interface MelonnInventoryItem {
@@ -84,11 +89,10 @@ export interface MelonnInventoryItem {
   warehouse: string;
 }
 
-export interface MelonnMetrics {
-  delivery_sla_pct: number;
-  avg_picking_minutes: number;
-  return_rate_pct: number;
-  cost_per_order: number;
+export interface MelonnCourier {
+  code: string;
+  name: string;
+  warehouse: string;
 }
 
 export interface MelonnConfig {
@@ -96,7 +100,7 @@ export interface MelonnConfig {
   ordersPath: string;
   inventoryPath: string;
   couriersPath: string;
-  warehouseCodes: string[]; // bodegas ativas
+  warehouseCodes: string[];
 }
 
 const DEFAULTS: MelonnConfig = {
@@ -118,21 +122,14 @@ async function loadConfig(): Promise<MelonnConfig> {
   const fallback: MelonnConfig = { ...DEFAULTS, baseUrl: envBase || DEFAULTS.baseUrl };
   try {
     const { data } = await supabaseAdmin
-      .from("soma_kv")
-      .select("value")
-      .eq("key", "melonn_config")
-      .maybeSingle();
+      .from("soma_kv").select("value").eq("key", "melonn_config").maybeSingle();
     const v: any = data?.value ?? {};
     let baseUrl = (v.baseUrl || fallback.baseUrl).replace(/\/$/, "");
     if (/api\.melonn\.com/i.test(baseUrl)) baseUrl = DEFAULTS.baseUrl;
-
     const ordersPath = LEGACY_PATHS.has(v.ordersPath) ? DEFAULTS.ordersPath : v.ordersPath || fallback.ordersPath;
     const inventoryPath = LEGACY_PATHS.has(v.inventoryPath) ? DEFAULTS.inventoryPath : v.inventoryPath || fallback.inventoryPath;
     const couriersPath = LEGACY_PATHS.has(v.couriersPath) ? DEFAULTS.couriersPath : v.couriersPath || fallback.couriersPath;
-    const warehouseCodes = Array.isArray(v.warehouseCodes) && v.warehouseCodes.length
-      ? v.warehouseCodes
-      : fallback.warehouseCodes;
-
+    const warehouseCodes = Array.isArray(v.warehouseCodes) && v.warehouseCodes.length ? v.warehouseCodes : fallback.warehouseCodes;
     return { baseUrl, ordersPath, inventoryPath, couriersPath, warehouseCodes };
   } catch {
     return fallback;
@@ -157,20 +154,13 @@ async function melonnFetch(
   if (!rawKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "").trim();
   const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-
   await rateLimit();
   try {
     const res = await fetch(url, {
-      headers: {
-        "x-api-key": apiKey,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
+      headers: { "x-api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
     });
     const text = await res.text().catch(() => "");
-    if (!res.ok) {
-      return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
-    }
+    if (!res.ok) return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
     let data: any = null;
     try { data = text ? JSON.parse(text) : null; } catch { /* */ }
     return { ok: true, data, status: res.status };
@@ -192,11 +182,18 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string): string {
-  // initial_creation_date = 30 dias atrás em ISO 8601
-  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+function buildOrdersPath(basePath: string, daysBack = 30): string {
+  const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
   const sep = basePath.includes("?") ? "&" : "?";
-  return `${basePath}${sep}page=0&per_page=50&initial_creation_date=${since}`;
+  return `${basePath}${sep}page=0&per_page=100&initial_creation_date=${since}`;
+}
+
+function extractList(data: any, ...keys: string[]): any[] {
+  if (Array.isArray(data)) return data;
+  for (const k of keys) if (Array.isArray(data?.[k])) return data[k];
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
 }
 
 export const getMelonnConfig = createServerFn({ method: "GET" }).handler(
@@ -218,9 +215,7 @@ export const saveMelonnConfig = createServerFn({ method: "POST" })
       couriersPath: data.couriersPath ?? current.couriersPath,
       warehouseCodes: data.warehouseCodes ?? current.warehouseCodes,
     };
-    await supabaseAdmin
-      .from("soma_kv")
-      .upsert({ key: "melonn_config", value: merged as any }, { onConflict: "key" });
+    await supabaseAdmin.from("soma_kv").upsert({ key: "melonn_config", value: merged as any }, { onConflict: "key" });
     return { ok: true, config: merged };
   });
 
@@ -230,71 +225,61 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const wh = cfg.warehouseCodes[0] ?? "MED-3";
     const path =
-      data.endpoint === "orders"
-        ? buildOrdersPath(cfg.ordersPath)
-        : data.endpoint === "inventory"
-          ? `${cfg.inventoryPath}?warehouse_code=${wh}`
-          : `${cfg.couriersPath}?warehouse_code=${wh}`;
+      data.endpoint === "orders" ? buildOrdersPath(cfg.ordersPath)
+      : data.endpoint === "inventory" ? `${cfg.inventoryPath}?warehouse_code=${wh}`
+      : `${cfg.couriersPath}?warehouse_code=${wh}`;
     const res = await melonnFetch(path, cfg);
     if (!res.ok) return { ok: false, status: res.status, error: res.error };
-    const sample = JSON.stringify(res.data).slice(0, 300);
-    return { ok: true, status: res.status, sample };
+    return { ok: true, status: res.status, sample: JSON.stringify(res.data).slice(0, 300) };
   });
 
-function extractList(data: any, ...keys: string[]): any[] {
-  if (Array.isArray(data)) return data;
-  for (const k of keys) {
-    if (Array.isArray(data?.[k])) return data[k];
-  }
-  if (Array.isArray(data?.data)) return data.data;
-  if (Array.isArray(data?.items)) return data.items;
-  return [];
-}
-
 export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ orders: MelonnOrder[]; error?: string }> => {
+  async (): Promise<{ orders: MelonnOrder[]; fetched_at: string; error?: string }> => {
     const cfg = await loadConfig();
-    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath), cfg);
-    if (!result.ok) return { orders: [], error: result.error };
-
+    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, 30), cfg);
+    const fetched_at = new Date().toISOString();
+    if (!result.ok) return { orders: [], fetched_at, error: result.error };
     const raw = extractList(result.data, "sell_orders", "orders");
     const orders: MelonnOrder[] = raw.map((o: any, idx: number) => {
       const state = o.sell_order_state ?? {};
       const code = typeof state.code === "number" ? state.code : Number(state.code) || null;
-      const customerObj = o.customer ?? o.buyer ?? o.recipient ?? {};
-      const customer =
-        customerObj.name ??
-        customerObj.full_name ??
-        [customerObj.first_name, customerObj.last_name].filter(Boolean).join(" ").trim() ??
-        o.customer_name ??
-        "—";
+      const cust = o.customer ?? o.buyer ?? o.recipient ?? {};
+      const customer = cust.name ?? cust.full_name ?? [cust.first_name, cust.last_name].filter(Boolean).join(" ").trim() ?? o.customer_name ?? "—";
+      const status = mapStatusFromCode(code, state.name);
+      const delivered_at =
+        status === "delivered"
+          ? o.delivery_date ?? o.delivered_at ?? o.shipping?.delivered_at ?? o.last_state_update ?? null
+          : null;
       return {
         id: String(o.id ?? idx),
         number: String(o.external_order_number ?? o.id ?? idx),
         internal_number: o.internal_order_number ?? null,
         customer: customer || "—",
-        status: mapStatusFromCode(code, state.name),
+        status,
         status_code: code,
         status_name: state.name ?? null,
-        carrier: o.shipping_method?.name ?? null,
-        warehouse: o.warehouse?.name ?? o.warehouse?.code ?? null,
+        carrier: o.shipping_method?.name ?? o.courier_company?.name ?? null,
+        carrier_code: o.shipping_method?.code ?? o.courier_company?.code ?? null,
+        warehouse: o.warehouse?.name ?? null,
+        warehouse_code: o.warehouse?.code ?? null,
         creation_date: o.creation_date ?? null,
+        delivered_at,
+        last_status_update: o.last_state_update ?? o.last_status_update ?? null,
         is_b2b: !!o.is_b2b,
         tracking_link: o.melonn_tracking_link ?? null,
+        destination_city: o.shipping_address?.city ?? cust.city ?? null,
       };
     });
-
-    return { orders };
+    return { orders, fetched_at };
   },
 );
 
 export const getMelonnInventory = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ items: MelonnInventoryItem[]; error?: string }> => {
+  async (): Promise<{ items: MelonnInventoryItem[]; fetched_at: string; error?: string }> => {
     const cfg = await loadConfig();
     const codes = cfg.warehouseCodes.length ? cfg.warehouseCodes : DEFAULTS.warehouseCodes;
     const all: MelonnInventoryItem[] = [];
     const errors: string[] = [];
-
     for (const wh of codes) {
       const result = await melonnFetch(`${cfg.inventoryPath}?warehouse_code=${encodeURIComponent(wh)}`, cfg);
       if (!result.ok) { errors.push(`${wh}: ${result.error}`); continue; }
@@ -306,42 +291,32 @@ export const getMelonnInventory = createServerFn({ method: "GET" }).handler(
         all.push({
           product: String(i.product_name ?? i.product?.name ?? i.name ?? i.title ?? "—"),
           sku: String(i.sku ?? i.product_sku ?? i.product?.sku ?? "—"),
-          available, reserved, total,
+          available, reserved, total, warehouse: wh,
+        });
+      }
+    }
+    return { items: all, fetched_at: new Date().toISOString(), error: errors.length ? errors.join(" · ") : undefined };
+  },
+);
+
+export const getMelonnCouriers = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ couriers: MelonnCourier[]; fetched_at: string; error?: string }> => {
+    const cfg = await loadConfig();
+    const codes = cfg.warehouseCodes.length ? cfg.warehouseCodes : DEFAULTS.warehouseCodes;
+    const all: MelonnCourier[] = [];
+    const errors: string[] = [];
+    for (const wh of codes) {
+      const result = await melonnFetch(`${cfg.couriersPath}?warehouse_code=${encodeURIComponent(wh)}`, cfg);
+      if (!result.ok) { errors.push(`${wh}: ${result.error}`); continue; }
+      const raw = extractList(result.data, "couriers", "courier_companies", "shipping_methods");
+      for (const c of raw) {
+        all.push({
+          code: String(c.code ?? c.id ?? "—"),
+          name: String(c.name ?? c.label ?? "—"),
           warehouse: wh,
         });
       }
     }
-
-    return { items: all, error: errors.length ? errors.join(" · ") : undefined };
-  },
-);
-
-/**
- * Métricas derivadas dos pedidos (Melonn não expõe endpoint dedicado).
- */
-export const getMelonnMetrics = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ metrics: MelonnMetrics | null; error?: string }> => {
-    const cfg = await loadConfig();
-    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath), cfg);
-    if (!result.ok) return { metrics: null, error: result.error };
-
-    const raw = extractList(result.data, "sell_orders", "orders");
-    const total = raw.length;
-    let returned = 0, delivered = 0;
-    for (const o of raw) {
-      const code = Number(o.sell_order_state?.code) || null;
-      const st = mapStatusFromCode(code, o.sell_order_state?.name);
-      if (st === "delivered") delivered++;
-      // Códigos de devolução não estão no mapping; usa nome
-      if (/RETURN|DEVOL/i.test(o.sell_order_state?.name ?? "")) returned++;
-    }
-
-    const metrics: MelonnMetrics = {
-      delivery_sla_pct: total > 0 ? Math.round((delivered / total) * 1000) / 10 : 0,
-      avg_picking_minutes: 0,
-      return_rate_pct: total > 0 ? Math.round((returned / total) * 1000) / 10 : 0,
-      cost_per_order: 0,
-    };
-    return { metrics };
+    return { couriers: all, fetched_at: new Date().toISOString(), error: errors.length ? errors.join(" · ") : undefined };
   },
 );
