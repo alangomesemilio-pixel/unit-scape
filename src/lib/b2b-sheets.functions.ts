@@ -4,28 +4,27 @@ const SPREADSHEET_ID = "1zfSJjuivQkNs0sU2lizJWmaOeBBzftIMwz0eF6WYhuc";
 const SHEET_GID = 970696640;
 
 export interface B2BRow {
-  data: string;            // ISO date
+  data: string;
   produto: string;
   sku: string;
   quantidade: number;
-  valor_total: number;     // E
-  valor_venda_item: number;// F
-  custo_unit: number;      // G
-  custo_total: number;     // H
-  ticket_medio_pago: number;// I
-  frete: number;           // J
-  fulfillment: number;     // K
-  vendedor: string;        // L
-  cliente: string;         // M
-  telefone: string;        // N
-  cnpj: string;            // O
-  estado: string;          // P
-  cidade: string;          // Q
-  endereco: string;        // R
-  midia_paga: number;      // S
-  imposto: number;         // T
-  ativacao: number;        // U
-  // derived
+  valor_total: number;
+  valor_venda_item: number;
+  custo_unit: number;
+  custo_total: number;
+  ticket_medio_pago: number;
+  frete: number;
+  fulfillment: number;
+  vendedor: string;
+  cliente: string;
+  telefone: string;
+  cnpj: string;
+  estado: string;
+  cidade: string;
+  endereco: string;
+  midia_paga: number;
+  imposto: number;
+  ativacao: number;
   margem: number;
   margem_pct: number;
   lucro_liquido: number;
@@ -38,84 +37,7 @@ export interface B2BSheetResult {
   sheetTitle: string;
 }
 
-// ----------- JWT signing via WebCrypto (Worker compatible) -----------
-
-function base64UrlEncode(input: ArrayBuffer | string): string {
-  let str: string;
-  if (typeof input === "string") {
-    str = btoa(unescape(encodeURIComponent(input)));
-  } else {
-    const bytes = new Uint8Array(input);
-    let bin = "";
-    for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
-    str = btoa(bin);
-  }
-  return str.replace(/=+$/, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const cleaned = pem
-    .replace(/-----BEGIN [^-]+-----/g, "")
-    .replace(/-----END [^-]+-----/g, "")
-    .replace(/\s+/g, "");
-  const binary = atob(cleaned);
-  const buf = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) buf[i] = binary.charCodeAt(i);
-  return buf.buffer;
-}
-
-async function getGoogleAccessToken(scopes: string[]): Promise<string> {
-  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
-  if (!raw) throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON não configurada nas variáveis de ambiente");
-  let creds: { client_email: string; private_key: string; token_uri?: string };
-  try {
-    creds = JSON.parse(raw);
-  } catch {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON inválido (JSON malformado)");
-  }
-  if (!creds.client_email || !creds.private_key) {
-    throw new Error("GOOGLE_SERVICE_ACCOUNT_JSON faltando client_email ou private_key");
-  }
-
-  const now = Math.floor(Date.now() / 1000);
-  const header = { alg: "RS256", typ: "JWT" };
-  const claim = {
-    iss: creds.client_email,
-    scope: scopes.join(" "),
-    aud: creds.token_uri || "https://oauth2.googleapis.com/token",
-    iat: now,
-    exp: now + 3600,
-  };
-  const signingInput = `${base64UrlEncode(JSON.stringify(header))}.${base64UrlEncode(JSON.stringify(claim))}`;
-
-  const pkBuffer = pemToArrayBuffer(creds.private_key.replace(/\\n/g, "\n"));
-  const key = await crypto.subtle.importKey(
-    "pkcs8",
-    pkBuffer,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-  const sigBuf = await crypto.subtle.sign("RSASSA-PKCS1-v1_5", key, new TextEncoder().encode(signingInput));
-  const jwt = `${signingInput}.${base64UrlEncode(sigBuf)}`;
-
-  const tokenRes = await fetch(claim.aud, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
-      assertion: jwt,
-    }).toString(),
-  });
-  const tokenBody = await tokenRes.json().catch(() => ({}));
-  if (!tokenRes.ok || !tokenBody.access_token) {
-    throw new Error(`Falha ao obter token Google: ${tokenBody.error_description || tokenBody.error || tokenRes.status}`);
-  }
-  return tokenBody.access_token as string;
-}
-
 // ----------- Parsing helpers -----------
-
 function parseNum(v: any): number {
   if (v == null || v === "") return 0;
   const s = String(v).trim()
@@ -124,7 +46,7 @@ function parseNum(v: any): number {
     .replace(/\$/g, "")
     .replace(/\s/g, "")
     .replace(/%/g, "")
-    .replace(/\.(?=\d{3}(\D|$))/g, "") // thousand sep
+    .replace(/\.(?=\d{3}(\D|$))/g, "")
     .replace(/,/g, ".");
   const n = Number(s);
   return Number.isFinite(n) ? n : 0;
@@ -133,7 +55,6 @@ function parseNum(v: any): number {
 function parseDate(v: any): string {
   if (!v) return "";
   const s = String(v).trim();
-  // DD/MM/YYYY or DD-MM-YYYY
   const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
   if (m) {
     const d = m[1].padStart(2, "0");
@@ -142,56 +63,61 @@ function parseDate(v: any): string {
     if (y.length === 2) y = "20" + y;
     return `${y}-${mo}-${d}`;
   }
-  // YYYY-MM-DD
   if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
   const d = new Date(s);
   if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
   return s;
 }
 
-// ----------- Server fn -----------
+// CSV parser (handles quoted fields with commas and escaped quotes)
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cur = "";
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cur += '"'; i++; }
+        else inQuotes = false;
+      } else cur += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ",") { row.push(cur); cur = ""; }
+      else if (c === "\n") { row.push(cur); rows.push(row); row = []; cur = ""; }
+      else if (c === "\r") { /* skip */ }
+      else cur += c;
+    }
+  }
+  if (cur.length || row.length) { row.push(cur); rows.push(row); }
+  return rows;
+}
 
+// ----------- Server fn -----------
 export const fetchB2BSheet = createServerFn({ method: "POST" })
   .handler(async (): Promise<B2BSheetResult> => {
-    const token = await getGoogleAccessToken([
-      "https://www.googleapis.com/auth/spreadsheets.readonly",
-    ]);
-
-    // 1) Get sheet metadata to map gid -> title
-    const metaRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const meta = await metaRes.json();
-    if (!metaRes.ok) {
-      throw new Error(`Erro ao ler metadata da planilha: ${meta?.error?.message || metaRes.status}`);
+    const url = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+    const res = await fetch(url, { redirect: "follow" });
+    if (!res.ok) {
+      throw new Error(`Falha ao ler planilha (HTTP ${res.status}). Verifique se a planilha está com "Qualquer pessoa com o link" como Leitor.`);
     }
-    const sheet = (meta.sheets || []).find((s: any) => s.properties?.sheetId === SHEET_GID);
-    if (!sheet) throw new Error(`Aba com gid=${SHEET_GID} não encontrada`);
-    const title: string = sheet.properties.title;
-
-    // 2) Fetch values A:U
-    const range = `${title}!A:U`;
-    const valRes = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(range)}?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    const val = await valRes.json();
-    if (!valRes.ok) {
-      throw new Error(`Erro ao ler valores: ${val?.error?.message || valRes.status}`);
+    const text = await res.text();
+    // If Google returned an HTML login page, the sheet is not public
+    if (text.trim().startsWith("<")) {
+      throw new Error(`Planilha não é pública. Abra a planilha → Compartilhar → "Qualquer pessoa com o link" → Leitor.`);
     }
-    const values: any[][] = val.values || [];
+
+    const values = parseCSV(text);
     if (values.length < 2) {
-      return { rows: [], fetchedAt: new Date().toISOString(), sheetTitle: title };
+      return { rows: [], fetchedAt: new Date().toISOString(), sheetTitle: "B2B" };
     }
 
-    // Skip header row (row 0). Map remaining rows.
     const rows: B2BRow[] = [];
     for (let i = 1; i < values.length; i++) {
       const r = values[i] || [];
       const dataRaw = r[0];
       const cliente = String(r[12] || "").trim();
-      // skip empty rows
       if (!dataRaw && !cliente) continue;
 
       const valor_total = parseNum(r[4]);
@@ -234,5 +160,5 @@ export const fetchB2BSheet = createServerFn({ method: "POST" })
       });
     }
 
-    return { rows, fetchedAt: new Date().toISOString(), sheetTitle: title };
+    return { rows, fetchedAt: new Date().toISOString(), sheetTitle: "B2B" };
   });
