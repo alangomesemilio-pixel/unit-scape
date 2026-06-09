@@ -505,8 +505,16 @@ export function LogisticaDashboard() {
             Integração Melonn · análise operacional em tempo real
           </p>
           <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1"><Package className="size-3" />{ordersLoaded.toLocaleString("pt-BR")} pedidos</span>
             <span className="flex items-center gap-1"><Warehouse className="size-3" />Bodegas: {activeWarehouses.join(" · ")}</span>
-            <span className="flex items-center gap-1"><Clock className="size-3" />Última atualização: {fmtHHMM(ordersAt)}</span>
+            <span className="flex items-center gap-1"><Clock className="size-3" />Atualizado às {fmtHHMM(ordersAt)}</span>
+            {cacheInfo.checking && <span className="text-blue-400">🔄 Verificando novidades…</span>}
+            {!cacheInfo.checking && cacheInfo.lastDelta && (cacheInfo.lastDelta.newCount > 0 || cacheInfo.lastDelta.updatedCount > 0) && (
+              <span className="text-emerald-500">✅ {cacheInfo.lastDelta.newCount} novos · {cacheInfo.lastDelta.updatedCount} atualizados</span>
+            )}
+            {!cacheInfo.checking && cacheInfo.ageMs != null && cacheInfo.ageMs > 30_000 && !cacheInfo.lastDelta && (
+              <span className="text-muted-foreground/70">Cache de {fmtAge(cacheInfo.ageMs)}</span>
+            )}
             <span className="text-muted-foreground/60">· Auto-refresh 5min</span>
           </p>
           {loading.orders && (
