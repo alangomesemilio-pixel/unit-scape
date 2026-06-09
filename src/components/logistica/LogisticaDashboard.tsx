@@ -201,6 +201,7 @@ export function LogisticaDashboard() {
     let iter = 0;
     let didTimeout = false;
     let hadError = false;
+    setFetchProgress({ currentPage: (opts.startPage ?? 0) + 1, completedPages: opts.startPage ?? 0, ordersLoaded: acc.length, isLastPageReached: false });
     try {
       while (true) {
         if (Date.now() - startedAt > FETCH_TIMEOUT_MS) {
@@ -211,6 +212,7 @@ export function LogisticaDashboard() {
         }
         if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
         iter++;
+        setFetchProgress((p) => ({ ...p, currentPage: page + 1 }));
 
         const r = await melonnQueue(() => getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } }));
         if (r.error) { hadError = true; setOrdersErr(r.error); break; }
@@ -223,6 +225,7 @@ export function LogisticaDashboard() {
         setOrdersLoaded(acc.length);
         setOrdersTotal(total);
         setOrdersAt(fetchedAt);
+        setFetchProgress({ currentPage: page + 1, completedPages: page + 1, ordersLoaded: acc.length, isLastPageReached: r.orders.length < PER_PAGE });
         // Única condição de parada: página veio incompleta = fim real.
         if (r.orders.length < PER_PAGE) break;
         page++;
