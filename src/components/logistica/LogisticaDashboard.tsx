@@ -183,7 +183,7 @@ export function LogisticaDashboard() {
         if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
         iter++;
 
-        const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
+        const r = await getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } });
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
         fetchedAt = r.fetched_at;
