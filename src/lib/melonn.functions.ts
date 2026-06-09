@@ -336,21 +336,27 @@ export const getMelonnInventory = createServerFn({ method: "GET" }).handler(
     for (const wh of codes) {
       const result = await melonnFetch(`${cfg.inventoryPath}?warehouse_code=${encodeURIComponent(wh)}`, cfg);
       if (!result.ok) { errors.push(`${wh}: ${result.error}`); continue; }
-      const raw = extractList(result.data, "stock", "inventory");
+      const raw = extractList(result.data, "stock", "inventory", "products");
       for (const i of raw) {
-        const available = Number(i.available ?? i.available_quantity ?? i.quantity_available ?? i.stock ?? 0);
-        const reserved = Number(i.reserved ?? i.reserved_quantity ?? i.quantity_reserved ?? 0);
-        const total = Number(i.total ?? i.total_quantity ?? i.quantity_total ?? available + reserved);
+        const available = Number(i.available_quantity ?? i.available ?? i.quantity_available ?? i.stock ?? 0);
+        const reserved = Number(i.reserved_quantity ?? i.reserved ?? i.quantity_reserved ?? 0);
+        const in_transit = Number(i.in_transit_quantity ?? i.in_transit ?? 0);
+        const allocated = Number(i.allocated_quantity ?? i.allocated ?? 0);
+        const expected = Number(i.expected_quantity ?? i.expected ?? 0);
+        const total = Number(i.total_quantity ?? i.total ?? available + reserved + allocated);
         all.push({
           product: String(i.product_name ?? i.product?.name ?? i.name ?? i.title ?? "—"),
+          variant: i.variant ?? i.variant_name ?? i.product_variant ?? null,
           sku: String(i.sku ?? i.product_sku ?? i.product?.sku ?? "—"),
-          available, reserved, total, warehouse: wh,
+          internal_code: i.internal_code ?? i.internal_sku ?? null,
+          available, in_transit, allocated, reserved, expected, total, warehouse: wh,
         });
       }
     }
     return { items: all, fetched_at: new Date().toISOString(), error: errors.length ? errors.join(" · ") : undefined };
   },
 );
+
 
 export const getMelonnCouriers = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ couriers: MelonnCourier[]; fetched_at: string; error?: string }> => {
