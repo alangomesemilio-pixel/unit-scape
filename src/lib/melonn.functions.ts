@@ -60,6 +60,12 @@ export const MELONN_WAREHOUSES = [
   { code: "SAS-2", name: "SAS Armatura" },
 ] as const;
 
+export interface MelonnOrderItem {
+  sku: string | null;
+  product: string;
+  quantity: number;
+}
+
 export interface MelonnOrder {
   id: string;
   number: string;
@@ -78,6 +84,8 @@ export interface MelonnOrder {
   is_b2b: boolean;
   tracking_link: string | null;
   destination_city: string | null;
+  items: MelonnOrderItem[];
+  item_count: number;
 }
 
 export interface MelonnInventoryItem {
