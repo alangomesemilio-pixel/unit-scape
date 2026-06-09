@@ -328,14 +328,15 @@ export function LogisticaDashboard() {
               <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                 <span className="flex items-center gap-1.5">
                   <RefreshCw className="size-3 animate-spin" />
-                  Carregando pedidos: {ordersLoaded} / {ordersTotal || "…"} {ordersTotal > 0 && `(${progressPct}%)`}
+                  Carregando… {ordersLoaded.toLocaleString("pt-BR")} pedidos encontrados
                 </span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                <div className="h-full w-1/3 bg-primary animate-pulse" />
               </div>
             </div>
           )}
+
           {timedOut && resumePage != null && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-amber-500">
               ⏱️ Carregados {ordersLoaded} de {ordersTotal} pedidos.
