@@ -106,23 +106,50 @@ async function loadConfig(): Promise<MelonnConfig> {
 async function melonnFetch(
   path: string,
   cfg: MelonnConfig,
-): Promise<{ ok: true; data: any } | { ok: false; error: string }> {
-  const apiKey = process.env.MELONN_API_KEY;
-  if (!apiKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
+): Promise<{ ok: true; data: any; status: number } | { ok: false; error: string; status?: number }> {
+  const rawKey = process.env.MELONN_API_KEY;
+  if (!rawKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
+  // Sanitiza: remove espaços, quebras de linha e prefixo "Bearer " duplicado
+  const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "").trim();
+  const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const attempt = async (headers: Record<string, string>) => {
+    const res = await fetch(url, { headers });
+    const text = await res.text().catch(() => "");
+    let data: any = null;
+    try { data = text ? JSON.parse(text) : null; } catch { /* não-JSON */ }
+    return { res, text, data };
+  };
+
   try {
-    const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-    const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/json",
-      },
+    // 1) Formato padrão: Bearer token
+    const a = await attempt({
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      Accept: "application/json",
     });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      return { ok: false, error: `Melonn ${res.status}: ${body.slice(0, 200)}` };
+    if (a.res.ok) return { ok: true, data: a.data, status: a.res.status };
+
+    // 2) Fallback: x-api-key (algumas instâncias Melonn usam API Gateway com API Key)
+    if (a.res.status === 401 || a.res.status === 403) {
+      const b = await attempt({
+        "x-api-key": apiKey,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      });
+      if (b.res.ok) return { ok: true, data: b.data, status: b.res.status };
+      return {
+        ok: false,
+        status: b.res.status,
+        error: `Melonn ${b.res.status} (Bearer e x-api-key falharam): ${b.text.slice(0, 200)}`,
+      };
     }
-    const data = await res.json();
-    return { ok: true, data };
+
+    return {
+      ok: false,
+      status: a.res.status,
+      error: `Melonn ${a.res.status}: ${a.text.slice(0, 200)}`,
+    };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
   }
