@@ -43,11 +43,33 @@ const currentMonthKey = () => {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 };
 
-const daysInMonth = () => {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+const daysInMonthOf = (monthKey: string) => {
+  const [y, m] = monthKey.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
 };
 
+const isoWeekKey = (d = new Date()) => {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((+date - +yearStart) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, "0")}`;
+};
+
+// Convert ISO week key (YYYY-Www) to a month key (YYYY-MM) using the Thursday of that week
+const monthFromWeek = (weekKey: string) => {
+  const [yStr, wStr] = weekKey.split("-W");
+  const y = Number(yStr);
+  const w = Number(wStr);
+  const simple = new Date(Date.UTC(y, 0, 1 + (w - 1) * 7));
+  const dayOfWeek = simple.getUTCDay() || 7;
+  const thursday = new Date(simple);
+  thursday.setUTCDate(simple.getUTCDate() + (4 - dayOfWeek));
+  return `${thursday.getUTCFullYear()}-${String(thursday.getUTCMonth() + 1).padStart(2, "0")}`;
+};
+
+const isCurrentMonth = (monthKey: string) => monthKey === currentMonthKey();
 const dayOfMonth = () => new Date().getDate();
 
 function fmt(value: number, unit: string) {
@@ -88,35 +110,71 @@ function pctAtingido(realizado: number, meta: number, direction: "up" | "down") 
 export function ExecutiveHome() {
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [loading, setLoading] = useState(true);
-  const mes = currentMonthKey();
+  const [period, setPeriod] = useState<"mes" | "semana">("mes");
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey());
+  const [selectedWeek, setSelectedWeek] = useState<string>(isoWeekKey());
+
+  // The "mes" used for metadata (nome, meta, dono…) — derived from the selected period
+  const mes = period === "mes" ? selectedMonth : monthFromWeek(selectedWeek);
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
     (async () => {
-      const { data, error } = await supabase
+      // Always load the monthly KPIs (source of metadata + meta + monthly realizado)
+      const { data: monthData, error: mErr } = await supabase
         .from("kpis_executivos")
         .select("*")
         .eq("mes", mes)
         .order("ordem", { ascending: true });
       if (!alive) return;
-      if (error) console.error(error);
-      setKpis((data as Kpi[]) ?? []);
+      if (mErr) console.error(mErr);
+      const base = (monthData as Kpi[]) ?? [];
+
+      if (period === "mes") {
+        setKpis(base);
+        setLoading(false);
+        return;
+      }
+
+      // Weekly: overlay snapshot values on top of monthly metadata; meta is prorated
+      const { data: snaps, error: sErr } = await supabase
+        .from("kpi_week_snapshots")
+        .select("kpi_id, value")
+        .eq("week", selectedWeek);
+      if (!alive) return;
+      if (sErr) console.error(sErr);
+
+      const valueByKpi = new Map<string, number>();
+      (snaps ?? []).forEach((r: { kpi_id: string; value: number }) =>
+        valueByKpi.set(r.kpi_id, Number(r.value))
+      );
+
+      const dim = daysInMonthOf(mes);
+      const merged: Kpi[] = base.map((k) => ({
+        ...k,
+        realizado: valueByKpi.get(k.kpi_id) ?? 0,
+        meta: Math.round(((k.meta || 0) * 7) / dim),
+      }));
+      setKpis(merged);
       setLoading(false);
     })();
     return () => {
       alive = false;
     };
-  }, [mes]);
+  }, [mes, period, selectedWeek]);
 
   async function update(kpi: Kpi, patch: Partial<Pick<Kpi, "realizado" | "meta">>) {
+    if (period !== "mes") return; // weekly view is read-only
     setKpis((prev) => prev.map((k) => (k.id === kpi.id ? { ...k, ...patch } : k)));
     await supabase.from("kpis_executivos").update(patch).eq("id", kpi.id);
   }
 
   const receita = kpis.find((k) => k.kpi_id === "receita");
-  const dim = daysInMonth();
-  const dom = dayOfMonth();
+  const dim = daysInMonthOf(mes);
+  const dom = isCurrentMonth(mes) ? dayOfMonth() : dim;
   const pctMes = (dom / dim) * 100;
+
 
   // Receita por canal — pega do soma_kv se existir (legacy)
   const [canais, setCanais] = useState<{ nome: string; realizado: number; meta: number; dono: string }[]>([
@@ -204,9 +262,46 @@ export function ExecutiveHome() {
 
         {/* KPI cards */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">KPIs principais</h2>
-            <span className="text-xs text-muted-foreground">Clique nos valores para editar</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">KPIs principais</h2>
+              <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+                <button
+                  onClick={() => setPeriod("mes")}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
+                    period === "mes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Mês
+                </button>
+                <button
+                  onClick={() => setPeriod("semana")}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
+                    period === "semana" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Semana
+                </button>
+              </div>
+              {period === "mes" ? (
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-card border border-border rounded-md px-2 py-1 text-xs text-foreground"
+                />
+              ) : (
+                <input
+                  type="week"
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="bg-card border border-border rounded-md px-2 py-1 text-xs text-foreground"
+                />
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {period === "mes" ? "Clique nos valores para editar" : "Semana acumulada (meta pro-rata) · somente leitura"}
+            </span>
           </div>
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -214,14 +309,19 @@ export function ExecutiveHome() {
                 <div key={i} className="h-36 rounded-2xl bg-card animate-pulse" />
               ))}
             </div>
+          ) : kpis.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Sem dados para {period === "mes" ? "este mês" : `a semana ${selectedWeek}`}.
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {kpis.map((k) => (
-                <KpiCard key={k.id} kpi={k} onUpdate={(p) => update(k, p)} />
+                <KpiCard key={`${period}-${k.id}`} kpi={k} onUpdate={(p) => update(k, p)} />
               ))}
             </div>
           )}
         </section>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Receita por canal */}
