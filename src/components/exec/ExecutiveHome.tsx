@@ -262,9 +262,46 @@ export function ExecutiveHome() {
 
         {/* KPI cards */}
         <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">KPIs principais</h2>
-            <span className="text-xs text-muted-foreground">Clique nos valores para editar</span>
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">KPIs principais</h2>
+              <div className="inline-flex rounded-lg border border-border bg-card p-0.5">
+                <button
+                  onClick={() => setPeriod("mes")}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
+                    period === "mes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Mês
+                </button>
+                <button
+                  onClick={() => setPeriod("semana")}
+                  className={`px-3 py-1 text-xs font-semibold rounded-md transition ${
+                    period === "semana" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Semana
+                </button>
+              </div>
+              {period === "mes" ? (
+                <input
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="bg-card border border-border rounded-md px-2 py-1 text-xs text-foreground"
+                />
+              ) : (
+                <input
+                  type="week"
+                  value={selectedWeek}
+                  onChange={(e) => setSelectedWeek(e.target.value)}
+                  className="bg-card border border-border rounded-md px-2 py-1 text-xs text-foreground"
+                />
+              )}
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {period === "mes" ? "Clique nos valores para editar" : "Semana acumulada (meta pro-rata) · somente leitura"}
+            </span>
           </div>
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -272,14 +309,19 @@ export function ExecutiveHome() {
                 <div key={i} className="h-36 rounded-2xl bg-card animate-pulse" />
               ))}
             </div>
+          ) : kpis.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Sem dados para {period === "mes" ? "este mês" : `a semana ${selectedWeek}`}.
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {kpis.map((k) => (
-                <KpiCard key={k.id} kpi={k} onUpdate={(p) => update(k, p)} />
+                <KpiCard key={`${period}-${k.id}`} kpi={k} onUpdate={(p) => update(k, p)} />
               ))}
             </div>
           )}
         </section>
+
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Receita por canal */}
