@@ -618,7 +618,8 @@ function ProdutosTab({ rows, allRows, onOpen }: { rows: B2BRow[]; allRows: B2BRo
   prodMoM.forEach((v, sku) => {
     if (v.prev > 0) {
       const drop = ((v.cur - v.prev) / v.prev) * 100;
-      if (drop < 0 && (!emQueda || drop < emQueda.drop)) emQueda = { sku, drop };
+      const cur = emQueda;
+      if (drop < 0 && (!cur || drop < cur.drop)) emQueda = { sku, drop };
     }
   });
 
