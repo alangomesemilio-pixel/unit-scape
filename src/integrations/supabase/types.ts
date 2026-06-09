@@ -67,6 +67,137 @@ export type Database = {
           },
         ]
       }
+      b2b_distributors: {
+        Row: {
+          created_at: string
+          id: string
+          nome: string
+          notas: string | null
+          receita_total: number
+          status: string
+          sub_canal: string
+          ticket_medio: number
+          ultimo_pedido_data: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nome: string
+          notas?: string | null
+          receita_total?: number
+          status?: string
+          sub_canal?: string
+          ticket_medio?: number
+          ultimo_pedido_data?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nome?: string
+          notas?: string | null
+          receita_total?: number
+          status?: string
+          sub_canal?: string
+          ticket_medio?: number
+          ultimo_pedido_data?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      b2b_orders: {
+        Row: {
+          canal: string
+          cliente: string
+          created_at: string
+          distribuidor_id: string | null
+          id: string
+          notas: string | null
+          pedido_data: string
+          responsavel: string
+          status: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          canal?: string
+          cliente: string
+          created_at?: string
+          distribuidor_id?: string | null
+          id?: string
+          notas?: string | null
+          pedido_data?: string
+          responsavel?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          canal?: string
+          cliente?: string
+          created_at?: string
+          distribuidor_id?: string | null
+          id?: string
+          notas?: string | null
+          pedido_data?: string
+          responsavel?: string
+          status?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_orders_distribuidor_id_fkey"
+            columns: ["distribuidor_id"]
+            isOneToOne: false
+            referencedRelation: "b2b_distributors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      b2b_pipeline: {
+        Row: {
+          created_at: string
+          empresa: string
+          id: string
+          notas: string | null
+          ordem: number
+          proxima_acao: string | null
+          proxima_acao_data: string | null
+          responsavel: string
+          stage: string
+          updated_at: string
+          valor_estimado: number
+        }
+        Insert: {
+          created_at?: string
+          empresa: string
+          id?: string
+          notas?: string | null
+          ordem?: number
+          proxima_acao?: string | null
+          proxima_acao_data?: string | null
+          responsavel?: string
+          stage?: string
+          updated_at?: string
+          valor_estimado?: number
+        }
+        Update: {
+          created_at?: string
+          empresa?: string
+          id?: string
+          notas?: string | null
+          ordem?: number
+          proxima_acao?: string | null
+          proxima_acao_data?: string | null
+          responsavel?: string
+          stage?: string
+          updated_at?: string
+          valor_estimado?: number
+        }
+        Relationships: []
+      }
       kpi_close_audit: {
         Row: {
           actor: string
