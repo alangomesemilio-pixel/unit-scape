@@ -337,7 +337,7 @@ export function LogisticaDashboard() {
         if (abort.cancelled) return;
         const chunk = pending.slice(i, i + BATCH);
         try {
-          const { map } = await hydrateMelonnDeliveries({ data: { ids: chunk.map((o) => o.id) } });
+          const { map } = await melonnQueue(() => hydrateMelonnDeliveries({ data: { ids: chunk.map((o) => o.id) } }));
           const updates: Record<string, string | null> = {};
           for (const o of chunk) {
             const v = map[o.id] ?? null;
