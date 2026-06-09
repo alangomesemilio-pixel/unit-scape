@@ -324,7 +324,7 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
   });
 
 export const getMelonnOrdersPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { page?: number; daysBack?: number | null; perPage?: number }) => d)
+  .inputValidator((d: { page?: number; daysBack?: number | null; sinceIso?: string | null; perPage?: number }) => d)
   .handler(async ({ data }): Promise<{
     orders: MelonnOrder[];
     page: number;
@@ -337,9 +337,10 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const page = data.page ?? 0;
     const perPage = data.perPage ?? 100;
-    // Padrão: sem filtro de data (traz histórico completo). Passe daysBack=N para limitar.
+    // Padrão: sem filtro de data (traz histórico completo). Passe daysBack=N ou sinceIso.
     const daysBack = data.daysBack === undefined ? null : data.daysBack;
-    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
+    const sinceIso = data.sinceIso ?? null;
+    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, sinceIso, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
     const raw = extractList(result.data, "sell_orders", "orders");
