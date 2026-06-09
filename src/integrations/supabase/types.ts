@@ -187,6 +187,39 @@ export type Database = {
         }
         Relationships: []
       }
+      packaging_materials: {
+        Row: {
+          created_at: string
+          id: string
+          material: string
+          minimo: number
+          ordem: number
+          quantidade_atual: number
+          unidade: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          material: string
+          minimo?: number
+          ordem?: number
+          quantidade_atual?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          material?: string
+          minimo?: number
+          ordem?: number
+          quantidade_atual?: number
+          unidade?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reports_heads: {
         Row: {
           criado_em: string
