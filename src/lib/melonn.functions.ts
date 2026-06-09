@@ -108,8 +108,14 @@ const DEFAULTS: MelonnConfig = {
   ordersPath: "/sell-orders",
   inventoryPath: "/stock",
   couriersPath: "/courier-companies",
-  warehouseCodes: ["MED-3", "BOG-2"],
+  warehouseCodes: ["MED-2", "MED-3", "BOG-2", "BAQ-1", "CAL-2"],
 };
+
+// Old default sets that should be auto-upgraded to the new 5-warehouse default.
+const LEGACY_WAREHOUSE_DEFAULTS: string[][] = [
+  ["MED-3", "BOG-2"],
+  ["BOG-2", "MED-3"],
+];
 
 const LEGACY_PATHS = new Set([
   "/orders", "/orders?limit=200", "/inventory", "/metrics/operational",
@@ -129,7 +135,11 @@ async function loadConfig(): Promise<MelonnConfig> {
     const ordersPath = LEGACY_PATHS.has(v.ordersPath) ? DEFAULTS.ordersPath : v.ordersPath || fallback.ordersPath;
     const inventoryPath = LEGACY_PATHS.has(v.inventoryPath) ? DEFAULTS.inventoryPath : v.inventoryPath || fallback.inventoryPath;
     const couriersPath = LEGACY_PATHS.has(v.couriersPath) ? DEFAULTS.couriersPath : v.couriersPath || fallback.couriersPath;
-    const warehouseCodes = Array.isArray(v.warehouseCodes) && v.warehouseCodes.length ? v.warehouseCodes : fallback.warehouseCodes;
+    let warehouseCodes = Array.isArray(v.warehouseCodes) && v.warehouseCodes.length ? v.warehouseCodes : fallback.warehouseCodes;
+    // Migrate stale 2-warehouse default to the new 5-warehouse default.
+    if (LEGACY_WAREHOUSE_DEFAULTS.some((d) => d.length === warehouseCodes.length && d.every((c) => warehouseCodes.includes(c)))) {
+      warehouseCodes = fallback.warehouseCodes;
+    }
     return { baseUrl, ordersPath, inventoryPath, couriersPath, warehouseCodes };
   } catch {
     return fallback;

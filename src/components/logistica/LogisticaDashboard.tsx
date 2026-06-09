@@ -133,7 +133,7 @@ export function LogisticaDashboard() {
   const [couriersErr, setCouriersErr] = useState<string>();
 
   const [materials, setMaterials] = useState<Material[]>([]);
-  const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-3", "BOG-2"]);
+  const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-2", "MED-3", "BOG-2", "BAQ-1", "CAL-2"]);
   const [loading, setLoading] = useState({ orders: true, inv: true, cou: true, mat: true });
 
   const [tab, setTab] = useState<TabId>("pedidos");
@@ -454,7 +454,7 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
 // ============================================================
 // ABA 2 — PERFORMANCE
 // ============================================================
-function PerformanceTab({ orders }: CtxBase) {
+function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
   // Gráfico 1: volume por dia (30 dias)
   const volumePorDia = useMemo(() => {
     const map = new Map<string, { dia: string; criados: number; entregues: number }>();
@@ -596,7 +596,7 @@ function PerformanceTab({ orders }: CtxBase) {
         </Card>
 
         <Card>
-          <SectionTitle icon={Warehouse} title="Volume por bodega" subtitle="Comparativo MED-3 vs BOG-2" />
+          <SectionTitle icon={Warehouse} title="Volume por bodega" subtitle={`Comparativo: ${activeWarehouses.join(" · ")}`} />
           <div className="h-64">
             <ResponsiveContainer>
               <BarChart data={porBodega}>
@@ -656,11 +656,31 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
 
   const ruptura = consolidado.filter((c) => c.available === 0);
   const baixa = consolidado.filter((c) => c.available > 0 && (mediaDia > 0 ? c.available / mediaDia : 999) < 7);
+  // SKUs com estoque concentrado em 1 bodega (>=90% num único warehouse, total>0)
+  const concentradas = consolidado.filter((c) => {
+    if (c.available <= 0 || activeWarehouses.length < 2) return false;
+    return activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) / c.available >= 0.9);
+  });
+  // SKUs zerados em alguma bodega específica (mas com estoque em outra)
   const desbalanceadas = consolidado.filter((c) =>
     activeWarehouses.length >= 2 &&
     activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) === 0) &&
     activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) > 50),
   );
+
+  // Sugestões de transferência: para cada SKU desbalanceado, pega bodega com mais
+  // estoque e bodega zerada com mais demanda relativa.
+  const sugestoes = desbalanceadas.slice(0, 5).map((c) => {
+    let max = { wh: "", qty: 0 };
+    let zeroWh = "";
+    activeWarehouses.forEach((wh) => {
+      const av = c.byWh[wh]?.available ?? 0;
+      if (av > max.qty) max = { wh, qty: av };
+      if (av === 0 && !zeroWh) zeroWh = wh;
+    });
+    const transfer = Math.max(1, Math.floor(max.qty * 0.3));
+    return { sku: c.sku, from: max.wh, to: zeroWh, qty: transfer };
+  }).filter((s) => s.from && s.to);
 
   function coberturaInfo(available: number): { dias: number; color: string; label: string; pulse?: boolean } {
     if (available === 0) return { dias: 0, color: "#ef4444", label: "Crítico", pulse: true };
@@ -693,7 +713,7 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
       {inventoryErr && <div className="text-xs text-amber-500">⚠️ {inventoryErr}</div>}
 
       {/* ALERTAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Card className="border-red-500/40">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-red-500 font-semibold flex items-center gap-1"><AlertCircle className="size-3.5" /> Sem estoque</span>
@@ -718,10 +738,34 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
             <span className="text-xl font-bold text-orange-500">{desbalanceadas.length}</span>
           </div>
           <div className="text-[11px] text-muted-foreground truncate">
-            Zerado numa bodega e &gt;50 na outra
+            Zeradas em alguma bodega com &gt;50 em outra
+          </div>
+        </Card>
+        <Card className="border-fuchsia-500/40">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-fuchsia-500 font-semibold flex items-center gap-1"><Warehouse className="size-3.5" /> Concentradas</span>
+            <span className="text-xl font-bold text-fuchsia-500">{concentradas.length}</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate" title={concentradas.map((c) => c.sku).join(", ")}>
+            {concentradas.slice(0, 5).map((c) => c.sku).join(", ") || "—"}
           </div>
         </Card>
       </div>
+
+      {sugestoes.length > 0 && (
+        <Card className="border-sky-500/40">
+          <div className="text-xs text-sky-500 font-semibold mb-2 flex items-center gap-1">
+            <AlertTriangle className="size-3.5" /> Sugestões de transferência
+          </div>
+          <ul className="space-y-1 text-xs">
+            {sugestoes.map((s) => (
+              <li key={s.sku} className="text-muted-foreground">
+                Considere transferir <span className="text-foreground font-semibold">{s.qty} un</span> de <span className="text-foreground">{s.from}</span> para <span className="text-foreground">{s.to}</span> — SKU <span className="font-mono">{s.sku}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* TABS */}
       <div className="flex items-center gap-1">
@@ -743,7 +787,7 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
                 {filtro === "consolidado" ? (
                   <>
                     {activeWarehouses.map((wh) => (
-                      <th key={wh} className="text-right px-3 py-2 font-medium">{wh} (disp/res)</th>
+                      <th key={wh} className="text-right px-3 py-2 font-medium">{wh}</th>
                     ))}
                     <th className="text-right px-3 py-2 font-medium">Total</th>
                     <th className="text-right px-3 py-2 font-medium">Cobertura</th>
@@ -768,11 +812,20 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
                     <tr key={c.sku} className={`border-t border-border ${idx % 2 === 1 ? "bg-secondary/10" : ""}`}>
                       <td className="px-3 py-2">{c.product}</td>
                       <td className="px-3 py-2 font-mono text-xs">{c.sku}</td>
-                      {activeWarehouses.map((wh) => (
-                        <td key={wh} className="px-3 py-2 text-right text-xs tabular-nums">
-                          {(c.byWh[wh]?.available ?? 0)} / <span className="text-muted-foreground">{c.byWh[wh]?.reserved ?? 0}</span>
-                        </td>
-                      ))}
+                      {activeWarehouses.map((wh) => {
+                        const av = c.byWh[wh]?.available ?? 0;
+                        const rs = c.byWh[wh]?.reserved ?? 0;
+                        return (
+                          <td key={wh} className="px-3 py-2 text-right text-xs tabular-nums">
+                            {av > 0 ? (
+                              <span className="text-emerald-500 font-semibold">{av}</span>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                            {rs > 0 && <span className="text-muted-foreground"> / {rs}</span>}
+                          </td>
+                        );
+                      })}
                       <td className="px-3 py-2 text-right font-bold tabular-nums">{c.available}</td>
                       <td className="px-3 py-2 text-right">
                         <span className={`inline-flex items-center gap-1 text-xs ${cov.pulse ? "animate-pulse" : ""}`} style={{ color: cov.color }}>
