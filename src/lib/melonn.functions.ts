@@ -237,6 +237,20 @@ function mapRawOrder(o: any, idx: number): MelonnOrder {
     status === "delivered"
       ? o.delivery_date ?? o.delivered_at ?? o.shipping?.delivered_at ?? o.last_state_update ?? null
       : null;
+  const rawItems: any[] =
+    (Array.isArray(o.sell_order_lines) && o.sell_order_lines) ||
+    (Array.isArray(o.lines) && o.lines) ||
+    (Array.isArray(o.items) && o.items) ||
+    (Array.isArray(o.products) && o.products) ||
+    [];
+  const items: MelonnOrderItem[] = rawItems.map((li: any) => ({
+    sku: li.sku ?? li.product_sku ?? li.product?.sku ?? null,
+    product: String(
+      li.product_name ?? li.product?.name ?? li.name ?? li.title ?? li.description ?? "—",
+    ),
+    quantity: Number(li.quantity ?? li.qty ?? li.units ?? 1) || 0,
+  }));
+  const item_count = items.reduce((s, x) => s + x.quantity, 0);
   return {
     id: String(o.id ?? idx),
     number: String(o.external_order_number ?? o.id ?? idx),
@@ -255,6 +269,8 @@ function mapRawOrder(o: any, idx: number): MelonnOrder {
     is_b2b: !!o.is_b2b,
     tracking_link: o.melonn_tracking_link ?? null,
     destination_city: o.shipping_address?.city ?? cust.city ?? null,
+    items,
+    item_count,
   };
 }
 
