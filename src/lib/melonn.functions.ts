@@ -135,7 +135,11 @@ async function loadConfig(): Promise<MelonnConfig> {
     const ordersPath = LEGACY_PATHS.has(v.ordersPath) ? DEFAULTS.ordersPath : v.ordersPath || fallback.ordersPath;
     const inventoryPath = LEGACY_PATHS.has(v.inventoryPath) ? DEFAULTS.inventoryPath : v.inventoryPath || fallback.inventoryPath;
     const couriersPath = LEGACY_PATHS.has(v.couriersPath) ? DEFAULTS.couriersPath : v.couriersPath || fallback.couriersPath;
-    const warehouseCodes = Array.isArray(v.warehouseCodes) && v.warehouseCodes.length ? v.warehouseCodes : fallback.warehouseCodes;
+    let warehouseCodes = Array.isArray(v.warehouseCodes) && v.warehouseCodes.length ? v.warehouseCodes : fallback.warehouseCodes;
+    // Migrate stale 2-warehouse default to the new 5-warehouse default.
+    if (LEGACY_WAREHOUSE_DEFAULTS.some((d) => d.length === warehouseCodes.length && d.every((c) => warehouseCodes.includes(c)))) {
+      warehouseCodes = fallback.warehouseCodes;
+    }
     return { baseUrl, ordersPath, inventoryPath, couriersPath, warehouseCodes };
   } catch {
     return fallback;
