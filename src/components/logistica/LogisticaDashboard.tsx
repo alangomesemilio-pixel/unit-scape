@@ -371,20 +371,13 @@ export function LogisticaDashboard() {
       // 1) Cache de pedidos: usa como base. Só busca se não existir cache.
       const cached = loadOrdersCache();
       if (cached) {
-        const looksPartial = cached.data.length > 0 && cached.data.length <= 100;
-        if (looksPartial) {
-          clearOrdersCache();
-          setDaysBack("all");
-          await refreshOrders("all", true);
-        } else {
-          setOrders(cached.data);
-          setOrdersLoaded(cached.data.length);
-          setOrdersTotal(cached.data.length);
-          setOrdersAt(cached.fetched_at);
-          setLoading((l) => ({ ...l, orders: false }));
-          setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
-          // Sem fetch automático — usuário aciona via "Atualizar agora".
-        }
+        setOrders(cached.data);
+        setOrdersLoaded(cached.data.length);
+        setOrdersTotal(cached.data.length);
+        setOrdersAt(cached.fetched_at);
+        setLoading((l) => ({ ...l, orders: false }));
+        setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
+        // Sem fetch automático — usuário aciona via "Atualizar agora".
       } else {
         // Sem cache: busca completa inicial.
         await refreshOrders(daysBack, true);
