@@ -220,7 +220,8 @@ export function LogisticaDashboard() {
     } catch (e: any) {
       setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
     } finally {
-      const completed = !timedOut && acc.length > 0;
+      const isTimedOutNow = Date.now() - startedAt > FETCH_TIMEOUT_MS;
+      const completed = !isTimedOutNow && resumePage == null && acc.length > 0;
       ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
       // Persiste em sessionStorage só quando completar uma janela "all" (cache de longo prazo).
       if (completed && days === "all") {
@@ -367,13 +368,19 @@ export function LogisticaDashboard() {
       // 1) Cache de pedidos: usa como base. Só busca se não existir cache.
       const cached = loadOrdersCache();
       if (cached) {
-        setOrders(cached.data);
-        setOrdersLoaded(cached.data.length);
-        setOrdersTotal(cached.data.length);
-        setOrdersAt(cached.fetched_at);
-        setLoading((l) => ({ ...l, orders: false }));
-        setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
-        // Sem fetch automático — usuário aciona via "Atualizar agora".
+        const looksPartial = cached.data.length > 0 && cached.data.length <= 100;
+        if (looksPartial) {
+          clearOrdersCache();
+          await refreshOrders("all", true);
+        } else {
+          setOrders(cached.data);
+          setOrdersLoaded(cached.data.length);
+          setOrdersTotal(cached.data.length);
+          setOrdersAt(cached.fetched_at);
+          setLoading((l) => ({ ...l, orders: false }));
+          setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
+          // Sem fetch automático — usuário aciona via "Atualizar agora".
+        }
       } else {
         // Sem cache: busca completa inicial.
         await refreshOrders(daysBack, true);
