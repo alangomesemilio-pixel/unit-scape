@@ -6,6 +6,7 @@ import { ExecAiChat } from "@/components/ai/ExecAiChat";
 import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { NovoOkrs } from "@/components/soma/NovoOkrs";
 import { ExecutiveHome } from "@/components/exec/ExecutiveHome";
+import { LogisticaDashboard } from "@/components/logistica/LogisticaDashboard";
 import { AppSidebar, AppSidebarMobile, type ExecView } from "@/components/exec/AppSidebar";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -45,6 +46,8 @@ function Index() {
               <OrgChart />
             ) : view === "meetings" ? (
               <MeetingsDashboard />
+            ) : view === "logistica" ? (
+              <LogisticaDashboard />
             ) : (
               <ExecAiChat />
             )}
