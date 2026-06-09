@@ -1,6 +1,6 @@
-import { Home, LineChart, Target, Network, CalendarCheck, Sparkles, Truck } from "lucide-react";
+import { Home, LineChart, Target, Network, CalendarCheck, Sparkles, Truck, Briefcase } from "lucide-react";
 
-export type ExecView = "home" | "soma" | "okrs" | "org" | "meetings" | "logistica" | "ai";
+export type ExecView = "home" | "soma" | "okrs" | "org" | "meetings" | "logistica" | "b2b" | "ai";
 
 const ITEMS: { id: ExecView; label: string; icon: typeof Home; accent: string }[] = [
   { id: "home", label: "Home", icon: Home, accent: "var(--soma-coral)" },
@@ -9,6 +9,7 @@ const ITEMS: { id: ExecView; label: string; icon: typeof Home; accent: string }[
   { id: "org", label: "Organograma", icon: Network, accent: "var(--level-head)" },
   { id: "meetings", label: "Reuniões", icon: CalendarCheck, accent: "var(--soma-coral-soft)" },
   { id: "logistica", label: "Logística", icon: Truck, accent: "var(--soma-lavender)" },
+  { id: "b2b", label: "B2B", icon: Briefcase, accent: "var(--soma-coral)" },
   { id: "ai", label: "AI Advisor", icon: Sparkles, accent: "var(--soma-lilac)" },
 ];
 
