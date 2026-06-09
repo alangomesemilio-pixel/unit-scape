@@ -254,10 +254,20 @@ export function LogisticaDashboard() {
     runOrdersFetch(daysBack, { startPage: resumePage, initialAcc: orders, initialTotal: ordersTotal });
   }, [resumePage, daysBack, orders, ordersTotal, runOrdersFetch]);
 
-  const refreshInventory = useCallback(async () => {
+  const refreshInventory = useCallback(async (opts: { force?: boolean } = {}) => {
+    // Usa cache de sessão se ainda fresco (TTL 10 min).
+    if (!opts.force) {
+      const blob = loadInventoryCache();
+      if (blob && !isExpired(blob.timestamp, INVENTORY_TTL_MS)) {
+        setInventory(blob.data); setInventoryAt(blob.fetched_at);
+        setLoading((l) => ({ ...l, inv: false }));
+        return;
+      }
+    }
     setLoading((l) => ({ ...l, inv: true }));
     const r = await melonnQueue(() => getMelonnInventory());
     setInventory(r.items); setInventoryErr(r.error); setInventoryAt(r.fetched_at);
+    if (!r.error && r.items.length > 0) saveInventoryCache(r.items, r.fetched_at);
     setLoading((l) => ({ ...l, inv: false }));
   }, []);
   const refreshCouriers = useCallback(async () => {
