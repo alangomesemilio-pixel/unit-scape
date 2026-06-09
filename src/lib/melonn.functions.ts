@@ -200,9 +200,9 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
           ? cfg.inventoryPath
           : cfg.metricsPath;
     const res = await melonnFetch(path, cfg);
-    if (!res.ok) return { ok: false, error: res.error };
+    if (!res.ok) return { ok: false, status: res.status, error: res.error };
     const sample = JSON.stringify(res.data).slice(0, 300);
-    return { ok: true, sample };
+    return { ok: true, status: res.status, sample };
   });
 
 export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
