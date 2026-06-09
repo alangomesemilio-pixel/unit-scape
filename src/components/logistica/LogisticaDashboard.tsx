@@ -465,17 +465,23 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
 
       {/* HEADER PERÍODO + CONTADOR */}
       <Card className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Calendar className="size-4 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">Período de busca:</span>
-          {([7, 30, 60, 90] as DaysBack[]).map((d) => (
+          {([
+            { v: 7 as DaysBack, label: "7 dias" },
+            { v: 30 as DaysBack, label: "30 dias" },
+            { v: 90 as DaysBack, label: "90 dias" },
+            { v: 365 as DaysBack, label: "1 ano" },
+            { v: "all" as DaysBack, label: "Tudo" },
+          ]).map((opt) => (
             <button
-              key={d}
-              onClick={() => onDaysBackChange(d)}
+              key={String(opt.v)}
+              onClick={() => onDaysBackChange(opt.v)}
               disabled={isLoadingPages}
-              className={`px-2.5 py-1 text-xs rounded transition ${daysBack === d ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"} disabled:opacity-50`}
+              className={`px-2.5 py-1 text-xs rounded transition ${daysBack === opt.v ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"} disabled:opacity-50`}
             >
-              {d} dias
+              {opt.label}
             </button>
           ))}
         </div>
@@ -483,35 +489,25 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
           {isLoadingPages ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <RefreshCw className="size-3 animate-spin" />
-              Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal || "…"}</strong>
-              <span>·</span>
-              Carregando: <strong className="text-foreground tabular-nums">{ordersLoaded}{ordersTotal > 0 ? `/${ordersTotal}` : ""}</strong>…
+              Carregando… <strong className="text-foreground tabular-nums">{ordersLoaded.toLocaleString("pt-BR")}</strong> pedidos encontrados
             </span>
           ) : (
             <>
               <span className="text-muted-foreground">
-                Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal}</strong> pedidos
+                Total carregados: <strong className="text-foreground tabular-nums">{orders.length.toLocaleString("pt-BR")}</strong> pedidos
               </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground">
-                Exibindo: <strong className="text-foreground tabular-nums">{orders.length}</strong> pedidos
-              </span>
-              {!mismatch && !timedOut && ordersTotal > 0 && (
+              {!timedOut && orders.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500">✅</span>
-              )}
-              {mismatch && !timedOut && (
-                <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
-                  ⚠️ {Math.max(0, ordersTotal - orders.length)} pedidos ainda carregando
-                </span>
               )}
               {timedOut && (
                 <button onClick={onContinueLoading} className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25">
-                  Continuar carregando ({Math.max(0, ordersTotal - orders.length)} restantes)
+                  Continuar carregando
                 </button>
               )}
             </>
           )}
         </div>
+
 
       </Card>
 
