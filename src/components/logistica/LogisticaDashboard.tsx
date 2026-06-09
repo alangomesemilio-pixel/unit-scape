@@ -294,22 +294,96 @@ export function LogisticaDashboard() {
     setRefreshing(false);
   }
 
+  // Busca incremental: traz apenas pedidos criados nas últimas N horas e mescla no cache.
+  const incrementalRefresh = useCallback(async (hoursBack: number) => {
+    setCacheInfo((c) => ({ ...c, checking: true }));
+    try {
+      const sinceIso = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+      const all: MelonnOrder[] = [];
+      let page = 0;
+      const PER_PAGE = 100;
+      while (true) {
+        const r = await melonnQueue(() => getMelonnOrdersPage({ data: { page, sinceIso, perPage: PER_PAGE } }));
+        if (r.error) break;
+        all.push(...r.orders);
+        if (r.orders.length < PER_PAGE) break;
+        page++;
+        if (page > 50) break;
+      }
+      const { merged, newCount, updatedCount } = mergeOrders(orders, all);
+      const fetchedAt = new Date().toISOString();
+      setOrders(merged);
+      setOrdersLoaded(merged.length);
+      setOrdersTotal(merged.length);
+      setOrdersAt(fetchedAt);
+      saveOrdersCache(merged, fetchedAt);
+      setCacheInfo({ ageMs: 0, lastDelta: { newCount, updatedCount }, checking: false });
+      if (newCount > 0 || updatedCount > 0) {
+        toast.success(`${newCount} novos · ${updatedCount} atualizados`);
+      }
+    } catch (e: any) {
+      setCacheInfo((c) => ({ ...c, checking: false }));
+      console.error("Incremental refresh falhou:", e);
+    }
+  }, [orders]);
+
+  // "Atualizar agora": incremental últimas 6h (rápido, sem 429).
+  async function refreshAll() {
+    setRefreshing(true);
+    await incrementalRefresh(6);
+    await refreshInventory({ force: true });
+    setRefreshing(false);
+  }
+
+  // "Recarregar tudo": limpa cache e refaz busca completa (raro).
+  const reloadEverything = useCallback(async () => {
+    if (!confirm("Recarregar todos os pedidos? Isso pode levar vários minutos.")) return;
+    clearOrdersCache();
+    clearInventoryCache();
+    ordersCacheRef.current.clear();
+    setRefreshing(true);
+    await refreshOrders(daysBack, true);
+    await refreshInventory({ force: true });
+    await refreshCouriers();
+    setRefreshing(false);
+  }, [daysBack, refreshOrders, refreshInventory, refreshCouriers]);
+
   const handleDaysBackChange = useCallback((d: DaysBack) => {
     setDaysBack(d);
     refreshOrders(d);
   }, [refreshOrders]);
 
   useEffect(() => {
+    if (initialMountRef.current) return;
+    initialMountRef.current = true;
     (async () => {
       const cfg = await getMelonnConfig();
       setActiveWarehouses(cfg.config.warehouseCodes);
       refreshMaterials(); // Supabase, não conta no rate limit Melonn.
-      // Sequencial para nunca disparar 2 chamadas Melonn em paralelo.
-      await refreshOrders(daysBack, true);
+
+      // 1) Cache de pedidos: mostra instantaneamente se existir.
+      const cached = loadOrdersCache();
+      if (cached) {
+        setOrders(cached.data);
+        setOrdersLoaded(cached.data.length);
+        setOrdersTotal(cached.data.length);
+        setOrdersAt(cached.fetched_at);
+        setLoading((l) => ({ ...l, orders: false }));
+        setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
+        // Busca incremental em background (últimas 2h).
+        incrementalRefresh(2);
+      } else {
+        // Sem cache: busca completa.
+        await refreshOrders(daysBack, true);
+      }
+
+      // 2) Estoque: usa cache se fresco, senão busca.
       await refreshInventory();
+      // 3) Transportadoras: peso baixo, sempre atualiza.
       await refreshCouriers();
     })();
-    const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
+    // Auto-refresh leve: só incremental últimas 2h.
+    const t = setInterval(() => { incrementalRefresh(2); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
