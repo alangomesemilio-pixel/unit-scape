@@ -224,10 +224,13 @@ export function LogisticaDashboard() {
             }}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
           >
-          <RefreshCw className="size-4" />
-          Atualizar Melonn
-        </button>
+            <RefreshCw className="size-4" />
+            Atualizar Melonn
+          </button>
+        </div>
       </header>
+
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
 
       {/* SEÇÃO 1 — STATUS DE PEDIDOS */}
       <section>
