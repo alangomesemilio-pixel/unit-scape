@@ -284,15 +284,6 @@ export function LogisticaDashboard() {
     setLoading((l) => ({ ...l, mat: false }));
   }, []);
 
-  async function refreshAll() {
-    setRefreshing(true);
-    ordersCacheRef.current.clear();
-    // Sequencial: a fila Melonn já serializa, mas mantemos explícito pra clareza.
-    await refreshOrders(daysBack, true);
-    await refreshInventory();
-    await refreshCouriers();
-    setRefreshing(false);
-  }
 
   // Busca incremental: traz apenas pedidos criados nas últimas N horas e mescla no cache.
   const incrementalRefresh = useCallback(async (hoursBack: number) => {
