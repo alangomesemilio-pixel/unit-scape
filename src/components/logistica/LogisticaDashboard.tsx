@@ -12,12 +12,13 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getMelonnOrders, getMelonnInventory, getMelonnCouriers,
+  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers,
   getMelonnConfig, saveMelonnConfig, testMelonnEndpoint,
   melonnStatusLabel, MELONN_STATUSES, MELONN_WAREHOUSES,
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
   type MelonnOrderStatus, type MelonnConfig,
 } from "@/lib/melonn.functions";
+
 
 // ============================================================
 // TYPES & CONSTANTS
