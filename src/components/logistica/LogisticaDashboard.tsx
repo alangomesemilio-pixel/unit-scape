@@ -240,7 +240,7 @@ export function LogisticaDashboard() {
 
   const refreshInventory = useCallback(async () => {
     setLoading((l) => ({ ...l, inv: true }));
-    const r = await getMelonnInventory();
+    const r = await melonnQueue(() => getMelonnInventory());
     setInventory(r.items); setInventoryErr(r.error); setInventoryAt(r.fetched_at);
     setLoading((l) => ({ ...l, inv: false }));
   }, []);
