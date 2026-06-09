@@ -333,6 +333,7 @@ export function LogisticaDashboard() {
     setRefreshing(true);
     await incrementalRefresh(6);
     await refreshInventory({ force: true });
+    await refreshCouriers({ force: true });
     setRefreshing(false);
   }
 
@@ -341,11 +342,12 @@ export function LogisticaDashboard() {
     if (!confirm("Recarregar todos os pedidos? Isso pode levar vários minutos.")) return;
     clearOrdersCache();
     clearInventoryCache();
+    clearCouriersCache();
     ordersCacheRef.current.clear();
     setRefreshing(true);
     await refreshOrders(daysBack, true);
     await refreshInventory({ force: true });
-    await refreshCouriers();
+    await refreshCouriers({ force: true });
     setRefreshing(false);
   }, [daysBack, refreshOrders, refreshInventory, refreshCouriers]);
 
