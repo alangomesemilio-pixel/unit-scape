@@ -596,7 +596,7 @@ function PerformanceTab({ orders }: CtxBase) {
         </Card>
 
         <Card>
-          <SectionTitle icon={Warehouse} title="Volume por bodega" subtitle="Comparativo MED-3 vs BOG-2" />
+          <SectionTitle icon={Warehouse} title="Volume por bodega" subtitle={`Comparativo: ${activeWarehouses.join(" · ")}`} />
           <div className="h-64">
             <ResponsiveContainer>
               <BarChart data={porBodega}>
