@@ -192,11 +192,44 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string, daysBack = 30): string {
+function buildOrdersPath(basePath: string, opts: { daysBack?: number; page?: number; perPage?: number } = {}): string {
+  const { daysBack = 60, page = 0, perPage = 100 } = opts;
   const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
   const sep = basePath.includes("?") ? "&" : "?";
-  return `${basePath}${sep}page=0&per_page=100&initial_creation_date=${since}`;
+  return `${basePath}${sep}page=${page}&per_page=${perPage}&initial_creation_date=${since}`;
 }
+
+function mapRawOrder(o: any, idx: number): MelonnOrder {
+  const state = o.sell_order_state ?? {};
+  const code = typeof state.code === "number" ? state.code : Number(state.code) || null;
+  const cust = o.customer ?? o.buyer ?? o.recipient ?? {};
+  const customer = cust.name ?? cust.full_name ?? [cust.first_name, cust.last_name].filter(Boolean).join(" ").trim() ?? o.customer_name ?? "—";
+  const status = mapStatusFromCode(code, state.name);
+  const delivered_at =
+    status === "delivered"
+      ? o.delivery_date ?? o.delivered_at ?? o.shipping?.delivered_at ?? o.last_state_update ?? null
+      : null;
+  return {
+    id: String(o.id ?? idx),
+    number: String(o.external_order_number ?? o.id ?? idx),
+    internal_number: o.internal_order_number ?? null,
+    customer: customer || "—",
+    status,
+    status_code: code,
+    status_name: state.name ?? null,
+    carrier: o.shipping_method?.name ?? o.courier_company?.name ?? null,
+    carrier_code: o.shipping_method?.code ?? o.courier_company?.code ?? null,
+    warehouse: o.warehouse?.name ?? null,
+    warehouse_code: o.warehouse?.code ?? null,
+    creation_date: o.creation_date ?? null,
+    delivered_at,
+    last_status_update: o.last_state_update ?? o.last_status_update ?? null,
+    is_b2b: !!o.is_b2b,
+    tracking_link: o.melonn_tracking_link ?? null,
+    destination_city: o.shipping_address?.city ?? cust.city ?? null,
+  };
+}
+
 
 function extractList(data: any, ...keys: string[]): any[] {
   if (Array.isArray(data)) return data;
