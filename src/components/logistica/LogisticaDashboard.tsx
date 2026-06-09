@@ -261,7 +261,10 @@ export function LogisticaDashboard() {
   async function refreshAll() {
     setRefreshing(true);
     ordersCacheRef.current.clear();
-    await Promise.all([refreshOrders(daysBack, true), refreshInventory(), refreshCouriers()]);
+    // Sequencial: a fila Melonn já serializa, mas mantemos explícito pra clareza.
+    await refreshOrders(daysBack, true);
+    await refreshInventory();
+    await refreshCouriers();
     setRefreshing(false);
   }
 
@@ -271,8 +274,15 @@ export function LogisticaDashboard() {
   }, [refreshOrders]);
 
   useEffect(() => {
-    getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
-    refreshOrders(daysBack, true); refreshInventory(); refreshCouriers(); refreshMaterials();
+    (async () => {
+      const cfg = await getMelonnConfig();
+      setActiveWarehouses(cfg.config.warehouseCodes);
+      refreshMaterials(); // Supabase, não conta no rate limit Melonn.
+      // Sequencial para nunca disparar 2 chamadas Melonn em paralelo.
+      await refreshOrders(daysBack, true);
+      await refreshInventory();
+      await refreshCouriers();
+    })();
     const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
