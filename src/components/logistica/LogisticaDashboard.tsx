@@ -3,7 +3,6 @@ import {
   Package,
   Truck,
   CheckCircle2,
-  RotateCcw,
   XCircle,
   RefreshCw,
   Boxes,
@@ -17,6 +16,11 @@ import {
   Settings,
   X,
   PlugZap,
+  ExternalLink,
+  Pause,
+  Cog,
+  Send,
+  Warehouse,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +33,7 @@ import {
   testMelonnEndpoint,
   melonnStatusLabel,
   MELONN_STATUSES,
+  MELONN_WAREHOUSES,
   type MelonnOrder,
   type MelonnInventoryItem,
   type MelonnMetrics,
@@ -45,15 +50,14 @@ type Material = {
   ordem: number;
 };
 
-const STATUS_META: Record<
-  MelonnOrderStatus,
-  { icon: typeof Package; color: string }
-> = {
-  picking: { icon: Package, color: "var(--soma-lavender)" },
-  shipped: { icon: Truck, color: "var(--soma-coral)" },
-  delivered: { icon: CheckCircle2, color: "#10b981" },
-  returned: { icon: RotateCcw, color: "#f59e0b" },
-  cancelled: { icon: XCircle, color: "#ef4444" },
+const STATUS_META: Record<MelonnOrderStatus, { icon: typeof Package; color: string }> = {
+  picking:    { icon: Package,      color: "#eab308" }, // 🟡
+  processing: { icon: Cog,          color: "#f97316" }, // 🟠
+  ready:      { icon: Send,         color: "#3b82f6" }, // 🔵
+  in_transit: { icon: Truck,        color: "var(--soma-coral)" },
+  delivered:  { icon: CheckCircle2, color: "#10b981" }, // 🟢
+  on_hold:    { icon: Pause,        color: "#94a3b8" }, // ⏸️
+  cancelled:  { icon: XCircle,      color: "#ef4444" }, // 🔴
 };
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -78,26 +82,23 @@ function SectionTitle({ icon: Icon, title, subtitle, children }: any) {
 }
 
 export function LogisticaDashboard() {
-  // ===== Pedidos =====
   const [orders, setOrders] = useState<MelonnOrder[]>([]);
   const [ordersErr, setOrdersErr] = useState<string | undefined>();
   const [loadingOrders, setLoadingOrders] = useState(true);
 
-  // ===== Inventário =====
   const [inventory, setInventory] = useState<MelonnInventoryItem[]>([]);
   const [inventoryErr, setInventoryErr] = useState<string | undefined>();
   const [loadingInv, setLoadingInv] = useState(true);
+  const [invFilter, setInvFilter] = useState<string>("all");
 
-  // ===== Métricas =====
   const [metrics, setMetrics] = useState<MelonnMetrics | null>(null);
   const [metricsErr, setMetricsErr] = useState<string | undefined>();
 
-  // ===== Materiais =====
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loadingMat, setLoadingMat] = useState(true);
 
-  // ===== Settings =====
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-3", "BOG-2"]);
 
   async function refreshOrders() {
     setLoadingOrders(true);
@@ -130,6 +131,7 @@ export function LogisticaDashboard() {
   }
 
   useEffect(() => {
+    getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
     refreshOrders();
     refreshInventory();
     refreshMetrics();
@@ -137,28 +139,33 @@ export function LogisticaDashboard() {
   }, []);
 
   const ordersByStatus = useMemo(() => {
-    const map: Record<MelonnOrderStatus, number> = {
-      picking: 0,
-      shipped: 0,
-      delivered: 0,
-      returned: 0,
-      cancelled: 0,
-    };
-    orders.forEach((o) => {
-      map[o.status] = (map[o.status] ?? 0) + 1;
-    });
+    const map = {
+      picking: 0, processing: 0, ready: 0, in_transit: 0,
+      delivered: 0, cancelled: 0, on_hold: 0,
+    } as Record<MelonnOrderStatus, number>;
+    orders.forEach((o) => { map[o.status] = (map[o.status] ?? 0) + 1; });
     return map;
   }, [orders]);
 
+  // Inventário filtrado + consolidação por SKU
+  const filteredInventory = useMemo(() => {
+    return invFilter === "all" ? inventory : inventory.filter((i) => i.warehouse === invFilter);
+  }, [inventory, invFilter]);
+
+  const consolidatedBySku = useMemo(() => {
+    const map = new Map<string, { sku: string; product: string; available: number; reserved: number; total: number; warehouses: string[] }>();
+    inventory.forEach((i) => {
+      const cur = map.get(i.sku) ?? { sku: i.sku, product: i.product, available: 0, reserved: 0, total: 0, warehouses: [] };
+      cur.available += i.available; cur.reserved += i.reserved; cur.total += i.total;
+      if (!cur.warehouses.includes(i.warehouse)) cur.warehouses.push(i.warehouse);
+      map.set(i.sku, cur);
+    });
+    return Array.from(map.values());
+  }, [inventory]);
+
   async function updateMaterial(id: string, patch: Partial<Material>) {
-    const { error } = await supabase
-      .from("packaging_materials")
-      .update(patch)
-      .eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    const { error } = await supabase.from("packaging_materials").update(patch).eq("id", id);
+    if (error) { toast.error(error.message); return; }
     setMaterials((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
   }
 
@@ -168,28 +175,18 @@ export function LogisticaDashboard() {
     const { data, error } = await supabase
       .from("packaging_materials")
       .insert({
-        material: nome,
-        quantidade_atual: 0,
-        minimo: 0,
-        unidade: "un",
+        material: nome, quantidade_atual: 0, minimo: 0, unidade: "un",
         ordem: (materials[materials.length - 1]?.ordem ?? 0) + 1,
       })
-      .select()
-      .single();
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+      .select().single();
+    if (error) { toast.error(error.message); return; }
     setMaterials((p) => [...p, data as Material]);
   }
 
   async function removeMaterial(id: string) {
     if (!confirm("Remover este material?")) return;
     const { error } = await supabase.from("packaging_materials").delete().eq("id", id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
+    if (error) { toast.error(error.message); return; }
     setMaterials((p) => p.filter((m) => m.id !== id));
   }
 
@@ -207,38 +204,39 @@ export function LogisticaDashboard() {
           <p className="text-sm text-muted-foreground">
             Integração Melonn · pedidos, estoque, materiais e métricas operacionais.
           </p>
+          <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+            <Warehouse className="size-3" />
+            Bodegas ativas: {activeWarehouses.join(" · ")}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setSettingsOpen(true)}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
           >
-            <Settings className="size-4" />
-            Configurações
+            <Settings className="size-4" /> Configurações
           </button>
           <button
-            onClick={() => {
-              refreshOrders();
-              refreshInventory();
-              refreshMetrics();
-            }}
+            onClick={() => { refreshOrders(); refreshInventory(); refreshMetrics(); }}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
           >
-            <RefreshCw className="size-4" />
-            Atualizar Melonn
+            <RefreshCw className="size-4" /> Atualizar Melonn
           </button>
         </div>
       </header>
 
-      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
+      {settingsOpen && (
+        <SettingsModal
+          onClose={() => setSettingsOpen(false)}
+          onSaved={(c) => setActiveWarehouses(c.warehouseCodes)}
+        />
+      )}
 
-      {/* SEÇÃO 1 — STATUS DE PEDIDOS */}
+      {/* SEÇÃO 1 — PEDIDOS */}
       <section>
-        <SectionTitle icon={Package} title="Status de pedidos" subtitle="Fonte: API Melonn" />
-        {ordersErr && (
-          <div className="text-xs text-amber-500 mb-2">⚠️ {ordersErr}</div>
-        )}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
+        <SectionTitle icon={Package} title="Status de pedidos" subtitle="Últimos 30 dias · /sell-orders" />
+        {ordersErr && <div className="text-xs text-amber-500 mb-2">⚠️ {ordersErr}</div>}
+        <div className="grid grid-cols-2 md:grid-cols-7 gap-3 mb-4">
           {MELONN_STATUSES.map((s) => {
             const meta = STATUS_META[s];
             const Icon = meta.icon;
@@ -248,7 +246,7 @@ export function LogisticaDashboard() {
                   <Icon className="size-4" style={{ color: meta.color }} />
                 </div>
                 <div className="text-2xl font-bold">{ordersByStatus[s]}</div>
-                <div className="text-xs text-muted-foreground">{melonnStatusLabel(s)}</div>
+                <div className="text-[11px] text-muted-foreground">{melonnStatusLabel(s)}</div>
               </Card>
             );
           })}
@@ -262,23 +260,17 @@ export function LogisticaDashboard() {
                   <th className="text-left px-3 py-2 font-medium">Cliente</th>
                   <th className="text-left px-3 py-2 font-medium">Status</th>
                   <th className="text-left px-3 py-2 font-medium">Transportadora</th>
-                  <th className="text-left px-3 py-2 font-medium">Prev. entrega</th>
+                  <th className="text-left px-3 py-2 font-medium">Bodega</th>
+                  <th className="text-left px-3 py-2 font-medium">Data</th>
+                  <th className="text-left px-3 py-2 font-medium">Tipo</th>
                   <th className="text-left px-3 py-2 font-medium">Rastreio</th>
                 </tr>
               </thead>
               <tbody>
                 {loadingOrders ? (
-                  <tr>
-                    <td colSpan={6} className="text-center text-muted-foreground py-6">
-                      Carregando…
-                    </td>
-                  </tr>
+                  <tr><td colSpan={8} className="text-center text-muted-foreground py-6">Carregando…</td></tr>
                 ) : orders.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center text-muted-foreground py-6">
-                      Nenhum pedido retornado.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={8} className="text-center text-muted-foreground py-6">Nenhum pedido retornado.</td></tr>
                 ) : (
                   orders.map((o) => (
                     <tr key={o.id} className="border-t border-border">
@@ -296,12 +288,30 @@ export function LogisticaDashboard() {
                         </span>
                       </td>
                       <td className="px-3 py-2">{o.carrier ?? "—"}</td>
-                      <td className="px-3 py-2">
-                        {o.estimated_delivery
-                          ? new Date(o.estimated_delivery).toLocaleDateString("pt-BR")
-                          : "—"}
+                      <td className="px-3 py-2 text-xs">{o.warehouse ?? "—"}</td>
+                      <td className="px-3 py-2 text-xs">
+                        {o.creation_date ? new Date(o.creation_date).toLocaleDateString("pt-BR") : "—"}
                       </td>
-                      <td className="px-3 py-2 font-mono text-xs">{o.tracking_code ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded ${o.is_b2b ? "bg-blue-500/15 text-blue-500" : "bg-secondary text-muted-foreground"}`}>
+                          {o.is_b2b ? "B2B" : "B2C"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {o.tracking_link ? (
+                          <a
+                            href={o.tracking_link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs font-mono"
+                          >
+                            {o.internal_number ?? "rastrear"}
+                            <ExternalLink className="size-3" />
+                          </a>
+                        ) : (
+                          <span className="font-mono text-xs">{o.internal_number ?? "—"}</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -318,9 +328,29 @@ export function LogisticaDashboard() {
           title="Inventário em tempo real"
           subtitle="Alerta amarelo < 100 · alerta vermelho < 50"
         />
-        {inventoryErr && (
-          <div className="text-xs text-amber-500 mb-2">⚠️ {inventoryErr}</div>
-        )}
+        {inventoryErr && <div className="text-xs text-amber-500 mb-2">⚠️ {inventoryErr}</div>}
+
+        {/* Tabs de bodega */}
+        <div className="flex items-center gap-1 mb-3">
+          {[
+            { id: "all", label: "Todos" },
+            ...activeWarehouses.map((wh) => {
+              const meta = MELONN_WAREHOUSES.find((w) => w.code === wh);
+              return { id: wh, label: `${wh}${meta ? " · " + meta.name : ""}` };
+            }),
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setInvFilter(t.id)}
+              className={`px-3 py-1.5 text-xs rounded-md transition ${
+                invFilter === t.id ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
         <Card className="overflow-hidden p-0">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -328,6 +358,7 @@ export function LogisticaDashboard() {
                 <tr>
                   <th className="text-left px-3 py-2 font-medium">Produto</th>
                   <th className="text-left px-3 py-2 font-medium">SKU</th>
+                  <th className="text-left px-3 py-2 font-medium">Bodega</th>
                   <th className="text-right px-3 py-2 font-medium">Disponível</th>
                   <th className="text-right px-3 py-2 font-medium">Reservado</th>
                   <th className="text-right px-3 py-2 font-medium">Total</th>
@@ -335,25 +366,18 @@ export function LogisticaDashboard() {
               </thead>
               <tbody>
                 {loadingInv ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-muted-foreground py-6">
-                      Carregando…
-                    </td>
-                  </tr>
-                ) : inventory.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center text-muted-foreground py-6">
-                      Sem dados de inventário.
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="text-center text-muted-foreground py-6">Carregando…</td></tr>
+                ) : filteredInventory.length === 0 ? (
+                  <tr><td colSpan={6} className="text-center text-muted-foreground py-6">Sem dados de inventário.</td></tr>
                 ) : (
-                  inventory.map((i) => (
-                    <tr key={i.sku} className="border-t border-border">
+                  filteredInventory.map((i, idx) => (
+                    <tr key={`${i.warehouse}-${i.sku}-${idx}`} className="border-t border-border">
                       <td className="px-3 py-2">{i.product}</td>
                       <td className="px-3 py-2 font-mono text-xs">{i.sku}</td>
-                      <td className={`px-3 py-2 text-right ${inventoryAlertClass(i.available)}`}>
-                        {i.available}
+                      <td className="px-3 py-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary font-mono">{i.warehouse}</span>
                       </td>
+                      <td className={`px-3 py-2 text-right ${inventoryAlertClass(i.available)}`}>{i.available}</td>
                       <td className="px-3 py-2 text-right">{i.reserved}</td>
                       <td className="px-3 py-2 text-right">{i.total}</td>
                     </tr>
@@ -363,9 +387,44 @@ export function LogisticaDashboard() {
             </table>
           </div>
         </Card>
+
+        {/* Consolidado por SKU */}
+        {invFilter === "all" && consolidatedBySku.length > 0 && (
+          <div className="mt-4">
+            <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Consolidado por SKU (soma das bodegas)</h3>
+            <Card className="overflow-hidden p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-secondary/40">
+                    <tr>
+                      <th className="text-left px-3 py-2 font-medium">Produto</th>
+                      <th className="text-left px-3 py-2 font-medium">SKU</th>
+                      <th className="text-left px-3 py-2 font-medium">Bodegas</th>
+                      <th className="text-right px-3 py-2 font-medium">Disp. total</th>
+                      <th className="text-right px-3 py-2 font-medium">Res. total</th>
+                      <th className="text-right px-3 py-2 font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {consolidatedBySku.map((c) => (
+                      <tr key={c.sku} className="border-t border-border">
+                        <td className="px-3 py-2">{c.product}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{c.sku}</td>
+                        <td className="px-3 py-2 text-[11px] font-mono">{c.warehouses.join(" + ")}</td>
+                        <td className={`px-3 py-2 text-right ${inventoryAlertClass(c.available)}`}>{c.available}</td>
+                        <td className="px-3 py-2 text-right">{c.reserved}</td>
+                        <td className="px-3 py-2 text-right">{c.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </div>
+        )}
       </section>
 
-      {/* SEÇÃO 3 — MATERIAIS DE EMBALAGEM */}
+      {/* SEÇÃO 3 — MATERIAIS */}
       <section>
         <SectionTitle
           icon={AlertTriangle}
@@ -394,11 +453,7 @@ export function LogisticaDashboard() {
               </thead>
               <tbody>
                 {loadingMat ? (
-                  <tr>
-                    <td colSpan={6} className="text-center text-muted-foreground py-6">
-                      Carregando…
-                    </td>
-                  </tr>
+                  <tr><td colSpan={6} className="text-center text-muted-foreground py-6">Carregando…</td></tr>
                 ) : (
                   materials.map((m) => {
                     const baixo = m.quantidade_atual < m.minimo;
@@ -408,21 +463,17 @@ export function LogisticaDashboard() {
                           <input
                             defaultValue={m.material}
                             onBlur={(e) =>
-                              e.target.value !== m.material &&
-                              updateMaterial(m.id, { material: e.target.value })
+                              e.target.value !== m.material && updateMaterial(m.id, { material: e.target.value })
                             }
                             className="bg-transparent w-full focus:outline-none focus:ring-1 focus:ring-primary/40 rounded px-1"
                           />
                         </td>
                         <td className="px-3 py-2 text-right">
                           <input
-                            type="number"
-                            min={0}
-                            defaultValue={m.quantidade_atual}
+                            type="number" min={0} defaultValue={m.quantidade_atual}
                             onBlur={(e) => {
                               const v = Number(e.target.value);
-                              if (v !== m.quantidade_atual)
-                                updateMaterial(m.id, { quantidade_atual: v });
+                              if (v !== m.quantidade_atual) updateMaterial(m.id, { quantidade_atual: v });
                             }}
                             className={`bg-transparent w-24 text-right focus:outline-none focus:ring-1 focus:ring-primary/40 rounded px-1 ${
                               baixo ? "text-red-500 font-semibold" : ""
@@ -431,9 +482,7 @@ export function LogisticaDashboard() {
                         </td>
                         <td className="px-3 py-2 text-right">
                           <input
-                            type="number"
-                            min={0}
-                            defaultValue={m.minimo}
+                            type="number" min={0} defaultValue={m.minimo}
                             onBlur={(e) => {
                               const v = Number(e.target.value);
                               if (v !== m.minimo) updateMaterial(m.id, { minimo: v });
@@ -445,8 +494,7 @@ export function LogisticaDashboard() {
                           <input
                             defaultValue={m.unidade}
                             onBlur={(e) =>
-                              e.target.value !== m.unidade &&
-                              updateMaterial(m.id, { unidade: e.target.value })
+                              e.target.value !== m.unidade && updateMaterial(m.id, { unidade: e.target.value })
                             }
                             className="bg-transparent w-16 focus:outline-none focus:ring-1 focus:ring-primary/40 rounded px-1"
                           />
@@ -479,47 +527,30 @@ export function LogisticaDashboard() {
         </Card>
       </section>
 
-      {/* SEÇÃO 4 — MÉTRICAS OPERACIONAIS */}
+      {/* SEÇÃO 4 — MÉTRICAS */}
       <section>
-        <SectionTitle icon={Gauge} title="Métricas operacionais" subtitle="Fonte: API Melonn" />
-        {metricsErr && (
-          <div className="text-xs text-amber-500 mb-2">⚠️ {metricsErr}</div>
-        )}
+        <SectionTitle icon={Gauge} title="Métricas operacionais" subtitle="Derivadas dos últimos 30 dias" />
+        {metricsErr && <div className="text-xs text-amber-500 mb-2">⚠️ {metricsErr}</div>}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <MetricCard
-            icon={Gauge}
-            label="SLA de entrega"
+            icon={Gauge} label="Taxa de entrega"
             value={metrics ? `${metrics.delivery_sla_pct.toFixed(1)}%` : "—"}
-            goal="Meta 98%"
-            ok={!!metrics && metrics.delivery_sla_pct >= 98}
+            goal="" ok={!!metrics && metrics.delivery_sla_pct >= 80}
           />
           <MetricCard
-            icon={Clock}
-            label="Tempo médio de separação"
+            icon={Clock} label="Tempo médio de separação"
             value={metrics ? `${metrics.avg_picking_minutes.toFixed(0)} min` : "—"}
-            goal=""
-            ok={true}
+            goal="" ok
           />
           <MetricCard
-            icon={Undo2}
-            label="Taxa de devolução"
+            icon={Undo2} label="Taxa de devolução"
             value={metrics ? `${metrics.return_rate_pct.toFixed(1)}%` : "—"}
-            goal="Meta < 3%"
-            ok={!!metrics && metrics.return_rate_pct < 3}
+            goal="Meta < 3%" ok={!!metrics && metrics.return_rate_pct < 3}
           />
           <MetricCard
-            icon={DollarSign}
-            label="Custo logístico/pedido"
-            value={
-              metrics
-                ? metrics.cost_per_order.toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  })
-                : "—"
-            }
-            goal=""
-            ok={true}
+            icon={DollarSign} label="Custo logístico/pedido"
+            value={metrics ? metrics.cost_per_order.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) : "—"}
+            goal="" ok
           />
         </div>
       </section>
@@ -528,28 +559,14 @@ export function LogisticaDashboard() {
 }
 
 function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  goal,
-  ok,
-}: {
-  icon: any;
-  label: string;
-  value: string;
-  goal: string;
-  ok: boolean;
-}) {
+  icon: Icon, label, value, goal, ok,
+}: { icon: any; label: string; value: string; goal: string; ok: boolean }) {
   return (
     <Card>
       <div className="flex items-center justify-between mb-2">
         <Icon className="size-4 text-muted-foreground" />
         {goal && (
-          <span
-            className={`text-[10px] px-1.5 py-0.5 rounded ${
-              ok ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"
-            }`}
-          >
+          <span className={`text-[10px] px-1.5 py-0.5 rounded ${ok ? "bg-emerald-500/15 text-emerald-500" : "bg-amber-500/15 text-amber-500"}`}>
             {goal}
           </span>
         )}
@@ -560,7 +577,13 @@ function MetricCard({
   );
 }
 
-function SettingsModal({ onClose }: { onClose: () => void }) {
+function SettingsModal({
+  onClose,
+  onSaved,
+}: {
+  onClose: () => void;
+  onSaved?: (cfg: MelonnConfig) => void;
+}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
@@ -569,7 +592,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     baseUrl: "",
     ordersPath: "",
     inventoryPath: "",
-    metricsPath: "",
+    couriersPath: "",
+    warehouseCodes: [],
   });
   const [tests, setTests] = useState<Record<string, { ok?: boolean; msg?: string; loading?: boolean }>>({});
 
@@ -587,6 +611,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     try {
       const r = await saveMelonnConfig({ data: cfg });
       setCfg(r.config);
+      onSaved?.(r.config);
       toast.success("Configuração salva");
     } catch (e: any) {
       toast.error(e?.message ?? "Falha ao salvar");
@@ -595,9 +620,8 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     }
   }
 
-  async function test(endpoint: "orders" | "inventory" | "metrics") {
+  async function test(endpoint: "orders" | "inventory" | "couriers") {
     setTests((t) => ({ ...t, [endpoint]: { loading: true } }));
-    // garante que a config corrente foi persistida antes do teste
     await saveMelonnConfig({ data: cfg }).catch(() => null);
     const r = await testMelonnEndpoint({ data: { endpoint } });
     setTests((t) => ({
@@ -608,10 +632,10 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
     }));
   }
 
-  function field(
+  function pathField(
     label: string,
-    key: keyof MelonnConfig,
-    endpoint?: "orders" | "inventory" | "metrics",
+    key: "baseUrl" | "ordersPath" | "inventoryPath" | "couriersPath",
+    endpoint?: "orders" | "inventory" | "couriers",
   ) {
     const t = endpoint ? tests[endpoint] : undefined;
     return (
@@ -621,7 +645,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           {defaults && (
             <button
               type="button"
-              onClick={() => setCfg((c) => ({ ...c, [key]: defaults[key] }))}
+              onClick={() => setCfg((c) => ({ ...c, [key]: defaults[key] as string }))}
               className="text-[10px] text-muted-foreground hover:text-foreground underline"
             >
               restaurar padrão
@@ -630,7 +654,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
         </label>
         <div className="flex gap-2">
           <input
-            value={cfg[key]}
+            value={cfg[key] as string}
             onChange={(e) => setCfg((c) => ({ ...c, [key]: e.target.value }))}
             className="flex-1 px-3 py-2 rounded-md bg-secondary/40 border border-border text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary/40"
           />
@@ -641,21 +665,28 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
               disabled={t?.loading}
               className="flex items-center gap-1 px-2.5 text-xs rounded-md bg-secondary hover:bg-secondary/80 disabled:opacity-50"
             >
-              <PlugZap className="size-3.5" />
-              Testar
+              <PlugZap className="size-3.5" /> Testar
             </button>
           )}
         </div>
         {t?.msg && (
-          <div className={`text-[11px] ${t.ok ? "text-emerald-500" : "text-amber-500"}`}>
-            {t.msg}
-          </div>
+          <div className={`text-[11px] ${t.ok ? "text-emerald-500" : "text-amber-500"}`}>{t.msg}</div>
         )}
         {defaults && (
-          <div className="text-[10px] text-muted-foreground">padrão: <code>{defaults[key]}</code></div>
+          <div className="text-[10px] text-muted-foreground">
+            padrão: <code>{defaults[key] as string}</code>
+          </div>
         )}
       </div>
     );
+  }
+
+  function toggleWarehouse(code: string) {
+    setCfg((c) => {
+      const set = new Set(c.warehouseCodes);
+      if (set.has(code)) set.delete(code); else set.add(code);
+      return { ...c, warehouseCodes: Array.from(set) };
+    });
   }
 
   return (
@@ -665,7 +696,7 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
           <div>
             <h3 className="font-semibold">Configurações Melonn</h3>
             <p className="text-xs text-muted-foreground">
-              Base URL e paths dos endpoints. As mudanças passam a valer no próximo fetch.
+              Base URL, paths e bodegas ativas. As mudanças passam a valer no próximo fetch.
             </p>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
@@ -682,18 +713,45 @@ function SettingsModal({ onClose }: { onClose: () => void }) {
             <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
           ) : (
             <>
-              {field("Base URL", "baseUrl")}
-              {field("Endpoint · Pedidos", "ordersPath", "orders")}
-              {field("Endpoint · Inventário", "inventoryPath", "inventory")}
-              {field("Endpoint · Métricas operacionais", "metricsPath", "metrics")}
+              {pathField("Base URL", "baseUrl")}
+              {pathField("Endpoint · Pedidos", "ordersPath", "orders")}
+              {pathField("Endpoint · Estoque", "inventoryPath", "inventory")}
+              {pathField("Endpoint · Transportadoras", "couriersPath", "couriers")}
+
+              <div className="space-y-2 pt-2 border-t border-border">
+                <label className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                  <Warehouse className="size-3.5" />
+                  Bodegas ativas (warehouse_code) — selecione todas que devem ser consultadas
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {MELONN_WAREHOUSES.map((w) => {
+                    const active = cfg.warehouseCodes.includes(w.code);
+                    return (
+                      <button
+                        key={w.code}
+                        type="button"
+                        onClick={() => toggleWarehouse(w.code)}
+                        className={`flex items-center justify-between px-3 py-2 rounded-md border text-sm transition ${
+                          active
+                            ? "bg-primary/10 border-primary text-foreground"
+                            : "bg-secondary/30 border-border text-muted-foreground hover:bg-secondary/50"
+                        }`}
+                      >
+                        <span className="font-mono text-xs">{w.code}</span>
+                        <span className="text-[11px]">{w.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Selecionadas: <code>{cfg.warehouseCodes.join(", ") || "—"}</code> · padrão: <code>MED-3, BOG-2</code>
+                </div>
+              </div>
             </>
           )}
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
-          <button
-            onClick={onClose}
-            className="px-3 py-2 text-sm rounded-md hover:bg-secondary/60"
-          >
+          <button onClick={onClose} className="px-3 py-2 text-sm rounded-md hover:bg-secondary/60">
             Cancelar
           </button>
           <button
