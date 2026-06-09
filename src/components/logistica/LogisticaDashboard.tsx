@@ -454,7 +454,7 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
 // ============================================================
 // ABA 2 — PERFORMANCE
 // ============================================================
-function PerformanceTab({ orders }: CtxBase) {
+function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
   // Gráfico 1: volume por dia (30 dias)
   const volumePorDia = useMemo(() => {
     const map = new Map<string, { dia: string; criados: number; entregues: number }>();
