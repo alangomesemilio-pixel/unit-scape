@@ -127,6 +127,9 @@ export function LogisticaDashboard() {
   const [orders, setOrders] = useState<MelonnOrder[]>([]);
   const [ordersErr, setOrdersErr] = useState<string>();
   const [ordersAt, setOrdersAt] = useState<string>();
+  const [ordersTotal, setOrdersTotal] = useState<number>(0);
+  const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
+  const [daysBack, setDaysBack] = useState<DaysBack>(60);
 
   const [inventory, setInventory] = useState<MelonnInventoryItem[]>([]);
   const [inventoryErr, setInventoryErr] = useState<string>();
@@ -143,12 +146,32 @@ export function LogisticaDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const refreshOrders = useCallback(async () => {
+  const refreshOrders = useCallback(async (days: DaysBack = daysBack) => {
     setLoading((l) => ({ ...l, orders: true }));
-    const r = await getMelonnOrders();
-    setOrders(r.orders); setOrdersErr(r.error); setOrdersAt(r.fetched_at);
-    setLoading((l) => ({ ...l, orders: false }));
-  }, []);
+    setOrders([]); setOrdersLoaded(0); setOrdersTotal(0); setOrdersErr(undefined);
+    const PER_PAGE = 100;
+    let page = 0;
+    const acc: MelonnOrder[] = [];
+    try {
+      while (true) {
+        if (page > 0) await new Promise((r) => setTimeout(r, 1100));
+        const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
+        if (r.error) { setOrdersErr(r.error); break; }
+        acc.push(...r.orders);
+        setOrders([...acc]);
+        setOrdersLoaded(acc.length);
+        if (page === 0) setOrdersTotal(r.total_count || acc.length);
+        setOrdersAt(r.fetched_at);
+        if (!r.has_more || r.orders.length === 0) break;
+        page++;
+        if (page > 200) break; // safety
+      }
+    } catch (e: any) {
+      setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
+    } finally {
+      setLoading((l) => ({ ...l, orders: false }));
+    }
+  }, [daysBack]);
   const refreshInventory = useCallback(async () => {
     setLoading((l) => ({ ...l, inv: true }));
     const r = await getMelonnInventory();
@@ -171,17 +194,23 @@ export function LogisticaDashboard() {
 
   async function refreshAll() {
     setRefreshing(true);
-    await Promise.all([refreshOrders(), refreshInventory(), refreshCouriers()]);
+    await Promise.all([refreshOrders(daysBack), refreshInventory(), refreshCouriers()]);
     setRefreshing(false);
   }
 
+  const handleDaysBackChange = useCallback((d: DaysBack) => {
+    setDaysBack(d);
+    refreshOrders(d);
+  }, [refreshOrders]);
+
   useEffect(() => {
     getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
-    refreshOrders(); refreshInventory(); refreshCouriers(); refreshMaterials();
+    refreshOrders(daysBack); refreshInventory(); refreshCouriers(); refreshMaterials();
     const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // ============= KPIs HEADER =============
   const kpis = useMemo(() => {
