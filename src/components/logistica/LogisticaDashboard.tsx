@@ -546,11 +546,22 @@ export function LogisticaDashboard() {
               <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                 <span className="flex items-center gap-1.5">
                   <RefreshCw className="size-3 animate-spin" />
-                  Carregando… {ordersLoaded.toLocaleString("pt-BR")} pedidos encontrados
+                  Buscando página {fetchProgress.currentPage}
+                  {fetchProgress.completedPages > 0 && ` · ${fetchProgress.completedPages} concluída${fetchProgress.completedPages > 1 ? "s" : ""}`}
+                </span>
+                <span className="tabular-nums font-medium text-foreground">
+                  {fetchProgress.ordersLoaded.toLocaleString("pt-BR")} pedidos
                 </span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                <div className="h-full w-1/3 bg-primary animate-pulse" />
+                {/* Sem total real: barra determinística baseada nas páginas concluídas (cada página ≈ 1%, cap 95%) */}
+                <div
+                  className="h-full bg-primary transition-all duration-500"
+                  style={{ width: `${Math.min(95, Math.max(5, fetchProgress.completedPages * 5 + (fetchProgress.currentPage > fetchProgress.completedPages ? 2 : 0)))}%` }}
+                />
+              </div>
+              <div className="text-[10px] text-muted-foreground/70 mt-1">
+                ~100 pedidos por página · busca contínua até a Melonn devolver página incompleta
               </div>
             </div>
           )}
