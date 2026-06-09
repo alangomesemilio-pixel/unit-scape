@@ -215,11 +215,14 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string, opts: { daysBack?: number | null; page?: number; perPage?: number } = {}): string {
-  const { daysBack = 365, page = 0, perPage = 100 } = opts;
+function buildOrdersPath(basePath: string, opts: { daysBack?: number | null; sinceIso?: string | null; page?: number; perPage?: number } = {}): string {
+  const { daysBack = 365, sinceIso = null, page = 0, perPage = 100 } = opts;
   const sep = basePath.includes("?") ? "&" : "?";
   let path = `${basePath}${sep}page=${page}&per_page=${perPage}`;
-  if (daysBack != null) {
+  // sinceIso tem prioridade sobre daysBack (filtro fino para busca incremental).
+  if (sinceIso) {
+    path += `&initial_creation_date=${encodeURIComponent(sinceIso)}`;
+  } else if (daysBack != null) {
     const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
     path += `&initial_creation_date=${since}`;
   }
@@ -321,7 +324,7 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
   });
 
 export const getMelonnOrdersPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { page?: number; daysBack?: number | null; perPage?: number }) => d)
+  .inputValidator((d: { page?: number; daysBack?: number | null; sinceIso?: string | null; perPage?: number }) => d)
   .handler(async ({ data }): Promise<{
     orders: MelonnOrder[];
     page: number;
@@ -334,9 +337,10 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const page = data.page ?? 0;
     const perPage = data.perPage ?? 100;
-    // Padrão: sem filtro de data (traz histórico completo). Passe daysBack=N para limitar.
+    // Padrão: sem filtro de data (traz histórico completo). Passe daysBack=N ou sinceIso.
     const daysBack = data.daysBack === undefined ? null : data.daysBack;
-    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
+    const sinceIso = data.sinceIso ?? null;
+    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, sinceIso, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
     const raw = extractList(result.data, "sell_orders", "orders");

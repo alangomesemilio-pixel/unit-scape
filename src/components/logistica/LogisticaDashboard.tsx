@@ -19,6 +19,11 @@ import {
   type MelonnOrderStatus, type MelonnConfig,
 } from "@/lib/melonn.functions";
 import { melonnQueue } from "@/lib/melonn-queue";
+import {
+  loadOrdersCache, saveOrdersCache, clearOrdersCache, mergeOrders, fmtAge,
+  loadInventoryCache, saveInventoryCache, clearInventoryCache,
+  INVENTORY_TTL_MS, isExpired,
+} from "@/lib/melonn-cache";
 
 
 // ============================================================
@@ -159,6 +164,12 @@ export function LogisticaDashboard() {
   const ordersCacheRef = useRef<Map<DaysBack, OrdersCacheEntry>>(new Map());
   const FETCH_TIMEOUT_MS = 60_000;
 
+  // Estado de cache persistente (sessionStorage) + busca incremental.
+  const [cacheInfo, setCacheInfo] = useState<{ ageMs: number | null; lastDelta: { newCount: number; updatedCount: number } | null; checking: boolean }>({
+    ageMs: null, lastDelta: null, checking: false,
+  });
+  const initialMountRef = useRef(false);
+
   const runOrdersFetch = useCallback(async (
     days: DaysBack,
     opts: { startPage?: number; initialAcc?: MelonnOrder[]; initialTotal?: number } = {},
@@ -210,6 +221,11 @@ export function LogisticaDashboard() {
     } finally {
       const completed = !timedOut && acc.length > 0;
       ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
+      // Persiste em sessionStorage só quando completar uma janela "all" (cache de longo prazo).
+      if (completed && days === "all") {
+        saveOrdersCache(acc, fetchedAt);
+        setCacheInfo((c) => ({ ...c, ageMs: 0 }));
+      }
       setLoading((l) => ({ ...l, orders: false }));
     }
     // Workaround for opts.startPage default in condition above:
@@ -238,10 +254,20 @@ export function LogisticaDashboard() {
     runOrdersFetch(daysBack, { startPage: resumePage, initialAcc: orders, initialTotal: ordersTotal });
   }, [resumePage, daysBack, orders, ordersTotal, runOrdersFetch]);
 
-  const refreshInventory = useCallback(async () => {
+  const refreshInventory = useCallback(async (opts: { force?: boolean } = {}) => {
+    // Usa cache de sessão se ainda fresco (TTL 10 min).
+    if (!opts.force) {
+      const blob = loadInventoryCache();
+      if (blob && !isExpired(blob.timestamp, INVENTORY_TTL_MS)) {
+        setInventory(blob.data); setInventoryAt(blob.fetched_at);
+        setLoading((l) => ({ ...l, inv: false }));
+        return;
+      }
+    }
     setLoading((l) => ({ ...l, inv: true }));
     const r = await melonnQueue(() => getMelonnInventory());
     setInventory(r.items); setInventoryErr(r.error); setInventoryAt(r.fetched_at);
+    if (!r.error && r.items.length > 0) saveInventoryCache(r.items, r.fetched_at);
     setLoading((l) => ({ ...l, inv: false }));
   }, []);
   const refreshCouriers = useCallback(async () => {
@@ -258,15 +284,60 @@ export function LogisticaDashboard() {
     setLoading((l) => ({ ...l, mat: false }));
   }, []);
 
+
+  // Busca incremental: traz apenas pedidos criados nas últimas N horas e mescla no cache.
+  const incrementalRefresh = useCallback(async (hoursBack: number) => {
+    setCacheInfo((c) => ({ ...c, checking: true }));
+    try {
+      const sinceIso = new Date(Date.now() - hoursBack * 60 * 60 * 1000).toISOString();
+      const all: MelonnOrder[] = [];
+      let page = 0;
+      const PER_PAGE = 100;
+      while (true) {
+        const r = await melonnQueue(() => getMelonnOrdersPage({ data: { page, sinceIso, perPage: PER_PAGE } }));
+        if (r.error) break;
+        all.push(...r.orders);
+        if (r.orders.length < PER_PAGE) break;
+        page++;
+        if (page > 50) break;
+      }
+      const { merged, newCount, updatedCount } = mergeOrders(orders, all);
+      const fetchedAt = new Date().toISOString();
+      setOrders(merged);
+      setOrdersLoaded(merged.length);
+      setOrdersTotal(merged.length);
+      setOrdersAt(fetchedAt);
+      saveOrdersCache(merged, fetchedAt);
+      setCacheInfo({ ageMs: 0, lastDelta: { newCount, updatedCount }, checking: false });
+      if (newCount > 0 || updatedCount > 0) {
+        toast.success(`${newCount} novos · ${updatedCount} atualizados`);
+      }
+    } catch (e: any) {
+      setCacheInfo((c) => ({ ...c, checking: false }));
+      console.error("Incremental refresh falhou:", e);
+    }
+  }, [orders]);
+
+  // "Atualizar agora": incremental últimas 6h (rápido, sem 429).
   async function refreshAll() {
     setRefreshing(true);
-    ordersCacheRef.current.clear();
-    // Sequencial: a fila Melonn já serializa, mas mantemos explícito pra clareza.
-    await refreshOrders(daysBack, true);
-    await refreshInventory();
-    await refreshCouriers();
+    await incrementalRefresh(6);
+    await refreshInventory({ force: true });
     setRefreshing(false);
   }
+
+  // "Recarregar tudo": limpa cache e refaz busca completa (raro).
+  const reloadEverything = useCallback(async () => {
+    if (!confirm("Recarregar todos os pedidos? Isso pode levar vários minutos.")) return;
+    clearOrdersCache();
+    clearInventoryCache();
+    ordersCacheRef.current.clear();
+    setRefreshing(true);
+    await refreshOrders(daysBack, true);
+    await refreshInventory({ force: true });
+    await refreshCouriers();
+    setRefreshing(false);
+  }, [daysBack, refreshOrders, refreshInventory, refreshCouriers]);
 
   const handleDaysBackChange = useCallback((d: DaysBack) => {
     setDaysBack(d);
@@ -274,16 +345,36 @@ export function LogisticaDashboard() {
   }, [refreshOrders]);
 
   useEffect(() => {
+    if (initialMountRef.current) return;
+    initialMountRef.current = true;
     (async () => {
       const cfg = await getMelonnConfig();
       setActiveWarehouses(cfg.config.warehouseCodes);
       refreshMaterials(); // Supabase, não conta no rate limit Melonn.
-      // Sequencial para nunca disparar 2 chamadas Melonn em paralelo.
-      await refreshOrders(daysBack, true);
+
+      // 1) Cache de pedidos: mostra instantaneamente se existir.
+      const cached = loadOrdersCache();
+      if (cached) {
+        setOrders(cached.data);
+        setOrdersLoaded(cached.data.length);
+        setOrdersTotal(cached.data.length);
+        setOrdersAt(cached.fetched_at);
+        setLoading((l) => ({ ...l, orders: false }));
+        setCacheInfo({ ageMs: Date.now() - cached.timestamp, lastDelta: null, checking: false });
+        // Busca incremental em background (últimas 2h).
+        incrementalRefresh(2);
+      } else {
+        // Sem cache: busca completa.
+        await refreshOrders(daysBack, true);
+      }
+
+      // 2) Estoque: usa cache se fresco, senão busca.
       await refreshInventory();
+      // 3) Transportadoras: peso baixo, sempre atualiza.
       await refreshCouriers();
     })();
-    const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
+    // Auto-refresh leve: só incremental últimas 2h.
+    const t = setInterval(() => { incrementalRefresh(2); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -414,8 +505,16 @@ export function LogisticaDashboard() {
             Integração Melonn · análise operacional em tempo real
           </p>
           <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-3 flex-wrap">
+            <span className="flex items-center gap-1"><Package className="size-3" />{ordersLoaded.toLocaleString("pt-BR")} pedidos</span>
             <span className="flex items-center gap-1"><Warehouse className="size-3" />Bodegas: {activeWarehouses.join(" · ")}</span>
-            <span className="flex items-center gap-1"><Clock className="size-3" />Última atualização: {fmtHHMM(ordersAt)}</span>
+            <span className="flex items-center gap-1"><Clock className="size-3" />Atualizado às {fmtHHMM(ordersAt)}</span>
+            {cacheInfo.checking && <span className="text-blue-400">🔄 Verificando novidades…</span>}
+            {!cacheInfo.checking && cacheInfo.lastDelta && (cacheInfo.lastDelta.newCount > 0 || cacheInfo.lastDelta.updatedCount > 0) && (
+              <span className="text-emerald-500">✅ {cacheInfo.lastDelta.newCount} novos · {cacheInfo.lastDelta.updatedCount} atualizados</span>
+            )}
+            {!cacheInfo.checking && cacheInfo.ageMs != null && cacheInfo.ageMs > 30_000 && !cacheInfo.lastDelta && (
+              <span className="text-muted-foreground/70">Cache de {fmtAge(cacheInfo.ageMs)}</span>
+            )}
             <span className="text-muted-foreground/60">· Auto-refresh 5min</span>
           </p>
           {loading.orders && (
@@ -458,6 +557,9 @@ export function LogisticaDashboard() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button onClick={reloadEverything} disabled={refreshing} title="Limpa o cache e refaz a busca completa" className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline disabled:opacity-50">
+            Recarregar tudo
+          </button>
           <button onClick={() => setSettingsOpen(true)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80">
             <Settings className="size-4" /> Configurações
           </button>
