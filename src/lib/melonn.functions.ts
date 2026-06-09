@@ -60,6 +60,12 @@ export const MELONN_WAREHOUSES = [
   { code: "SAS-2", name: "SAS Armatura" },
 ] as const;
 
+export interface MelonnOrderItem {
+  sku: string | null;
+  product: string;
+  quantity: number;
+}
+
 export interface MelonnOrder {
   id: string;
   number: string;
@@ -78,6 +84,8 @@ export interface MelonnOrder {
   is_b2b: boolean;
   tracking_link: string | null;
   destination_city: string | null;
+  items: MelonnOrderItem[];
+  item_count: number;
 }
 
 export interface MelonnInventoryItem {
@@ -229,6 +237,20 @@ function mapRawOrder(o: any, idx: number): MelonnOrder {
     status === "delivered"
       ? o.delivery_date ?? o.delivered_at ?? o.shipping?.delivered_at ?? o.last_state_update ?? null
       : null;
+  const rawItems: any[] =
+    (Array.isArray(o.sell_order_lines) && o.sell_order_lines) ||
+    (Array.isArray(o.lines) && o.lines) ||
+    (Array.isArray(o.items) && o.items) ||
+    (Array.isArray(o.products) && o.products) ||
+    [];
+  const items: MelonnOrderItem[] = rawItems.map((li: any) => ({
+    sku: li.sku ?? li.product_sku ?? li.product?.sku ?? null,
+    product: String(
+      li.product_name ?? li.product?.name ?? li.name ?? li.title ?? li.description ?? "—",
+    ),
+    quantity: Number(li.quantity ?? li.qty ?? li.units ?? 1) || 0,
+  }));
+  const item_count = items.reduce((s, x) => s + x.quantity, 0);
   return {
     id: String(o.id ?? idx),
     number: String(o.external_order_number ?? o.id ?? idx),
@@ -247,6 +269,8 @@ function mapRawOrder(o: any, idx: number): MelonnOrder {
     is_b2b: !!o.is_b2b,
     tracking_link: o.melonn_tracking_link ?? null,
     destination_city: o.shipping_address?.city ?? cust.city ?? null,
+    items,
+    item_count,
   };
 }
 
@@ -310,7 +334,8 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const page = data.page ?? 0;
     const perPage = data.perPage ?? 100;
-    const daysBack = data.daysBack === undefined ? 365 : data.daysBack; // null = sem filtro
+    // Padrão: sem filtro de data (traz histórico completo). Passe daysBack=N para limitar.
+    const daysBack = data.daysBack === undefined ? null : data.daysBack;
     const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
@@ -323,6 +348,9 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
       result.data?.total ??
       orders.length,
     );
+    if (page === 0) {
+      console.log("[Melonn] /sell-orders page=0 → total_count:", total_count, "| data.length:", orders.length, "| daysBack:", daysBack);
+    }
     // Critério de parada robusto: pára quando a página vier com menos itens que perPage.
     const has_more = orders.length >= perPage;
     return { orders, page, per_page: perPage, total_count, has_more, fetched_at };

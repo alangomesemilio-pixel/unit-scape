@@ -129,7 +129,7 @@ export function LogisticaDashboard() {
   const [ordersAt, setOrdersAt] = useState<string>();
   const [ordersTotal, setOrdersTotal] = useState<number>(0);
   const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
-  const [daysBack, setDaysBack] = useState<DaysBack>(365);
+  const [daysBack, setDaysBack] = useState<DaysBack>("all");
   const [resumePage, setResumePage] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
 
@@ -707,25 +707,42 @@ function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
     return Array.from(map.values());
   }, [orders]);
 
+  // Top produtos mais pedidos (a partir dos itens dos pedidos)
+  const topProdutos = useMemo(() => {
+    const map = new Map<string, { produto: string; qtd: number; pedidos: number }>();
+    orders.forEach((o) => {
+      (o.items ?? []).forEach((it) => {
+        const key = it.product || it.sku || "—";
+        const e = map.get(key) ?? { produto: key, qtd: 0, pedidos: 0 };
+        e.qtd += it.quantity || 0;
+        e.pedidos += 1;
+        map.set(key, e);
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => b.qtd - a.qtd).slice(0, 10);
+  }, [orders]);
+
   // Métricas calculadas
   const metricas = useMemo(() => {
     const total = orders.length;
     const delivered = orders.filter((o) => o.status === "delivered").length;
     const cancelled = orders.filter((o) => o.status === "cancelled").length;
+    const inProcess = orders.filter((o) => o.status !== "delivered" && o.status !== "cancelled").length;
     const b2b = orders.filter((o) => o.is_b2b).length;
     const last7Start = Date.now() - 7 * 86400000;
     const last7 = orders.filter((o) => o.creation_date && new Date(o.creation_date).getTime() >= last7Start).length;
     const media7 = last7 / 7;
-    const dayOfMonth = new Date().getDate();
     const projecao = Math.round(media7 * 30);
+    const totalItens = orders.reduce((s, o) => s + (o.item_count || 0), 0);
+    const itensEntregues = orders.filter((o) => o.status === "delivered").reduce((s, o) => s + (o.item_count || 0), 0);
+    const mediaItens = total > 0 ? totalItens / total : 0;
     return {
+      total, delivered, cancelled, inProcess,
       sucessoPct: total > 0 ? (delivered / total) * 100 : 0,
       cancelPct: total > 0 ? (cancelled / total) * 100 : 0,
       b2bPct: total > 0 ? (b2b / total) * 100 : 0,
       d2cPct: total > 0 ? ((total - b2b) / total) * 100 : 0,
-      media7,
-      projecao,
-      dayOfMonth,
+      media7, projecao, totalItens, itensEntregues, mediaItens,
     };
   }, [orders]);
 
@@ -798,16 +815,40 @@ function PerformanceTab({ orders, activeWarehouses }: CtxBase) {
         </Card>
       </div>
 
-      {/* MÉTRICAS CALCULADAS */}
+      {/* TOP PRODUTOS MAIS PEDIDOS */}
+      <Card>
+        <SectionTitle icon={ShoppingBag} title="Top produtos mais pedidos" subtitle={`${topProdutos.length} produtos · ranking por unidades`} />
+        {topProdutos.length === 0 ? (
+          <div className="text-xs text-muted-foreground py-6 text-center">Sem itens detalhados nos pedidos carregados.</div>
+        ) : (
+          <div style={{ height: Math.max(220, topProdutos.length * 36) }}>
+            <ResponsiveContainer>
+              <BarChart data={topProdutos} layout="vertical" margin={{ left: 140, right: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                <YAxis type="category" dataKey="produto" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={140} />
+                <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", fontSize: 12 }} />
+                <Bar dataKey="qtd" fill="#10b981" radius={[0, 4, 4, 0]} name="Unidades" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </Card>
+
+      {/* MÉTRICAS REAIS */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <KpiCard icon={ShoppingBag} label="Total de pedidos" value={metricas.total.toLocaleString("pt-BR")} />
+        <KpiCard icon={CheckCircle2} label="Entregues" value={metricas.delivered.toLocaleString("pt-BR")} color="#10b981" />
+        <KpiCard icon={Cog} label="Em processo" value={metricas.inProcess.toLocaleString("pt-BR")} color="#3b82f6" />
+        <KpiCard icon={XCircle} label="Cancelados" value={metricas.cancelled.toLocaleString("pt-BR")} color="#ef4444" />
+        <KpiCard icon={Boxes} label="Itens entregues" value={metricas.itensEntregues.toLocaleString("pt-BR")} />
+        <KpiCard icon={Package} label="Média de itens/pedido" value={metricas.mediaItens.toFixed(2)} />
         <KpiCard icon={CheckCircle2} label="Taxa de sucesso" value={`${metricas.sucessoPct.toFixed(1)}%`} color="#10b981" />
         <KpiCard icon={XCircle} label="Taxa de cancelamento" value={`${metricas.cancelPct.toFixed(1)}%`} color={semaforo(metricas.cancelPct, 3, 5, true)} />
         <KpiCard icon={Activity} label="% B2B / D2C" value={`${metricas.b2bPct.toFixed(0)}% / ${metricas.d2cPct.toFixed(0)}%`} />
         <KpiCard icon={Calendar} label="Média de pedidos/dia (7d)" value={metricas.media7.toFixed(1)} />
         <KpiCard icon={TrendingUp} label="Projeção do mês" value={String(metricas.projecao)} sub="baseado no ritmo de 7 dias" />
         <KpiCard icon={Clock} label="Tempo criação → entrega" value="—" sub="depende de eventos da API" />
-        <KpiCard icon={Clock} label="Tempo picking → despacho" value="—" sub="depende de eventos da API" />
-        <KpiCard icon={Clock} label="Tempo despacho → entrega" value="—" sub="depende de eventos da API" />
       </div>
     </section>
   );
