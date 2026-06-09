@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers, getMelonnOrderDelivery,
+  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers, getMelonnOrderDelivery, getMelonnDeliveriesCache,
   getMelonnConfig, saveMelonnConfig, testMelonnEndpoint,
   melonnStatusLabel, MELONN_STATUSES, MELONN_WAREHOUSES,
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
@@ -295,16 +295,35 @@ export function LogisticaDashboard() {
     const abort = { cancelled: false };
     deliveryAbortRef.current = abort;
 
-    const pending = orders.filter(
-      (o) => o.status === "delivered" && !o.delivered_at && !deliveryCacheRef.current.has(o.id),
-    );
-    if (pending.length === 0) {
-      setDeliveryProgress((p) => ({ ...p, running: false }));
-      return;
-    }
-    setDeliveryProgress({ done: 0, total: pending.length, running: true });
-
     (async () => {
+      // 1) Preload do cache persistente (Supabase) para todos os pedidos sem delivered_at
+      const needCache = orders.filter((o) => !o.delivered_at && !deliveryCacheRef.current.has(o.id));
+      if (needCache.length > 0) {
+        try {
+          const { map } = await getMelonnDeliveriesCache({ data: { ids: needCache.map((o) => o.id) } });
+          if (abort.cancelled) return;
+          const fromCache: Record<string, string | null> = {};
+          for (const [id, val] of Object.entries(map)) {
+            deliveryCacheRef.current.set(id, val);
+            if (val) fromCache[id] = val;
+          }
+          if (Object.keys(fromCache).length > 0) setDeliveryMap((m) => ({ ...m, ...fromCache }));
+        } catch {
+          /* ignora falha de cache */
+        }
+      }
+      if (abort.cancelled) return;
+
+      // 2) Worker em background para entregues ainda sem data (após o cache)
+      const pending = orders.filter(
+        (o) => o.status === "delivered" && !o.delivered_at && !deliveryCacheRef.current.has(o.id),
+      );
+      if (pending.length === 0) {
+        setDeliveryProgress((p) => ({ ...p, running: false }));
+        return;
+      }
+      setDeliveryProgress({ done: 0, total: pending.length, running: true });
+
       let done = 0;
       const batchUpdates: Record<string, string | null> = {};
       let lastFlush = Date.now();
@@ -318,7 +337,6 @@ export function LogisticaDashboard() {
           deliveryCacheRef.current.set(o.id, null);
         }
         done++;
-        // Flush a cada 5 itens ou 2s para não re-renderizar a cada call.
         if (done % 5 === 0 || Date.now() - lastFlush > 2000) {
           if (Object.keys(batchUpdates).length > 0) {
             setDeliveryMap((m) => ({ ...m, ...batchUpdates }));
