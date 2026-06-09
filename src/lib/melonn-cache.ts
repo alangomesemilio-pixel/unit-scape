@@ -1,16 +1,23 @@
-// Cache em sessionStorage para Melonn (pedidos + estoque).
+// Cache em sessionStorage para Melonn (pedidos + estoque + transportadoras).
 // Evita refazer a busca completa toda vez que o usuário abre o módulo.
 
-import type { MelonnOrder, MelonnInventoryItem } from "@/lib/melonn.functions";
+import type { MelonnOrder, MelonnInventoryItem, MelonnCourier } from "@/lib/melonn.functions";
 
 const ORDERS_KEY = "melonn_orders_cache_v1";
 const INVENTORY_KEY = "melonn_inventory_cache_v1";
+const COURIERS_KEY = "melonn_couriers_cache_v1";
 
 export const ORDERS_TTL_MS = 5 * 60 * 1000;    // 5 min
 export const INVENTORY_TTL_MS = 10 * 60 * 1000; // 10 min
+export const COURIERS_TTL_MS = 30 * 60 * 1000; // 30 min
 
 export interface OrdersCacheBlob {
   data: MelonnOrder[];
+  fetched_at: string;
+  timestamp: number;
+}
+export interface CouriersCacheBlob {
+  data: MelonnCourier[];
   fetched_at: string;
   timestamp: number;
 }
