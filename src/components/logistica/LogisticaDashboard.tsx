@@ -325,31 +325,26 @@ export function LogisticaDashboard() {
       setDeliveryProgress({ done: 0, total: pending.length, running: true });
 
       let done = 0;
-      const batchUpdates: Record<string, string | null> = {};
-      let lastFlush = Date.now();
-      for (const o of pending) {
+      const BATCH = 25;
+      for (let i = 0; i < pending.length; i += BATCH) {
         if (abort.cancelled) return;
+        const chunk = pending.slice(i, i + BATCH);
         try {
-          const r = await getMelonnOrderDelivery({ data: { id: o.id } });
-          deliveryCacheRef.current.set(o.id, r.delivered_at);
-          if (r.delivered_at) batchUpdates[o.id] = r.delivered_at;
-        } catch {
-          deliveryCacheRef.current.set(o.id, null);
-        }
-        done++;
-        if (done % 5 === 0 || Date.now() - lastFlush > 2000) {
-          if (Object.keys(batchUpdates).length > 0) {
-            setDeliveryMap((m) => ({ ...m, ...batchUpdates }));
-            for (const k of Object.keys(batchUpdates)) delete batchUpdates[k];
+          const { map } = await hydrateMelonnDeliveries({ data: { ids: chunk.map((o) => o.id) } });
+          const updates: Record<string, string | null> = {};
+          for (const o of chunk) {
+            const v = map[o.id] ?? null;
+            deliveryCacheRef.current.set(o.id, v);
+            if (v) updates[o.id] = v;
           }
-          setDeliveryProgress({ done, total: pending.length, running: true });
-          lastFlush = Date.now();
+          if (Object.keys(updates).length) setDeliveryMap((m) => ({ ...m, ...updates }));
+        } catch {
+          for (const o of chunk) deliveryCacheRef.current.set(o.id, null);
         }
+        done += chunk.length;
+        if (!abort.cancelled) setDeliveryProgress({ done, total: pending.length, running: done < pending.length });
       }
-      if (!abort.cancelled) {
-        if (Object.keys(batchUpdates).length > 0) setDeliveryMap((m) => ({ ...m, ...batchUpdates }));
-        setDeliveryProgress({ done, total: pending.length, running: false });
-      }
+      if (!abort.cancelled) setDeliveryProgress({ done, total: pending.length, running: false });
     })();
 
     return () => { abort.cancelled = true; };
