@@ -297,7 +297,7 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
   });
 
 export const getMelonnOrdersPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { page?: number; daysBack?: number; perPage?: number }) => d)
+  .inputValidator((d: { page?: number; daysBack?: number | null; perPage?: number }) => d)
   .handler(async ({ data }): Promise<{
     orders: MelonnOrder[];
     page: number;
@@ -310,7 +310,7 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const page = data.page ?? 0;
     const perPage = data.perPage ?? 100;
-    const daysBack = data.daysBack ?? 60;
+    const daysBack = data.daysBack === undefined ? 365 : data.daysBack; // null = sem filtro
     const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
@@ -323,9 +323,11 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
       result.data?.total ??
       orders.length,
     );
-    const has_more = orders.length >= perPage && (page + 1) * perPage < total_count;
+    // Critério de parada robusto: pára quando a página vier com menos itens que perPage.
+    const has_more = orders.length >= perPage;
     return { orders, page, per_page: perPage, total_count, has_more, fetched_at };
   });
+
 
 export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ orders: MelonnOrder[]; fetched_at: string; total_count?: number; error?: string }> => {
