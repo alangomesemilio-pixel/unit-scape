@@ -108,6 +108,19 @@ export function inventoryCacheAgeMs(blob: InventoryCacheBlob | null): number | n
   return blob ? Date.now() - blob.timestamp : null;
 }
 
+// -------- COURIERS --------
+export function loadCouriersCache(): CouriersCacheBlob | null {
+  const blob = safeGet(COURIERS_KEY) as CouriersCacheBlob | null;
+  if (!blob || !Array.isArray(blob.data)) return null;
+  return blob;
+}
+export function saveCouriersCache(data: MelonnCourier[], fetched_at: string) {
+  safeSet(COURIERS_KEY, { data, fetched_at, timestamp: Date.now() } satisfies CouriersCacheBlob);
+}
+export function clearCouriersCache() {
+  try { window.sessionStorage.removeItem(COURIERS_KEY); } catch { /* */ }
+}
+
 export function isExpired(timestamp: number, ttl: number): boolean {
   return Date.now() - timestamp >= ttl;
 }
@@ -120,3 +133,4 @@ export function fmtAge(ms: number): string {
   const h = Math.floor(m / 60);
   return `${h}h atrás`;
 }
+
