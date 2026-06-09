@@ -713,7 +713,7 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
       {inventoryErr && <div className="text-xs text-amber-500">⚠️ {inventoryErr}</div>}
 
       {/* ALERTAS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Card className="border-red-500/40">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-red-500 font-semibold flex items-center gap-1"><AlertCircle className="size-3.5" /> Sem estoque</span>
@@ -738,10 +738,34 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
             <span className="text-xl font-bold text-orange-500">{desbalanceadas.length}</span>
           </div>
           <div className="text-[11px] text-muted-foreground truncate">
-            Zerado numa bodega e &gt;50 na outra
+            Zeradas em alguma bodega com &gt;50 em outra
+          </div>
+        </Card>
+        <Card className="border-fuchsia-500/40">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-fuchsia-500 font-semibold flex items-center gap-1"><Warehouse className="size-3.5" /> Concentradas</span>
+            <span className="text-xl font-bold text-fuchsia-500">{concentradas.length}</span>
+          </div>
+          <div className="text-[11px] text-muted-foreground truncate" title={concentradas.map((c) => c.sku).join(", ")}>
+            {concentradas.slice(0, 5).map((c) => c.sku).join(", ") || "—"}
           </div>
         </Card>
       </div>
+
+      {sugestoes.length > 0 && (
+        <Card className="border-sky-500/40">
+          <div className="text-xs text-sky-500 font-semibold mb-2 flex items-center gap-1">
+            <AlertTriangle className="size-3.5" /> Sugestões de transferência
+          </div>
+          <ul className="space-y-1 text-xs">
+            {sugestoes.map((s) => (
+              <li key={s.sku} className="text-muted-foreground">
+                Considere transferir <span className="text-foreground font-semibold">{s.qty} un</span> de <span className="text-foreground">{s.from}</span> para <span className="text-foreground">{s.to}</span> — SKU <span className="font-mono">{s.sku}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       {/* TABS */}
       <div className="flex items-center gap-1">
