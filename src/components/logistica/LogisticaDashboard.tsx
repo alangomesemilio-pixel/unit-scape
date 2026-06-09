@@ -314,10 +314,16 @@ export function LogisticaDashboard() {
       }
       if (abort.cancelled) return;
 
-      // 2) Worker em background para entregues ainda sem data (após o cache)
-      const pending = orders.filter(
-        (o) => o.status === "delivered" && !o.delivered_at && !deliveryCacheRef.current.has(o.id),
-      );
+      // 2) Worker em background: apenas os 300 entregues mais recentes (por creation_date).
+      const HYDRATE_LIMIT = 300;
+      const pending = orders
+        .filter((o) => o.status === "delivered" && !o.delivered_at && !deliveryCacheRef.current.has(o.id))
+        .sort((a, b) => {
+          const ta = a.creation_date ? new Date(a.creation_date).getTime() : 0;
+          const tb = b.creation_date ? new Date(b.creation_date).getTime() : 0;
+          return tb - ta;
+        })
+        .slice(0, HYDRATE_LIMIT);
       if (pending.length === 0) {
         setDeliveryProgress((p) => ({ ...p, running: false }));
         return;
