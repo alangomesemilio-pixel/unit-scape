@@ -12,12 +12,13 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getMelonnOrders, getMelonnInventory, getMelonnCouriers,
+  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers,
   getMelonnConfig, saveMelonnConfig, testMelonnEndpoint,
   melonnStatusLabel, MELONN_STATUSES, MELONN_WAREHOUSES,
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
   type MelonnOrderStatus, type MelonnConfig,
 } from "@/lib/melonn.functions";
+
 
 // ============================================================
 // TYPES & CONSTANTS
@@ -34,7 +35,9 @@ type Material = {
 
 type TabId = "pedidos" | "performance" | "estoque" | "transportadoras" | "embalagens";
 type Periodo = "hoje" | "7d" | "30d";
+type DaysBack = 7 | 30 | 60 | 90;
 type StatusFilter = "all" | MelonnOrderStatus;
+
 type TipoFilter = "all" | "b2b" | "d2c";
 
 const STATUS_META: Record<MelonnOrderStatus, { icon: typeof Package; color: string; emoji: string }> = {
@@ -124,6 +127,9 @@ export function LogisticaDashboard() {
   const [orders, setOrders] = useState<MelonnOrder[]>([]);
   const [ordersErr, setOrdersErr] = useState<string>();
   const [ordersAt, setOrdersAt] = useState<string>();
+  const [ordersTotal, setOrdersTotal] = useState<number>(0);
+  const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
+  const [daysBack, setDaysBack] = useState<DaysBack>(60);
 
   const [inventory, setInventory] = useState<MelonnInventoryItem[]>([]);
   const [inventoryErr, setInventoryErr] = useState<string>();
@@ -140,12 +146,32 @@ export function LogisticaDashboard() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const refreshOrders = useCallback(async () => {
+  const refreshOrders = useCallback(async (days: DaysBack = daysBack) => {
     setLoading((l) => ({ ...l, orders: true }));
-    const r = await getMelonnOrders();
-    setOrders(r.orders); setOrdersErr(r.error); setOrdersAt(r.fetched_at);
-    setLoading((l) => ({ ...l, orders: false }));
-  }, []);
+    setOrders([]); setOrdersLoaded(0); setOrdersTotal(0); setOrdersErr(undefined);
+    const PER_PAGE = 100;
+    let page = 0;
+    const acc: MelonnOrder[] = [];
+    try {
+      while (true) {
+        if (page > 0) await new Promise((r) => setTimeout(r, 1100));
+        const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
+        if (r.error) { setOrdersErr(r.error); break; }
+        acc.push(...r.orders);
+        setOrders([...acc]);
+        setOrdersLoaded(acc.length);
+        if (page === 0) setOrdersTotal(r.total_count || acc.length);
+        setOrdersAt(r.fetched_at);
+        if (!r.has_more || r.orders.length === 0) break;
+        page++;
+        if (page > 200) break; // safety
+      }
+    } catch (e: any) {
+      setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
+    } finally {
+      setLoading((l) => ({ ...l, orders: false }));
+    }
+  }, [daysBack]);
   const refreshInventory = useCallback(async () => {
     setLoading((l) => ({ ...l, inv: true }));
     const r = await getMelonnInventory();
@@ -168,17 +194,23 @@ export function LogisticaDashboard() {
 
   async function refreshAll() {
     setRefreshing(true);
-    await Promise.all([refreshOrders(), refreshInventory(), refreshCouriers()]);
+    await Promise.all([refreshOrders(daysBack), refreshInventory(), refreshCouriers()]);
     setRefreshing(false);
   }
 
+  const handleDaysBackChange = useCallback((d: DaysBack) => {
+    setDaysBack(d);
+    refreshOrders(d);
+  }, [refreshOrders]);
+
   useEffect(() => {
     getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
-    refreshOrders(); refreshInventory(); refreshCouriers(); refreshMaterials();
+    refreshOrders(daysBack); refreshInventory(); refreshCouriers(); refreshMaterials();
     const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // ============= KPIs HEADER =============
   const kpis = useMemo(() => {
@@ -210,7 +242,9 @@ export function LogisticaDashboard() {
     orders, inventory, couriers, materials, activeWarehouses,
     ordersErr, inventoryErr, couriersErr,
     loading, refreshMaterials, setMaterials,
+    ordersTotal, ordersLoaded, daysBack, onDaysBackChange: handleDaysBackChange,
   };
+
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6 bg-background">
@@ -290,9 +324,13 @@ type CtxBase = {
   loading: { orders: boolean; inv: boolean; cou: boolean; mat: boolean };
   refreshMaterials: () => Promise<void>;
   setMaterials: React.Dispatch<React.SetStateAction<Material[]>>;
+  ordersTotal: number;
+  ordersLoaded: number;
+  daysBack: DaysBack;
+  onDaysBackChange: (d: DaysBack) => void;
 };
 
-function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
+function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal, ordersLoaded, daysBack, onDaysBackChange }: CtxBase) {
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [bodega, setBodega] = useState<string>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -300,6 +338,9 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
   const [busca, setBusca] = useState("");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
+  const isLoadingPages = loading.orders;
+  const mismatch = !isLoadingPages && ordersTotal > 0 && ordersTotal !== orders.length;
+
 
   const filtered = useMemo(() => {
     const since = startOfPeriod(periodo);
@@ -329,6 +370,49 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
   return (
     <section className="space-y-4">
       {ordersErr && <div className="text-xs text-amber-500">⚠️ {ordersErr}</div>}
+
+      {/* HEADER PERÍODO + CONTADOR */}
+      <Card className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="size-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Período de busca:</span>
+          {([7, 30, 60, 90] as DaysBack[]).map((d) => (
+            <button
+              key={d}
+              onClick={() => onDaysBackChange(d)}
+              disabled={isLoadingPages}
+              className={`px-2.5 py-1 text-xs rounded transition ${daysBack === d ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"} disabled:opacity-50`}
+            >
+              {d} dias
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-3 text-xs">
+          {isLoadingPages ? (
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="size-3 animate-spin" />
+              Carregando pedidos… {ordersLoaded}{ordersTotal > 0 ? ` de ${ordersTotal}` : ""}
+            </span>
+          ) : (
+            <>
+              <span className="text-muted-foreground">
+                Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal}</strong> pedidos
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">
+                Exibindo: <strong className="text-foreground tabular-nums">{orders.length}</strong> pedidos
+              </span>
+              {mismatch && (
+                <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
+                  ⚠️ {Math.max(0, ordersTotal - orders.length)} pedidos ainda carregando
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </Card>
+
+
 
       {/* FILTROS */}
       <Card className="flex flex-wrap items-center gap-2">

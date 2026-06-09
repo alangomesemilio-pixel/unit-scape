@@ -192,11 +192,44 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string, daysBack = 30): string {
+function buildOrdersPath(basePath: string, opts: { daysBack?: number; page?: number; perPage?: number } = {}): string {
+  const { daysBack = 60, page = 0, perPage = 100 } = opts;
   const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
   const sep = basePath.includes("?") ? "&" : "?";
-  return `${basePath}${sep}page=0&per_page=100&initial_creation_date=${since}`;
+  return `${basePath}${sep}page=${page}&per_page=${perPage}&initial_creation_date=${since}`;
 }
+
+function mapRawOrder(o: any, idx: number): MelonnOrder {
+  const state = o.sell_order_state ?? {};
+  const code = typeof state.code === "number" ? state.code : Number(state.code) || null;
+  const cust = o.customer ?? o.buyer ?? o.recipient ?? {};
+  const customer = cust.name ?? cust.full_name ?? [cust.first_name, cust.last_name].filter(Boolean).join(" ").trim() ?? o.customer_name ?? "—";
+  const status = mapStatusFromCode(code, state.name);
+  const delivered_at =
+    status === "delivered"
+      ? o.delivery_date ?? o.delivered_at ?? o.shipping?.delivered_at ?? o.last_state_update ?? null
+      : null;
+  return {
+    id: String(o.id ?? idx),
+    number: String(o.external_order_number ?? o.id ?? idx),
+    internal_number: o.internal_order_number ?? null,
+    customer: customer || "—",
+    status,
+    status_code: code,
+    status_name: state.name ?? null,
+    carrier: o.shipping_method?.name ?? o.courier_company?.name ?? null,
+    carrier_code: o.shipping_method?.code ?? o.courier_company?.code ?? null,
+    warehouse: o.warehouse?.name ?? null,
+    warehouse_code: o.warehouse?.code ?? null,
+    creation_date: o.creation_date ?? null,
+    delivered_at,
+    last_status_update: o.last_state_update ?? o.last_status_update ?? null,
+    is_b2b: !!o.is_b2b,
+    tracking_link: o.melonn_tracking_link ?? null,
+    destination_city: o.shipping_address?.city ?? cust.city ?? null,
+  };
+}
+
 
 function extractList(data: any, ...keys: string[]): any[] {
   if (Array.isArray(data)) return data;
@@ -243,46 +276,50 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
     return { ok: true, status: res.status, sample: JSON.stringify(res.data).slice(0, 300) };
   });
 
-export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
-  async (): Promise<{ orders: MelonnOrder[]; fetched_at: string; error?: string }> => {
+export const getMelonnOrdersPage = createServerFn({ method: "POST" })
+  .inputValidator((d: { page?: number; daysBack?: number; perPage?: number }) => d)
+  .handler(async ({ data }): Promise<{
+    orders: MelonnOrder[];
+    page: number;
+    per_page: number;
+    total_count: number;
+    has_more: boolean;
+    fetched_at: string;
+    error?: string;
+  }> => {
     const cfg = await loadConfig();
-    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, 30), cfg);
+    const page = data.page ?? 0;
+    const perPage = data.perPage ?? 100;
+    const daysBack = data.daysBack ?? 60;
+    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
+    const fetched_at = new Date().toISOString();
+    if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
+    const raw = extractList(result.data, "sell_orders", "orders");
+    const orders = raw.map((o, i) => mapRawOrder(o, page * perPage + i));
+    const total_count = Number(
+      result.data?.meta_data?.total_count ??
+      result.data?.meta?.total_count ??
+      result.data?.total_count ??
+      result.data?.total ??
+      orders.length,
+    );
+    const has_more = orders.length >= perPage && (page + 1) * perPage < total_count;
+    return { orders, page, per_page: perPage, total_count, has_more, fetched_at };
+  });
+
+export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ orders: MelonnOrder[]; fetched_at: string; total_count?: number; error?: string }> => {
+    const cfg = await loadConfig();
+    const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack: 60 }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], fetched_at, error: result.error };
     const raw = extractList(result.data, "sell_orders", "orders");
-    const orders: MelonnOrder[] = raw.map((o: any, idx: number) => {
-      const state = o.sell_order_state ?? {};
-      const code = typeof state.code === "number" ? state.code : Number(state.code) || null;
-      const cust = o.customer ?? o.buyer ?? o.recipient ?? {};
-      const customer = cust.name ?? cust.full_name ?? [cust.first_name, cust.last_name].filter(Boolean).join(" ").trim() ?? o.customer_name ?? "—";
-      const status = mapStatusFromCode(code, state.name);
-      const delivered_at =
-        status === "delivered"
-          ? o.delivery_date ?? o.delivered_at ?? o.shipping?.delivered_at ?? o.last_state_update ?? null
-          : null;
-      return {
-        id: String(o.id ?? idx),
-        number: String(o.external_order_number ?? o.id ?? idx),
-        internal_number: o.internal_order_number ?? null,
-        customer: customer || "—",
-        status,
-        status_code: code,
-        status_name: state.name ?? null,
-        carrier: o.shipping_method?.name ?? o.courier_company?.name ?? null,
-        carrier_code: o.shipping_method?.code ?? o.courier_company?.code ?? null,
-        warehouse: o.warehouse?.name ?? null,
-        warehouse_code: o.warehouse?.code ?? null,
-        creation_date: o.creation_date ?? null,
-        delivered_at,
-        last_status_update: o.last_state_update ?? o.last_status_update ?? null,
-        is_b2b: !!o.is_b2b,
-        tracking_link: o.melonn_tracking_link ?? null,
-        destination_city: o.shipping_address?.city ?? cust.city ?? null,
-      };
-    });
-    return { orders, fetched_at };
+    const orders = raw.map(mapRawOrder);
+    const total_count = Number(result.data?.meta_data?.total_count ?? orders.length);
+    return { orders, fetched_at, total_count };
   },
 );
+
 
 export const getMelonnInventory = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ items: MelonnInventoryItem[]; fetched_at: string; error?: string }> => {
