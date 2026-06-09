@@ -75,7 +75,7 @@ export function melonnStatusLabel(s: MelonnOrderStatus) {
 }
 
 const DEFAULTS: MelonnConfig = {
-  baseUrl: "https://api.melonn.com/v1",
+  baseUrl: "https://api.orbita.melonn.com",
   ordersPath: "/orders?limit=200",
   inventoryPath: "/inventory",
   metricsPath: "/metrics/operational",
@@ -92,8 +92,11 @@ async function loadConfig(): Promise<MelonnConfig> {
       .eq("key", "melonn_config")
       .maybeSingle();
     const v: any = data?.value ?? {};
+    let baseUrl = (v.baseUrl || fallback.baseUrl).replace(/\/$/, "");
+    // Migra URL antiga automaticamente
+    if (/api\.melonn\.com/i.test(baseUrl)) baseUrl = DEFAULTS.baseUrl;
     return {
-      baseUrl: (v.baseUrl || fallback.baseUrl).replace(/\/$/, ""),
+      baseUrl,
       ordersPath: v.ordersPath || fallback.ordersPath,
       inventoryPath: v.inventoryPath || fallback.inventoryPath,
       metricsPath: v.metricsPath || fallback.metricsPath,
