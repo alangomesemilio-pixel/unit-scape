@@ -221,6 +221,11 @@ export function LogisticaDashboard() {
     } finally {
       const completed = !timedOut && acc.length > 0;
       ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
+      // Persiste em sessionStorage só quando completar uma janela "all" (cache de longo prazo).
+      if (completed && days === "all") {
+        saveOrdersCache(acc, fetchedAt);
+        setCacheInfo((c) => ({ ...c, ageMs: 0 }));
+      }
       setLoading((l) => ({ ...l, orders: false }));
     }
     // Workaround for opts.startPage default in condition above:
