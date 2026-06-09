@@ -656,11 +656,31 @@ function EstoqueTab({ inventory, orders, inventoryErr, loading, activeWarehouses
 
   const ruptura = consolidado.filter((c) => c.available === 0);
   const baixa = consolidado.filter((c) => c.available > 0 && (mediaDia > 0 ? c.available / mediaDia : 999) < 7);
+  // SKUs com estoque concentrado em 1 bodega (>=90% num único warehouse, total>0)
+  const concentradas = consolidado.filter((c) => {
+    if (c.available <= 0 || activeWarehouses.length < 2) return false;
+    return activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) / c.available >= 0.9);
+  });
+  // SKUs zerados em alguma bodega específica (mas com estoque em outra)
   const desbalanceadas = consolidado.filter((c) =>
     activeWarehouses.length >= 2 &&
     activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) === 0) &&
     activeWarehouses.some((wh) => (c.byWh[wh]?.available ?? 0) > 50),
   );
+
+  // Sugestões de transferência: para cada SKU desbalanceado, pega bodega com mais
+  // estoque e bodega zerada com mais demanda relativa.
+  const sugestoes = desbalanceadas.slice(0, 5).map((c) => {
+    let max = { wh: "", qty: 0 };
+    let zeroWh = "";
+    activeWarehouses.forEach((wh) => {
+      const av = c.byWh[wh]?.available ?? 0;
+      if (av > max.qty) max = { wh, qty: av };
+      if (av === 0 && !zeroWh) zeroWh = wh;
+    });
+    const transfer = Math.max(1, Math.floor(max.qty * 0.3));
+    return { sku: c.sku, from: max.wh, to: zeroWh, qty: transfer };
+  }).filter((s) => s.from && s.to);
 
   function coberturaInfo(available: number): { dias: number; color: string; label: string; pulse?: boolean } {
     if (available === 0) return { dias: 0, color: "#ef4444", label: "Crítico", pulse: true };
