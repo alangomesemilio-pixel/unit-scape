@@ -162,7 +162,7 @@ async function loadConfig(): Promise<MelonnConfig> {
 
 // ---------- Rate limit (1 req/s) ----------
 let lastCallAt = 0;
-const MIN_INTERVAL_MS = 1100;
+const MIN_INTERVAL_MS = 1050;
 async function rateLimit() {
   const now = Date.now();
   const wait = lastCallAt + MIN_INTERVAL_MS - now;
@@ -422,6 +422,36 @@ export const getMelonnDeliveriesCache = createServerFn({ method: "POST" })
         .select("order_id, delivered_at")
         .in("order_id", chunk);
       for (const r of rows ?? []) map[r.order_id as string] = (r.delivered_at as string | null) ?? null;
+    }
+    return { map };
+  });
+
+// Lote: processa N pedidos em uma única chamada server-side, respeitando o throttle global.
+// Evita N roundtrips cliente→servidor (~200ms cada). Limite ~25 por lote para caber em ~28s.
+export const hydrateMelonnDeliveries = createServerFn({ method: "POST" })
+  .inputValidator((d: { ids: string[] }) => d)
+  .handler(async ({ data }): Promise<{ map: Record<string, string | null> }> => {
+    const ids = (data.ids ?? []).slice(0, 25);
+    if (!ids.length) return { map: {} };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cfg = await loadConfig();
+    const map: Record<string, string | null> = {};
+    const rows: { order_id: string; delivered_at: string | null; fetched_at: string }[] = [];
+    const now = new Date().toISOString();
+    for (const id of ids) {
+      const result = await melonnFetch(`${cfg.ordersPath}/${encodeURIComponent(id)}`, cfg);
+      let delivered_at: string | null = null;
+      if (result.ok) {
+        const detail = result.data?.sell_order ?? result.data?.data ?? result.data;
+        delivered_at = extractDeliveredAt(detail);
+      }
+      map[id] = delivered_at;
+      rows.push({ order_id: id, delivered_at, fetched_at: now });
+    }
+    if (rows.length) {
+      await supabaseAdmin
+        .from("melonn_order_deliveries")
+        .upsert(rows, { onConflict: "order_id" });
     }
     return { map };
   });
