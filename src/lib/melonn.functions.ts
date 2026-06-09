@@ -109,47 +109,29 @@ async function melonnFetch(
 ): Promise<{ ok: true; data: any; status: number } | { ok: false; error: string; status?: number }> {
   const rawKey = process.env.MELONN_API_KEY;
   if (!rawKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
-  // Sanitiza: remove espaços, quebras de linha e prefixo "Bearer " duplicado
+  // Sanitiza: remove espaços, quebras de linha e prefixos comuns
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "").trim();
   const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
 
-  const attempt = async (headers: Record<string, string>) => {
-    const res = await fetch(url, { headers });
-    const text = await res.text().catch(() => "");
-    let data: any = null;
-    try { data = text ? JSON.parse(text) : null; } catch { /* não-JSON */ }
-    return { res, text, data };
-  };
-
   try {
-    // 1) Formato padrão: Bearer token
-    const a = await attempt({
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      Accept: "application/json",
-    });
-    if (a.res.ok) return { ok: true, data: a.data, status: a.res.status };
-
-    // 2) Fallback: x-api-key (algumas instâncias Melonn usam API Gateway com API Key)
-    if (a.res.status === 401 || a.res.status === 403) {
-      const b = await attempt({
+    const res = await fetch(url, {
+      headers: {
         "x-api-key": apiKey,
         "Content-Type": "application/json",
         Accept: "application/json",
-      });
-      if (b.res.ok) return { ok: true, data: b.data, status: b.res.status };
+      },
+    });
+    const text = await res.text().catch(() => "");
+    if (!res.ok) {
       return {
         ok: false,
-        status: b.res.status,
-        error: `Melonn ${b.res.status} (Bearer e x-api-key falharam): ${b.text.slice(0, 200)}`,
+        status: res.status,
+        error: `Melonn ${res.status}: ${text.slice(0, 200)}`,
       };
     }
-
-    return {
-      ok: false,
-      status: a.res.status,
-      error: `Melonn ${a.res.status}: ${a.text.slice(0, 200)}`,
-    };
+    let data: any = null;
+    try { data = text ? JSON.parse(text) : null; } catch { /* não-JSON */ }
+    return { ok: true, data, status: res.status };
   } catch (e: any) {
     return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
   }
