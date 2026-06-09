@@ -82,12 +82,18 @@ export interface MelonnOrder {
 
 export interface MelonnInventoryItem {
   product: string;
+  variant: string | null;
   sku: string;
+  internal_code: string | null;
   available: number;
+  in_transit: number;
+  allocated: number;
   reserved: number;
+  expected: number;
   total: number;
   warehouse: string;
 }
+
 
 export interface MelonnCourier {
   code: string;
