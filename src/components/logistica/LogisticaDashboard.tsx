@@ -14,6 +14,9 @@ import {
   Clock,
   Undo2,
   DollarSign,
+  Settings,
+  X,
+  PlugZap,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -21,12 +24,16 @@ import {
   getMelonnOrders,
   getMelonnInventory,
   getMelonnMetrics,
+  getMelonnConfig,
+  saveMelonnConfig,
+  testMelonnEndpoint,
   melonnStatusLabel,
   MELONN_STATUSES,
   type MelonnOrder,
   type MelonnInventoryItem,
   type MelonnMetrics,
   type MelonnOrderStatus,
+  type MelonnConfig,
 } from "@/lib/melonn.functions";
 
 type Material = {
@@ -88,6 +95,9 @@ export function LogisticaDashboard() {
   // ===== Materiais =====
   const [materials, setMaterials] = useState<Material[]>([]);
   const [loadingMat, setLoadingMat] = useState(true);
+
+  // ===== Settings =====
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   async function refreshOrders() {
     setLoadingOrders(true);
@@ -198,18 +208,29 @@ export function LogisticaDashboard() {
             Integração Melonn · pedidos, estoque, materiais e métricas operacionais.
           </p>
         </div>
-        <button
-          onClick={() => {
-            refreshOrders();
-            refreshInventory();
-            refreshMetrics();
-          }}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
-        >
-          <RefreshCw className="size-4" />
-          Atualizar Melonn
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
+          >
+            <Settings className="size-4" />
+            Configurações
+          </button>
+          <button
+            onClick={() => {
+              refreshOrders();
+              refreshInventory();
+              refreshMetrics();
+            }}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-secondary text-sm hover:bg-secondary/80"
+          >
+            <RefreshCw className="size-4" />
+            Atualizar Melonn
+          </button>
+        </div>
       </header>
+
+      {settingsOpen && <SettingsModal onClose={() => setSettingsOpen(false)} />}
 
       {/* SEÇÃO 1 — STATUS DE PEDIDOS */}
       <section>
@@ -536,5 +557,154 @@ function MetricCard({
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
     </Card>
+  );
+}
+
+function SettingsModal({ onClose }: { onClose: () => void }) {
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [hasApiKey, setHasApiKey] = useState(false);
+  const [defaults, setDefaults] = useState<MelonnConfig | null>(null);
+  const [cfg, setCfg] = useState<MelonnConfig>({
+    baseUrl: "",
+    ordersPath: "",
+    inventoryPath: "",
+    metricsPath: "",
+  });
+  const [tests, setTests] = useState<Record<string, { ok?: boolean; msg?: string; loading?: boolean }>>({});
+
+  useEffect(() => {
+    getMelonnConfig().then((r) => {
+      setCfg(r.config);
+      setDefaults(r.defaults);
+      setHasApiKey(r.hasApiKey);
+      setLoading(false);
+    });
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    try {
+      const r = await saveMelonnConfig({ data: cfg });
+      setCfg(r.config);
+      toast.success("Configuração salva");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function test(endpoint: "orders" | "inventory" | "metrics") {
+    setTests((t) => ({ ...t, [endpoint]: { loading: true } }));
+    // garante que a config corrente foi persistida antes do teste
+    await saveMelonnConfig({ data: cfg }).catch(() => null);
+    const r = await testMelonnEndpoint({ data: { endpoint } });
+    setTests((t) => ({
+      ...t,
+      [endpoint]: r.ok
+        ? { ok: true, msg: `OK · ${r.sample?.slice(0, 120)}…` }
+        : { ok: false, msg: r.error },
+    }));
+  }
+
+  function field(
+    label: string,
+    key: keyof MelonnConfig,
+    endpoint?: "orders" | "inventory" | "metrics",
+  ) {
+    const t = endpoint ? tests[endpoint] : undefined;
+    return (
+      <div className="space-y-1">
+        <label className="text-xs font-medium text-muted-foreground flex items-center justify-between">
+          <span>{label}</span>
+          {defaults && (
+            <button
+              type="button"
+              onClick={() => setCfg((c) => ({ ...c, [key]: defaults[key] }))}
+              className="text-[10px] text-muted-foreground hover:text-foreground underline"
+            >
+              restaurar padrão
+            </button>
+          )}
+        </label>
+        <div className="flex gap-2">
+          <input
+            value={cfg[key]}
+            onChange={(e) => setCfg((c) => ({ ...c, [key]: e.target.value }))}
+            className="flex-1 px-3 py-2 rounded-md bg-secondary/40 border border-border text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary/40"
+          />
+          {endpoint && (
+            <button
+              type="button"
+              onClick={() => test(endpoint)}
+              disabled={t?.loading}
+              className="flex items-center gap-1 px-2.5 text-xs rounded-md bg-secondary hover:bg-secondary/80 disabled:opacity-50"
+            >
+              <PlugZap className="size-3.5" />
+              Testar
+            </button>
+          )}
+        </div>
+        {t?.msg && (
+          <div className={`text-[11px] ${t.ok ? "text-emerald-500" : "text-amber-500"}`}>
+            {t.msg}
+          </div>
+        )}
+        {defaults && (
+          <div className="text-[10px] text-muted-foreground">padrão: <code>{defaults[key]}</code></div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+      <div className="bg-card border border-border rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+          <div>
+            <h3 className="font-semibold">Configurações Melonn</h3>
+            <p className="text-xs text-muted-foreground">
+              Base URL e paths dos endpoints. As mudanças passam a valer no próximo fetch.
+            </p>
+          </div>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+            <X className="size-4" />
+          </button>
+        </div>
+        <div className="p-5 space-y-4">
+          {!hasApiKey && (
+            <div className="text-xs p-2 rounded-md bg-amber-500/10 text-amber-500 border border-amber-500/30">
+              ⚠️ MELONN_API_KEY não está configurado. Adicione o secret no Lovable Cloud.
+            </div>
+          )}
+          {loading ? (
+            <div className="text-sm text-muted-foreground py-6 text-center">Carregando…</div>
+          ) : (
+            <>
+              {field("Base URL", "baseUrl")}
+              {field("Endpoint · Pedidos", "ordersPath", "orders")}
+              {field("Endpoint · Inventário", "inventoryPath", "inventory")}
+              {field("Endpoint · Métricas operacionais", "metricsPath", "metrics")}
+            </>
+          )}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t border-border">
+          <button
+            onClick={onClose}
+            className="px-3 py-2 text-sm rounded-md hover:bg-secondary/60"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={save}
+            disabled={saving || loading}
+            className="px-4 py-2 text-sm rounded-md bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-50"
+          >
+            {saving ? "Salvando…" : "Salvar configurações"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
