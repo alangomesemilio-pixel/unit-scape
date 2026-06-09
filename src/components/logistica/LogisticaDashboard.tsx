@@ -22,6 +22,7 @@ import { melonnQueue } from "@/lib/melonn-queue";
 import {
   loadOrdersCache, saveOrdersCache, clearOrdersCache, mergeOrders, fmtAge,
   loadInventoryCache, saveInventoryCache, clearInventoryCache,
+  loadCouriersCache, saveCouriersCache, clearCouriersCache,
   INVENTORY_TTL_MS, isExpired,
 } from "@/lib/melonn-cache";
 
