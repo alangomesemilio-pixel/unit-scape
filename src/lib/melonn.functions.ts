@@ -3,17 +3,16 @@ import { createServerFn } from "@tanstack/react-start";
 /**
  * Integração com a API REST da Melonn.
  *
- * Base URL padrão: https://api.melonn.com/v1
- * Override via MELONN_API_BASE_URL caso a conta use um host diferente.
+ * Configuração dinâmica via tabela `soma_kv` (key = "melonn_config"):
+ *   { baseUrl, ordersPath, inventoryPath, metricsPath }
+ *
+ * Fallbacks:
+ *   - baseUrl       = MELONN_API_BASE_URL ou https://api.melonn.com/v1
+ *   - ordersPath    = /orders?limit=200
+ *   - inventoryPath = /inventory
+ *   - metricsPath   = /metrics/operational
+ *
  * Autenticação: header `Authorization: Bearer <MELONN_API_KEY>`.
- *
- * Endpoints assumidos (ajustar conforme o contrato real da conta):
- *  - GET /orders?status=...     → lista de pedidos
- *  - GET /inventory             → estoque por SKU
- *  - GET /metrics/operational   → métricas operacionais agregadas
- *
- * Se o endpoint retornar 404/erro, devolvemos um payload vazio com `error`
- * para que a UI mostre estado vazio em vez de quebrar.
  */
 
 export type MelonnOrderStatus =
@@ -48,6 +47,13 @@ export interface MelonnMetrics {
   cost_per_order: number;
 }
 
+export interface MelonnConfig {
+  baseUrl: string;
+  ordersPath: string;
+  inventoryPath: string;
+  metricsPath: string;
+}
+
 const STATUS_LABELS: Record<MelonnOrderStatus, string> = {
   picking: "Em separação",
   shipped: "Despachado / Em trânsito",
@@ -68,21 +74,44 @@ export function melonnStatusLabel(s: MelonnOrderStatus) {
   return STATUS_LABELS[s] ?? s;
 }
 
-function getConfig() {
-  const apiKey = process.env.MELONN_API_KEY;
-  const baseUrl =
-    process.env.MELONN_API_BASE_URL?.replace(/\/$/, "") ||
-    "https://api.melonn.com/v1";
-  return { apiKey, baseUrl };
+const DEFAULTS: MelonnConfig = {
+  baseUrl: "https://api.melonn.com/v1",
+  ordersPath: "/orders?limit=200",
+  inventoryPath: "/inventory",
+  metricsPath: "/metrics/operational",
+};
+
+async function loadConfig(): Promise<MelonnConfig> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const envBase = process.env.MELONN_API_BASE_URL?.replace(/\/$/, "");
+  const fallback: MelonnConfig = { ...DEFAULTS, baseUrl: envBase || DEFAULTS.baseUrl };
+  try {
+    const { data } = await supabaseAdmin
+      .from("soma_kv")
+      .select("value")
+      .eq("key", "melonn_config")
+      .maybeSingle();
+    const v: any = data?.value ?? {};
+    return {
+      baseUrl: (v.baseUrl || fallback.baseUrl).replace(/\/$/, ""),
+      ordersPath: v.ordersPath || fallback.ordersPath,
+      inventoryPath: v.inventoryPath || fallback.inventoryPath,
+      metricsPath: v.metricsPath || fallback.metricsPath,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
-async function melonnFetch(path: string): Promise<{ ok: true; data: any } | { ok: false; error: string }> {
-  const { apiKey, baseUrl } = getConfig();
-  if (!apiKey) {
-    return { ok: false, error: "MELONN_API_KEY não configurada" };
-  }
+async function melonnFetch(
+  path: string,
+  cfg: MelonnConfig,
+): Promise<{ ok: true; data: any } | { ok: false; error: string }> {
+  const apiKey = process.env.MELONN_API_KEY;
+  if (!apiKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
   try {
-    const res = await fetch(`${baseUrl}${path}`, {
+    const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
+    const res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${apiKey}`,
         Accept: "application/json",
@@ -109,9 +138,50 @@ function mapStatus(raw: string): MelonnOrderStatus {
   return "picking";
 }
 
+export const getMelonnConfig = createServerFn({ method: "GET" }).handler(
+  async (): Promise<{ config: MelonnConfig; defaults: MelonnConfig; hasApiKey: boolean }> => {
+    const config = await loadConfig();
+    return { config, defaults: DEFAULTS, hasApiKey: !!process.env.MELONN_API_KEY };
+  },
+);
+
+export const saveMelonnConfig = createServerFn({ method: "POST" })
+  .inputValidator((d: Partial<MelonnConfig>) => d)
+  .handler(async ({ data }): Promise<{ ok: true; config: MelonnConfig }> => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const current = await loadConfig();
+    const merged: MelonnConfig = {
+      baseUrl: (data.baseUrl ?? current.baseUrl).replace(/\/$/, ""),
+      ordersPath: data.ordersPath ?? current.ordersPath,
+      inventoryPath: data.inventoryPath ?? current.inventoryPath,
+      metricsPath: data.metricsPath ?? current.metricsPath,
+    };
+    await supabaseAdmin
+      .from("soma_kv")
+      .upsert({ key: "melonn_config", value: merged as any }, { onConflict: "key" });
+    return { ok: true, config: merged };
+  });
+
+export const testMelonnEndpoint = createServerFn({ method: "POST" })
+  .inputValidator((d: { endpoint: "orders" | "inventory" | "metrics" }) => d)
+  .handler(async ({ data }): Promise<{ ok: boolean; status?: number; error?: string; sample?: string }> => {
+    const cfg = await loadConfig();
+    const path =
+      data.endpoint === "orders"
+        ? cfg.ordersPath
+        : data.endpoint === "inventory"
+          ? cfg.inventoryPath
+          : cfg.metricsPath;
+    const res = await melonnFetch(path, cfg);
+    if (!res.ok) return { ok: false, error: res.error };
+    const sample = JSON.stringify(res.data).slice(0, 300);
+    return { ok: true, sample };
+  });
+
 export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ orders: MelonnOrder[]; error?: string }> => {
-    const result = await melonnFetch("/orders?limit=200");
+    const cfg = await loadConfig();
+    const result = await melonnFetch(cfg.ordersPath, cfg);
     if (!result.ok) return { orders: [], error: result.error };
 
     const raw: any[] = Array.isArray(result.data)
@@ -140,7 +210,8 @@ export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
 
 export const getMelonnInventory = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ items: MelonnInventoryItem[]; error?: string }> => {
-    const result = await melonnFetch("/inventory");
+    const cfg = await loadConfig();
+    const result = await melonnFetch(cfg.inventoryPath, cfg);
     if (!result.ok) return { items: [], error: result.error };
 
     const raw: any[] = Array.isArray(result.data)
@@ -166,7 +237,8 @@ export const getMelonnInventory = createServerFn({ method: "GET" }).handler(
 
 export const getMelonnMetrics = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ metrics: MelonnMetrics | null; error?: string }> => {
-    const result = await melonnFetch("/metrics/operational");
+    const cfg = await loadConfig();
+    const result = await melonnFetch(cfg.metricsPath, cfg);
     if (!result.ok) return { metrics: null, error: result.error };
 
     const d = result.data ?? {};
