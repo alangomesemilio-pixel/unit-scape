@@ -357,6 +357,43 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
   });
 
 
+// --- Detalhe de um pedido (para extrair data real de entrega via eventos) ---
+function extractDeliveredAt(detail: any): string | null {
+  if (!detail) return null;
+  // Campos diretos comuns
+  const direct =
+    detail.delivery_date ?? detail.delivered_at ?? detail.shipping?.delivered_at ?? null;
+  if (direct) return String(direct);
+  // Histórico de eventos (procura status code 8 = delivered ou nome contendo "deliver/entreg")
+  const events: any[] =
+    (Array.isArray(detail.sell_order_events) && detail.sell_order_events) ||
+    (Array.isArray(detail.events) && detail.events) ||
+    (Array.isArray(detail.state_history) && detail.state_history) ||
+    (Array.isArray(detail.history) && detail.history) ||
+    [];
+  let best: string | null = null;
+  for (const ev of events) {
+    const code = ev.code ?? ev.state?.code ?? ev.sell_order_state?.code;
+    const name = String(ev.name ?? ev.state?.name ?? ev.sell_order_state?.name ?? "").toUpperCase();
+    const ts = ev.date ?? ev.created_at ?? ev.timestamp ?? ev.occurred_at ?? null;
+    const isDelivered = Number(code) === 8 || name.includes("DELIVER") || name.includes("ENTREG");
+    if (isDelivered && ts) best = String(ts);
+  }
+  return best ?? detail.last_state_update ?? null;
+}
+
+export const getMelonnOrderDelivery = createServerFn({ method: "POST" })
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data }): Promise<{ id: string; delivered_at: string | null; error?: string }> => {
+    const cfg = await loadConfig();
+    const result = await melonnFetch(`${cfg.ordersPath}/${encodeURIComponent(data.id)}`, cfg);
+    if (!result.ok) return { id: data.id, delivered_at: null, error: result.error };
+    const detail = result.data?.sell_order ?? result.data?.data ?? result.data;
+    return { id: data.id, delivered_at: extractDeliveredAt(detail) };
+  });
+
+
+
 export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ orders: MelonnOrder[]; fetched_at: string; total_count?: number; error?: string }> => {
     const cfg = await loadConfig();
