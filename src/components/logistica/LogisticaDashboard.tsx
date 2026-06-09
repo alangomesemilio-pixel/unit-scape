@@ -164,6 +164,12 @@ export function LogisticaDashboard() {
   const ordersCacheRef = useRef<Map<DaysBack, OrdersCacheEntry>>(new Map());
   const FETCH_TIMEOUT_MS = 60_000;
 
+  // Estado de cache persistente (sessionStorage) + busca incremental.
+  const [cacheInfo, setCacheInfo] = useState<{ ageMs: number | null; lastDelta: { newCount: number; updatedCount: number } | null; checking: boolean }>({
+    ageMs: null, lastDelta: null, checking: false,
+  });
+  const initialMountRef = useRef(false);
+
   const runOrdersFetch = useCallback(async (
     days: DaysBack,
     opts: { startPage?: number; initialAcc?: MelonnOrder[]; initialTotal?: number } = {},
