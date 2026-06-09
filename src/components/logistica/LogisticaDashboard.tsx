@@ -365,7 +365,7 @@ export function LogisticaDashboard() {
   }, [ordersHydrated, inventory]);
 
   const ctx = {
-    orders, inventory, couriers, materials, activeWarehouses,
+    orders: ordersHydrated, inventory, couriers, materials, activeWarehouses,
     ordersErr, inventoryErr, couriersErr,
     loading, refreshMaterials, setMaterials,
     ordersTotal, ordersLoaded, daysBack, onDaysBackChange: handleDaysBackChange,
