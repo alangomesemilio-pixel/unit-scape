@@ -18,6 +18,7 @@ import {
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
   type MelonnOrderStatus, type MelonnConfig,
 } from "@/lib/melonn.functions";
+import { melonnQueue } from "@/lib/melonn-queue";
 
 
 // ============================================================
@@ -188,7 +189,7 @@ export function LogisticaDashboard() {
         if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
         iter++;
 
-        const r = await getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } });
+        const r = await melonnQueue(() => getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } }));
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
         fetchedAt = r.fetched_at;
@@ -239,13 +240,13 @@ export function LogisticaDashboard() {
 
   const refreshInventory = useCallback(async () => {
     setLoading((l) => ({ ...l, inv: true }));
-    const r = await getMelonnInventory();
+    const r = await melonnQueue(() => getMelonnInventory());
     setInventory(r.items); setInventoryErr(r.error); setInventoryAt(r.fetched_at);
     setLoading((l) => ({ ...l, inv: false }));
   }, []);
   const refreshCouriers = useCallback(async () => {
     setLoading((l) => ({ ...l, cou: true }));
-    const r = await getMelonnCouriers();
+    const r = await melonnQueue(() => getMelonnCouriers());
     setCouriers(r.couriers); setCouriersErr(r.error);
     setLoading((l) => ({ ...l, cou: false }));
   }, []);
@@ -260,7 +261,10 @@ export function LogisticaDashboard() {
   async function refreshAll() {
     setRefreshing(true);
     ordersCacheRef.current.clear();
-    await Promise.all([refreshOrders(daysBack, true), refreshInventory(), refreshCouriers()]);
+    // Sequencial: a fila Melonn já serializa, mas mantemos explícito pra clareza.
+    await refreshOrders(daysBack, true);
+    await refreshInventory();
+    await refreshCouriers();
     setRefreshing(false);
   }
 
@@ -270,8 +274,15 @@ export function LogisticaDashboard() {
   }, [refreshOrders]);
 
   useEffect(() => {
-    getMelonnConfig().then((r) => setActiveWarehouses(r.config.warehouseCodes));
-    refreshOrders(daysBack, true); refreshInventory(); refreshCouriers(); refreshMaterials();
+    (async () => {
+      const cfg = await getMelonnConfig();
+      setActiveWarehouses(cfg.config.warehouseCodes);
+      refreshMaterials(); // Supabase, não conta no rate limit Melonn.
+      // Sequencial para nunca disparar 2 chamadas Melonn em paralelo.
+      await refreshOrders(daysBack, true);
+      await refreshInventory();
+      await refreshCouriers();
+    })();
     const t = setInterval(() => { refreshAll(); }, REFRESH_MS);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,7 +347,7 @@ export function LogisticaDashboard() {
         if (abort.cancelled) return;
         const chunk = pending.slice(i, i + BATCH);
         try {
-          const { map } = await hydrateMelonnDeliveries({ data: { ids: chunk.map((o) => o.id) } });
+          const { map } = await melonnQueue(() => hydrateMelonnDeliveries({ data: { ids: chunk.map((o) => o.id) } }));
           const updates: Record<string, string | null> = {};
           for (const o of chunk) {
             const v = map[o.id] ?? null;
