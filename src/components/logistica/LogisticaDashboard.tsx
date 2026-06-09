@@ -143,6 +143,11 @@ export function LogisticaDashboard() {
   const [materials, setMaterials] = useState<Material[]>([]);
   const [activeWarehouses, setActiveWarehouses] = useState<string[]>(["MED-2", "MED-3", "BOG-2", "BAQ-1", "CAL-2"]);
   const [loading, setLoading] = useState({ orders: true, inv: true, cou: true, mat: true });
+  // Hidratação em background: mapa orderId -> delivered_at (ISO) calculado via /sell-orders/{id}.
+  const [deliveryMap, setDeliveryMap] = useState<Record<string, string | null>>({});
+  const [deliveryProgress, setDeliveryProgress] = useState<{ done: number; total: number; running: boolean }>({ done: 0, total: 0, running: false });
+  const deliveryCacheRef = useRef<Map<string, string | null>>(new Map());
+  const deliveryAbortRef = useRef<{ cancelled: boolean }>({ cancelled: false });
 
   const [tab, setTab] = useState<TabId>("pedidos");
   const [settingsOpen, setSettingsOpen] = useState(false);
