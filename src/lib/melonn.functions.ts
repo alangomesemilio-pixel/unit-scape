@@ -170,20 +170,29 @@ async function melonnFetch(
   if (!rawKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "").trim();
   const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-  await rateLimit();
-  try {
-    const res = await fetch(url, {
-      headers: { "x-api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
-    });
-    const text = await res.text().catch(() => "");
-    if (!res.ok) return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
-    let data: any = null;
-    try { data = text ? JSON.parse(text) : null; } catch { /* */ }
-    return { ok: true, data, status: res.status };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await rateLimit();
+    try {
+      const res = await fetch(url, {
+        headers: { "x-api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
+      });
+      const text = await res.text().catch(() => "");
+      if (res.status === 429 && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      if (!res.ok) return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* */ }
+      return { ok: true, data, status: res.status };
+    } catch (e: any) {
+      if (attempt === 0) continue;
+      return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
+    }
   }
+  return { ok: false, error: "Falha ao conectar com Melonn" };
 }
+
 
 function mapStatusFromCode(code: number | null | undefined, name?: string): MelonnOrderStatus {
   if (typeof code === "number" && STATUS_CODE_MAP[code]) return STATUS_CODE_MAP[code];
@@ -198,12 +207,17 @@ function mapStatusFromCode(code: number | null | undefined, name?: string): Melo
   return "processing";
 }
 
-function buildOrdersPath(basePath: string, opts: { daysBack?: number; page?: number; perPage?: number } = {}): string {
-  const { daysBack = 60, page = 0, perPage = 100 } = opts;
-  const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+function buildOrdersPath(basePath: string, opts: { daysBack?: number | null; page?: number; perPage?: number } = {}): string {
+  const { daysBack = 365, page = 0, perPage = 100 } = opts;
   const sep = basePath.includes("?") ? "&" : "?";
-  return `${basePath}${sep}page=${page}&per_page=${perPage}&initial_creation_date=${since}`;
+  let path = `${basePath}${sep}page=${page}&per_page=${perPage}`;
+  if (daysBack != null) {
+    const since = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString();
+    path += `&initial_creation_date=${since}`;
+  }
+  return path;
 }
+
 
 function mapRawOrder(o: any, idx: number): MelonnOrder {
   const state = o.sell_order_state ?? {};
@@ -283,7 +297,7 @@ export const testMelonnEndpoint = createServerFn({ method: "POST" })
   });
 
 export const getMelonnOrdersPage = createServerFn({ method: "POST" })
-  .inputValidator((d: { page?: number; daysBack?: number; perPage?: number }) => d)
+  .inputValidator((d: { page?: number; daysBack?: number | null; perPage?: number }) => d)
   .handler(async ({ data }): Promise<{
     orders: MelonnOrder[];
     page: number;
@@ -296,7 +310,7 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
     const cfg = await loadConfig();
     const page = data.page ?? 0;
     const perPage = data.perPage ?? 100;
-    const daysBack = data.daysBack ?? 60;
+    const daysBack = data.daysBack === undefined ? 365 : data.daysBack; // null = sem filtro
     const result = await melonnFetch(buildOrdersPath(cfg.ordersPath, { daysBack, page, perPage }), cfg);
     const fetched_at = new Date().toISOString();
     if (!result.ok) return { orders: [], page, per_page: perPage, total_count: 0, has_more: false, fetched_at, error: result.error };
@@ -309,9 +323,11 @@ export const getMelonnOrdersPage = createServerFn({ method: "POST" })
       result.data?.total ??
       orders.length,
     );
-    const has_more = orders.length >= perPage && (page + 1) * perPage < total_count;
+    // Critério de parada robusto: pára quando a página vier com menos itens que perPage.
+    const has_more = orders.length >= perPage;
     return { orders, page, per_page: perPage, total_count, has_more, fetched_at };
   });
+
 
 export const getMelonnOrders = createServerFn({ method: "GET" }).handler(
   async (): Promise<{ orders: MelonnOrder[]; fetched_at: string; total_count?: number; error?: string }> => {

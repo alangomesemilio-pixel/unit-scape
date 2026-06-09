@@ -35,7 +35,7 @@ type Material = {
 
 type TabId = "pedidos" | "performance" | "estoque" | "transportadoras" | "embalagens";
 type Periodo = "hoje" | "7d" | "30d";
-type DaysBack = 7 | 30 | 60 | 90;
+type DaysBack = 7 | 30 | 90 | 365 | "all";
 type StatusFilter = "all" | MelonnOrderStatus;
 
 type TipoFilter = "all" | "b2b" | "d2c";
@@ -129,7 +129,7 @@ export function LogisticaDashboard() {
   const [ordersAt, setOrdersAt] = useState<string>();
   const [ordersTotal, setOrdersTotal] = useState<number>(0);
   const [ordersLoaded, setOrdersLoaded] = useState<number>(0);
-  const [daysBack, setDaysBack] = useState<DaysBack>(60);
+  const [daysBack, setDaysBack] = useState<DaysBack>(365);
   const [resumePage, setResumePage] = useState<number | null>(null);
   const [timedOut, setTimedOut] = useState(false);
 
@@ -183,7 +183,7 @@ export function LogisticaDashboard() {
         if (iter > 0) await new Promise((r) => setTimeout(r, 1100));
         iter++;
 
-        const r = await getMelonnOrdersPage({ data: { page, daysBack: days, perPage: PER_PAGE } });
+        const r = await getMelonnOrdersPage({ data: { page, daysBack: days === "all" ? null : days, perPage: PER_PAGE } });
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
         fetchedAt = r.fetched_at;
@@ -200,7 +200,7 @@ export function LogisticaDashboard() {
     } catch (e: any) {
       setOrdersErr(e?.message ?? "Falha ao carregar pedidos");
     } finally {
-      const completed = !timedOut && acc.length >= total && total > 0;
+      const completed = !timedOut && acc.length > 0;
       ordersCacheRef.current.set(days, { orders: acc, total, fetched_at: fetchedAt, completed });
       setLoading((l) => ({ ...l, orders: false }));
     }
@@ -307,7 +307,7 @@ export function LogisticaDashboard() {
     timedOut, resumePage, onContinueLoading: continueLoading,
   };
 
-  const progressPct = ordersTotal > 0 ? Math.min(100, Math.round((ordersLoaded / ordersTotal) * 100)) : 0;
+  
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6 bg-background">
@@ -328,14 +328,15 @@ export function LogisticaDashboard() {
               <div className="flex items-center justify-between text-[11px] text-muted-foreground mb-1">
                 <span className="flex items-center gap-1.5">
                   <RefreshCw className="size-3 animate-spin" />
-                  Carregando pedidos: {ordersLoaded} / {ordersTotal || "…"} {ordersTotal > 0 && `(${progressPct}%)`}
+                  Carregando… {ordersLoaded.toLocaleString("pt-BR")} pedidos encontrados
                 </span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-secondary overflow-hidden">
-                <div className="h-full bg-primary transition-all duration-300" style={{ width: `${progressPct}%` }} />
+                <div className="h-full w-1/3 bg-primary animate-pulse" />
               </div>
             </div>
           )}
+
           {timedOut && resumePage != null && (
             <div className="mt-2 flex items-center gap-2 text-[11px] text-amber-500">
               ⏱️ Carregados {ordersLoaded} de {ordersTotal} pedidos.
@@ -465,17 +466,23 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
 
       {/* HEADER PERÍODO + CONTADOR */}
       <Card className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Calendar className="size-4 text-muted-foreground" />
           <span className="text-xs text-muted-foreground">Período de busca:</span>
-          {([7, 30, 60, 90] as DaysBack[]).map((d) => (
+          {([
+            { v: 7 as DaysBack, label: "7 dias" },
+            { v: 30 as DaysBack, label: "30 dias" },
+            { v: 90 as DaysBack, label: "90 dias" },
+            { v: 365 as DaysBack, label: "1 ano" },
+            { v: "all" as DaysBack, label: "Tudo" },
+          ]).map((opt) => (
             <button
-              key={d}
-              onClick={() => onDaysBackChange(d)}
+              key={String(opt.v)}
+              onClick={() => onDaysBackChange(opt.v)}
               disabled={isLoadingPages}
-              className={`px-2.5 py-1 text-xs rounded transition ${daysBack === d ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"} disabled:opacity-50`}
+              className={`px-2.5 py-1 text-xs rounded transition ${daysBack === opt.v ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"} disabled:opacity-50`}
             >
-              {d} dias
+              {opt.label}
             </button>
           ))}
         </div>
@@ -483,35 +490,25 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
           {isLoadingPages ? (
             <span className="flex items-center gap-2 text-muted-foreground">
               <RefreshCw className="size-3 animate-spin" />
-              Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal || "…"}</strong>
-              <span>·</span>
-              Carregando: <strong className="text-foreground tabular-nums">{ordersLoaded}{ordersTotal > 0 ? `/${ordersTotal}` : ""}</strong>…
+              Carregando… <strong className="text-foreground tabular-nums">{ordersLoaded.toLocaleString("pt-BR")}</strong> pedidos encontrados
             </span>
           ) : (
             <>
               <span className="text-muted-foreground">
-                Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal}</strong> pedidos
+                Total carregados: <strong className="text-foreground tabular-nums">{orders.length.toLocaleString("pt-BR")}</strong> pedidos
               </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground">
-                Exibindo: <strong className="text-foreground tabular-nums">{orders.length}</strong> pedidos
-              </span>
-              {!mismatch && !timedOut && ordersTotal > 0 && (
+              {!timedOut && orders.length > 0 && (
                 <span className="px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-500">✅</span>
-              )}
-              {mismatch && !timedOut && (
-                <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
-                  ⚠️ {Math.max(0, ordersTotal - orders.length)} pedidos ainda carregando
-                </span>
               )}
               {timedOut && (
                 <button onClick={onContinueLoading} className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500 hover:bg-amber-500/25">
-                  Continuar carregando ({Math.max(0, ordersTotal - orders.length)} restantes)
+                  Continuar carregando
                 </button>
               )}
             </>
           )}
         </div>
+
 
       </Card>
 
