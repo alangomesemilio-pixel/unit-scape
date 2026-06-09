@@ -307,7 +307,7 @@ export function LogisticaDashboard() {
     timedOut, resumePage, onContinueLoading: continueLoading,
   };
 
-  const progressPct = ordersTotal > 0 ? Math.min(100, Math.round((ordersLoaded / ordersTotal) * 100)) : 0;
+  
 
   return (
     <div className="h-full overflow-y-auto p-6 space-y-6 bg-background">
