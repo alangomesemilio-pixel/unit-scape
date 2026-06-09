@@ -7,6 +7,7 @@ import { SomaForecasting } from "@/components/soma/SomaForecasting";
 import { NovoOkrs } from "@/components/soma/NovoOkrs";
 import { ExecutiveHome } from "@/components/exec/ExecutiveHome";
 import { LogisticaDashboard } from "@/components/logistica/LogisticaDashboard";
+import { B2BDashboard } from "@/components/b2b/B2BDashboard";
 import { AppSidebar, AppSidebarMobile, type ExecView } from "@/components/exec/AppSidebar";
 
 import { Toaster } from "@/components/ui/sonner";
@@ -48,6 +49,8 @@ function Index() {
               <MeetingsDashboard />
             ) : view === "logistica" ? (
               <LogisticaDashboard />
+            ) : view === "b2b" ? (
+              <B2BDashboard />
             ) : (
               <ExecAiChat />
             )}
