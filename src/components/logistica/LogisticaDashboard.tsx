@@ -371,6 +371,49 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal,
     <section className="space-y-4">
       {ordersErr && <div className="text-xs text-amber-500">⚠️ {ordersErr}</div>}
 
+      {/* HEADER PERÍODO + CONTADOR */}
+      <Card className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2">
+          <Calendar className="size-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">Período de busca:</span>
+          {([7, 30, 60, 90] as DaysBack[]).map((d) => (
+            <button
+              key={d}
+              onClick={() => onDaysBackChange(d)}
+              disabled={isLoadingPages}
+              className={`px-2.5 py-1 text-xs rounded transition ${daysBack === d ? "bg-primary text-primary-foreground" : "bg-secondary hover:bg-secondary/80"} disabled:opacity-50`}
+            >
+              {d} dias
+            </button>
+          ))}
+        </div>
+        <div className="ml-auto flex items-center gap-3 text-xs">
+          {isLoadingPages ? (
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <RefreshCw className="size-3 animate-spin" />
+              Carregando pedidos… {ordersLoaded}{ordersTotal > 0 ? ` de ${ordersTotal}` : ""}
+            </span>
+          ) : (
+            <>
+              <span className="text-muted-foreground">
+                Total Melonn: <strong className="text-foreground tabular-nums">{ordersTotal}</strong> pedidos
+              </span>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground">
+                Exibindo: <strong className="text-foreground tabular-nums">{orders.length}</strong> pedidos
+              </span>
+              {mismatch && (
+                <span className="ml-2 px-2 py-0.5 rounded bg-amber-500/15 text-amber-500">
+                  ⚠️ {Math.max(0, ordersTotal - orders.length)} pedidos ainda carregando
+                </span>
+              )}
+            </>
+          )}
+        </div>
+      </Card>
+
+
+
       {/* FILTROS */}
       <Card className="flex flex-wrap items-center gap-2">
         <div className="flex items-center gap-1">
