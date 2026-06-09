@@ -110,35 +110,71 @@ function pctAtingido(realizado: number, meta: number, direction: "up" | "down") 
 export function ExecutiveHome() {
   const [kpis, setKpis] = useState<Kpi[]>([]);
   const [loading, setLoading] = useState(true);
-  const mes = currentMonthKey();
+  const [period, setPeriod] = useState<"mes" | "semana">("mes");
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey());
+  const [selectedWeek, setSelectedWeek] = useState<string>(isoWeekKey());
+
+  // The "mes" used for metadata (nome, meta, dono…) — derived from the selected period
+  const mes = period === "mes" ? selectedMonth : monthFromWeek(selectedWeek);
 
   useEffect(() => {
     let alive = true;
+    setLoading(true);
     (async () => {
-      const { data, error } = await supabase
+      // Always load the monthly KPIs (source of metadata + meta + monthly realizado)
+      const { data: monthData, error: mErr } = await supabase
         .from("kpis_executivos")
         .select("*")
         .eq("mes", mes)
         .order("ordem", { ascending: true });
       if (!alive) return;
-      if (error) console.error(error);
-      setKpis((data as Kpi[]) ?? []);
+      if (mErr) console.error(mErr);
+      const base = (monthData as Kpi[]) ?? [];
+
+      if (period === "mes") {
+        setKpis(base);
+        setLoading(false);
+        return;
+      }
+
+      // Weekly: overlay snapshot values on top of monthly metadata; meta is prorated
+      const { data: snaps, error: sErr } = await supabase
+        .from("kpi_week_snapshots")
+        .select("kpi_id, value")
+        .eq("week", selectedWeek);
+      if (!alive) return;
+      if (sErr) console.error(sErr);
+
+      const valueByKpi = new Map<string, number>();
+      (snaps ?? []).forEach((r: { kpi_id: string; value: number }) =>
+        valueByKpi.set(r.kpi_id, Number(r.value))
+      );
+
+      const dim = daysInMonthOf(mes);
+      const merged: Kpi[] = base.map((k) => ({
+        ...k,
+        realizado: valueByKpi.get(k.kpi_id) ?? 0,
+        meta: Math.round(((k.meta || 0) * 7) / dim),
+      }));
+      setKpis(merged);
       setLoading(false);
     })();
     return () => {
       alive = false;
     };
-  }, [mes]);
+  }, [mes, period, selectedWeek]);
 
   async function update(kpi: Kpi, patch: Partial<Pick<Kpi, "realizado" | "meta">>) {
+    if (period !== "mes") return; // weekly view is read-only
     setKpis((prev) => prev.map((k) => (k.id === kpi.id ? { ...k, ...patch } : k)));
     await supabase.from("kpis_executivos").update(patch).eq("id", kpi.id);
   }
 
   const receita = kpis.find((k) => k.kpi_id === "receita");
-  const dim = daysInMonth();
-  const dom = dayOfMonth();
+  const dim = daysInMonthOf(mes);
+  const dom = isCurrentMonth(mes) ? dayOfMonth() : dim;
   const pctMes = (dom / dim) * 100;
+
 
   // Receita por canal — pega do soma_kv se existir (legacy)
   const [canais, setCanais] = useState<{ nome: string; realizado: number; meta: number; dono: string }[]>([
