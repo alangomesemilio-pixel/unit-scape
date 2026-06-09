@@ -187,13 +187,15 @@ export function LogisticaDashboard() {
         if (r.error) { setOrdersErr(r.error); break; }
         acc.push(...r.orders);
         fetchedAt = r.fetched_at;
-        if (page === 0 || total === 0) total = r.total_count || acc.length;
+        // total_count da Melonn não é confiável (ela devolve o tamanho da página).
+        // Usamos o acumulado como total enquanto carrega.
+        total = Math.max(acc.length, r.total_count || 0);
         setOrders([...acc]);
         setOrdersLoaded(acc.length);
         setOrdersTotal(total);
         setOrdersAt(fetchedAt);
-        const done = acc.length >= total || r.orders.length < PER_PAGE || !r.has_more;
-        if (done) break;
+        // Única condição de parada: página veio incompleta = fim real.
+        if (r.orders.length < PER_PAGE) break;
         page++;
         if (page > 200) break; // safety
       }
