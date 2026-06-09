@@ -170,20 +170,29 @@ async function melonnFetch(
   if (!rawKey) return { ok: false, error: "MELONN_API_KEY não configurada" };
   const apiKey = rawKey.trim().replace(/^Bearer\s+/i, "").trim();
   const url = `${cfg.baseUrl}${path.startsWith("/") ? path : `/${path}`}`;
-  await rateLimit();
-  try {
-    const res = await fetch(url, {
-      headers: { "x-api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
-    });
-    const text = await res.text().catch(() => "");
-    if (!res.ok) return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
-    let data: any = null;
-    try { data = text ? JSON.parse(text) : null; } catch { /* */ }
-    return { ok: true, data, status: res.status };
-  } catch (e: any) {
-    return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
+  for (let attempt = 0; attempt < 2; attempt++) {
+    await rateLimit();
+    try {
+      const res = await fetch(url, {
+        headers: { "x-api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
+      });
+      const text = await res.text().catch(() => "");
+      if (res.status === 429 && attempt === 0) {
+        await new Promise((r) => setTimeout(r, 2000));
+        continue;
+      }
+      if (!res.ok) return { ok: false, status: res.status, error: `Melonn ${res.status}: ${text.slice(0, 200)}` };
+      let data: any = null;
+      try { data = text ? JSON.parse(text) : null; } catch { /* */ }
+      return { ok: true, data, status: res.status };
+    } catch (e: any) {
+      if (attempt === 0) continue;
+      return { ok: false, error: e?.message ?? "Falha ao conectar com Melonn" };
+    }
   }
+  return { ok: false, error: "Falha ao conectar com Melonn" };
 }
+
 
 function mapStatusFromCode(code: number | null | undefined, name?: string): MelonnOrderStatus {
   if (typeof code === "number" && STATUS_CODE_MAP[code]) return STATUS_CODE_MAP[code];
