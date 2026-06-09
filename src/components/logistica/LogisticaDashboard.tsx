@@ -12,7 +12,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers, getMelonnOrderDelivery, getMelonnDeliveriesCache,
+  getMelonnOrdersPage, getMelonnInventory, getMelonnCouriers, getMelonnOrderDelivery, getMelonnDeliveriesCache, hydrateMelonnDeliveries,
   getMelonnConfig, saveMelonnConfig, testMelonnEndpoint,
   melonnStatusLabel, MELONN_STATUSES, MELONN_WAREHOUSES,
   type MelonnOrder, type MelonnInventoryItem, type MelonnCourier,
