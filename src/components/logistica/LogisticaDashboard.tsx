@@ -22,6 +22,7 @@ import { melonnQueue } from "@/lib/melonn-queue";
 import {
   loadOrdersCache, saveOrdersCache, clearOrdersCache, mergeOrders, fmtAge,
   loadInventoryCache, saveInventoryCache, clearInventoryCache,
+  loadCouriersCache, saveCouriersCache, clearCouriersCache,
   INVENTORY_TTL_MS, isExpired,
 } from "@/lib/melonn-cache";
 
@@ -270,10 +271,19 @@ export function LogisticaDashboard() {
     if (!r.error && r.items.length > 0) saveInventoryCache(r.items, r.fetched_at);
     setLoading((l) => ({ ...l, inv: false }));
   }, []);
-  const refreshCouriers = useCallback(async () => {
+  const refreshCouriers = useCallback(async (opts: { force?: boolean } = {}) => {
+    if (!opts.force) {
+      const blob = loadCouriersCache();
+      if (blob) {
+        setCouriers(blob.data);
+        setLoading((l) => ({ ...l, cou: false }));
+        return;
+      }
+    }
     setLoading((l) => ({ ...l, cou: true }));
     const r = await melonnQueue(() => getMelonnCouriers());
     setCouriers(r.couriers); setCouriersErr(r.error);
+    if (!r.error && r.couriers.length > 0) saveCouriersCache(r.couriers, r.fetched_at);
     setLoading((l) => ({ ...l, cou: false }));
   }, []);
   const refreshMaterials = useCallback(async () => {
@@ -323,6 +333,7 @@ export function LogisticaDashboard() {
     setRefreshing(true);
     await incrementalRefresh(6);
     await refreshInventory({ force: true });
+    await refreshCouriers({ force: true });
     setRefreshing(false);
   }
 
@@ -331,11 +342,12 @@ export function LogisticaDashboard() {
     if (!confirm("Recarregar todos os pedidos? Isso pode levar vários minutos.")) return;
     clearOrdersCache();
     clearInventoryCache();
+    clearCouriersCache();
     ordersCacheRef.current.clear();
     setRefreshing(true);
     await refreshOrders(daysBack, true);
     await refreshInventory({ force: true });
-    await refreshCouriers();
+    await refreshCouriers({ force: true });
     setRefreshing(false);
   }, [daysBack, refreshOrders, refreshInventory, refreshCouriers]);
 
