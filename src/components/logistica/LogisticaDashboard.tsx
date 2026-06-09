@@ -324,9 +324,13 @@ type CtxBase = {
   loading: { orders: boolean; inv: boolean; cou: boolean; mat: boolean };
   refreshMaterials: () => Promise<void>;
   setMaterials: React.Dispatch<React.SetStateAction<Material[]>>;
+  ordersTotal: number;
+  ordersLoaded: number;
+  daysBack: DaysBack;
+  onDaysBackChange: (d: DaysBack) => void;
 };
 
-function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
+function PedidosTab({ orders, ordersErr, loading, activeWarehouses, ordersTotal, ordersLoaded, daysBack, onDaysBackChange }: CtxBase) {
   const [periodo, setPeriodo] = useState<Periodo>("30d");
   const [bodega, setBodega] = useState<string>("all");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -334,6 +338,9 @@ function PedidosTab({ orders, ordersErr, loading, activeWarehouses }: CtxBase) {
   const [busca, setBusca] = useState("");
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 50;
+  const isLoadingPages = loading.orders;
+  const mismatch = !isLoadingPages && ordersTotal > 0 && ordersTotal !== orders.length;
+
 
   const filtered = useMemo(() => {
     const since = startOfPeriod(periodo);
